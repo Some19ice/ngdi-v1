@@ -8,17 +8,18 @@ import OSM from "ol/source/OSM"
 import XYZ from "ol/source/XYZ"
 import { fromLonLat } from "ol/proj"
 import LayerGroup from "ol/layer/Group"
+import { Options } from "ol/layer/Base"
 import "ol/ol.css"
-import { Card, CardContent } from "./ui/card"
-import { Label } from "./ui/label"
-import { Switch } from "./ui/switch"
+import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select"
+} from "@/components/ui/select"
 
 interface MapProps {
   center?: [number, number] // [longitude, latitude]
@@ -30,21 +31,21 @@ interface MapProps {
 const baseLayers = {
   osm: new TileLayer({
     source: new OSM(),
-    title: "OpenStreetMap",
+    properties: { title: "OpenStreetMap" },
   }),
   satellite: new TileLayer({
     source: new XYZ({
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attributions: "Esri, Maxar, Earthstar Geographics",
     }),
-    title: "Satellite",
+    properties: { title: "Satellite" },
   }),
   terrain: new TileLayer({
     source: new XYZ({
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}",
       attributions: "Esri, USGS, NOAA",
     }),
-    title: "Terrain",
+    properties: { title: "Terrain" },
   }),
 }
 
@@ -55,7 +56,7 @@ const overlayLayers = {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
       attributions: "Esri",
     }),
-    title: "Transportation",
+    properties: { title: "Transportation" },
     visible: false,
   }),
   boundaries: new TileLayer({
@@ -63,7 +64,7 @@ const overlayLayers = {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
       attributions: "Esri",
     }),
-    title: "Boundaries",
+    properties: { title: "Boundaries" },
     visible: false,
   }),
 }

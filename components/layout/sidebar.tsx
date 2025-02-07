@@ -46,6 +46,12 @@ const getMainNavItems = (role: UserRole): NavItem[] => {
       permission: Permissions.READ_METADATA,
     },
     {
+      title: "Map",
+      href: "/map",
+      icon: Map,
+      permission: Permissions.READ_METADATA,
+    },
+    {
       title: "Gallery",
       href: "/gallery",
       icon: Image,
