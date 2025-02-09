@@ -2,7 +2,6 @@
   "name": "ngdi-portal",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -12,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
-    "db:init": "NODE_OPTIONS=\"--loader ts-node/esm\" node scripts/init-db.ts"
+    "db:init": "ts-node scripts/init-db.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",

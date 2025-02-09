@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = {
   output: "standalone",
   reactStrictMode: true,
   swcMinify: true,
@@ -7,6 +7,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
+  experimental: {
+    serverActions: true,
+  },
+  optimizeFonts: true,
 }
-
-export default nextConfig

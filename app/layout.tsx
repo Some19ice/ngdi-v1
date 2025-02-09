@@ -3,7 +3,13 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import RootLayoutClient from "@/components/layout/root-layout-client"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "arial", "sans-serif"],
+  adjustFontFallback: true,
+})
 
 export const metadata: Metadata = {
   title: "NGDI Portal - Nigeria Geospatial Data Infrastructure",
