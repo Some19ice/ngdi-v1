@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 const formSchema = z.object({
   coordinateSystem: z.string().min(1, "Coordinate system is required"),
@@ -54,17 +55,34 @@ const formSchema = z.object({
 interface TechnicalDetailsFormProps {
   onNext: (data: z.infer<typeof formSchema>) => void
   onBack: () => void
-  initialData: Partial<z.infer<typeof formSchema>>
+  initialData?: Partial<z.infer<typeof formSchema>>
 }
 
 export default function TechnicalDetailsForm({
   onNext,
   onBack,
-  initialData,
+  initialData = {},
 }: TechnicalDetailsFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData,
+    defaultValues: {
+      coordinateSystem: "",
+      projection: "",
+      scale: "",
+      resolution: "",
+      accuracyLevel: "",
+      completeness: "",
+      consistencyCheck: false,
+      validationStatus: "",
+      fileFormat: "",
+      fileSize: "",
+      numberOfFeatures: "",
+      softwareRequirements: "",
+      updateCycle: "",
+      lastUpdateDate: "",
+      nextUpdateDate: "",
+      ...initialData,
+    },
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -551,6 +569,13 @@ export default function TechnicalDetailsForm({
               </FormItem>
             )}
           />
+        </div>
+
+        <div className="flex justify-between pt-6">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button type="submit">Next</Button>
         </div>
       </form>
     </Form>

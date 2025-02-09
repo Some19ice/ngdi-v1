@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 const formSchema = z.object({
   distributionFormat: z.string().min(1, "Distribution format is required"),
@@ -68,24 +69,40 @@ const accessMethods = [
 
 interface AccessInfoFormProps {
   onBack: () => void
-  initialData: Partial<z.infer<typeof formSchema>>
+  onSave: (data: z.infer<typeof formSchema>) => Promise<void>
+  isSubmitting: boolean
+  initialData?: Partial<z.infer<typeof formSchema>>
 }
 
 export default function AccessInfoForm({
   onBack,
-  initialData,
+  onSave,
+  isSubmitting,
+  initialData = {},
 }: AccessInfoFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      distributionFormat: "",
+      accessMethod: "",
+      downloadUrl: "",
+      apiEndpoint: "",
+      licenseType: "",
+      usageTerms: "",
+      attributionRequirements: "",
+      accessRestrictions: [],
+      contactPerson: "",
+      email: "",
+      phone: "",
+      organization: "",
+      department: "",
+      accessMethods: [],
       ...initialData,
-      accessRestrictions: initialData.accessRestrictions || [],
-      accessMethods: initialData.accessMethods || [],
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await onSave(values)
   }
 
   return (
@@ -605,6 +622,20 @@ export default function AccessInfoForm({
             </FormItem>
           )}
         />
+
+        <div className="flex justify-between pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={isSubmitting}
+          >
+            Back
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Metadata"}
+          </Button>
+        </div>
       </form>
     </Form>
   )

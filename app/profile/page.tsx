@@ -1,8 +1,6 @@
-"use client"
-
-import { useAuth } from "@/hooks/use-auth"
-import { UserRole } from "@/lib/auth/types"
-import { Button } from "@/components/ui/button"
+import { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/auth"
 import {
   Card,
   CardContent,
@@ -10,234 +8,164 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Building2, Mail, Phone, User } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CalendarDays, Mail, MapPin, Building } from "lucide-react"
 
-const profileFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  phone: z.string().optional(),
-  title: z.string().min(2, {
-    message: "Job title must be at least 2 characters.",
-  }),
-  organization: z.string().min(2, {
-    message: "Organization must be at least 2 characters.",
-  }),
-  bio: z.string().optional(),
-})
+export const metadata: Metadata = {
+  title: "Profile",
+  description: "Manage your profile settings and preferences.",
+}
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+export default async function ProfilePage() {
+  const user = await getCurrentUser()
 
-export default function ProfilePage() {
-  const { user } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
-
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      name: "John Doe",
-      email: user?.email || "",
-      phone: "+234 123 456 7890",
-      title: "GIS Specialist",
-      organization: "Federal Ministry of Science and Technology",
-      bio: "GIS specialist with over 10 years of experience in geospatial data management and analysis.",
-    },
-  })
-
-  function onSubmit(data: ProfileFormValues) {
-    // TODO: Implement profile update
-    console.log(data)
+  if (!user) {
+    redirect("/login")
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>
-              Update your personal information and contact details.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-9"
-                            placeholder="Your name"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+    <div className="container max-w-6xl py-6">
+      <div className="grid gap-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground">
+              Manage your profile settings and preferences.
+            </p>
+          </div>
+          <Button>Edit Profile</Button>
+        </div>
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-9"
-                            type="email"
-                            placeholder="Your email"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-9"
-                            type="tel"
-                            placeholder="Your phone number"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="pt-4">
-                  <Button type="submit">Update Profile</Button>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Profile Information</CardTitle>
+              <CardDescription>
+                Your personal information and preferences.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={user.image || ""} alt={user.name || ""} />
+                  <AvatarFallback className="text-lg">
+                    {user.name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">{user.name}</h3>
+                  <p className="text-sm text-muted-foreground">{user.role}</p>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Organization Details</CardTitle>
-            <CardDescription>
-              Your role and organization information.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Title</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-9"
-                            placeholder="Your job title"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="organization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            className="pl-9"
-                            placeholder="Your organization"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bio</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Tell us about yourself"
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="pt-4">
-                  <Button type="submit">Update Organization Details</Button>
+              </div>
+              <div className="grid gap-4">
+                <div className="flex items-center gap-4">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">Email</p>
+                  </div>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                <div className="flex items-center gap-4">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{user.organization}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Organization
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{user.department}</p>
+                    <p className="text-xs text-muted-foreground">Department</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      {user.createdAt?.toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Member since
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="lg:col-span-4">
+            <Tabs defaultValue="metadata" className="h-full w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="metadata" className="flex-1">
+                  My Metadata
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex-1">
+                  Activity
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex-1">
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="metadata" className="h-full">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Metadata</CardTitle>
+                    <CardDescription>
+                      Manage your metadata entries and submissions.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Add metadata list component here */}
+                    <p className="text-sm text-muted-foreground">
+                      No metadata entries found.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="activity" className="h-full">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>
+                      Your recent actions and updates.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Add activity list component here */}
+                    <p className="text-sm text-muted-foreground">
+                      No recent activity.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="settings" className="h-full">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Settings</CardTitle>
+                    <CardDescription>
+                      Manage your account settings and preferences.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Add settings form component here */}
+                    <p className="text-sm text-muted-foreground">
+                      Settings coming soon.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   )

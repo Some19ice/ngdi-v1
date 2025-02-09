@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Mail, Lock } from "lucide-react"
+import { toast } from "sonner"
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -45,14 +47,26 @@ export default function LoginPage() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      // TODO: Implement actual login logic
-      console.log(data)
-
-      // After successful login, redirect to the original destination or default page
       const from = searchParams.get("from") || "/"
-      router.push(from)
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+        callbackUrl: from,
+      })
+
+      if (!result?.error) {
+        // Successful login
+        toast.success("Successfully signed in!")
+        router.push(from)
+        router.refresh()
+      } else {
+        // Failed login
+        toast.error("Invalid email or password")
+      }
     } catch (error) {
-      console.error(error)
+      console.error("Login error:", error)
+      toast.error("An error occurred during sign in")
     } finally {
       setIsLoading(false)
     }

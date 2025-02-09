@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { UserRole, Permissions } from "@/lib/auth/types"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,7 @@ const mockMetadata = [
 ]
 
 export default function MetadataPage() {
+  const router = useRouter()
   const { user, can } = useAuth({
     // TODO: Replace with actual user data
     user: {
@@ -64,6 +66,19 @@ export default function MetadataPage() {
   const filteredMetadata = metadata.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const handleView = (id: string) => {
+    router.push(`/metadata/${id}`)
+  }
+
+  const handleEdit = (id: string) => {
+    router.push(`/metadata/${id}/edit`)
+  }
+
+  const handleDelete = async (id: string) => {
+    // TODO: Implement delete functionality
+    console.log("Delete metadata:", id)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,7 +126,11 @@ export default function MetadataPage() {
           </TableHeader>
           <TableBody>
             {filteredMetadata.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow
+                key={item.id}
+                className="cursor-pointer"
+                onClick={() => handleView(item.id)}
+              >
                 <TableCell className="font-medium">{item.title}</TableCell>
                 <TableCell>{item.category}</TableCell>
                 <TableCell>
@@ -123,23 +142,33 @@ export default function MetadataPage() {
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleView(item.id)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View
                       </DropdownMenuItem>
                       {can(Permissions.UPDATE_METADATA) && (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(item.id)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
                       )}
                       {can(Permissions.DELETE_METADATA) && (
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(item.id)
+                          }}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>

@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -58,18 +59,28 @@ const categories = [
 
 interface GeneralInfoFormProps {
   onNext: (data: z.infer<typeof formSchema>) => void
-  initialData: Partial<z.infer<typeof formSchema>>
+  initialData?: Partial<z.infer<typeof formSchema>>
 }
 
 export default function GeneralInfoForm({
   onNext,
-  initialData,
+  initialData = {},
 }: GeneralInfoFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: "",
+      author: "",
+      organization: "",
+      dateFrom: "",
+      dateTo: "",
+      abstract: "",
+      purpose: "",
+      thumbnailUrl: "",
+      imageName: "",
+      frameworkType: "",
+      categories: [],
       ...initialData,
-      categories: initialData.categories || [],
     },
   })
 
@@ -427,6 +438,10 @@ export default function GeneralInfoForm({
             </FormItem>
           )}
         />
+
+        <div className="flex justify-end pt-6">
+          <Button type="submit">Next</Button>
+        </div>
       </form>
     </Form>
   )

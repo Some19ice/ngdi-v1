@@ -1,53 +1,85 @@
+import { getToken } from "next-auth/jwt"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { UserRole } from "@/lib/auth/types"
+import { UserRole } from "@prisma/client"
+
+// Define public routes that don't require authentication
+const publicRoutes = [
+  "/",
+  "/about",
+  "/committee",
+  "/publications",
+  "/login",
+  "/register",
+  "/verify-request",
+  "/help",
+  "/documentation",
+  "/feedback",
+]
 
 // Define protected routes and their required roles
 const protectedRoutes = [
   {
     path: "/metadata/add",
-    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER],
+    roles: [UserRole.ADMIN, UserRole.MODERATOR],
+  },
+  {
+    path: "/metadata",
+    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
+  },
+  {
+    path: "/profile",
+    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
+  },
+  {
+    path: "/settings",
+    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
   },
   {
     path: "/admin",
     roles: [UserRole.ADMIN],
   },
-  {
-    path: "/profile",
-    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
-  },
 ]
 
 export async function middleware(request: NextRequest) {
-  const session = request.cookies.get("session")?.value
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  })
 
-  // Check if the path matches any protected route
+  const { pathname } = request.nextUrl
+
+  // Allow public routes and static files
+  if (
+    publicRoutes.some((route) => pathname === route) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/register") ||
+    pathname.startsWith("/api/public") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/public/")
+  ) {
+    return NextResponse.next()
+  }
+
+  // Check authentication for protected routes
+  if (!token) {
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("from", pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Check role-based access for protected routes
   const matchedRoute = protectedRoutes.find((route) =>
-    request.nextUrl.pathname.startsWith(route.path)
+    pathname.startsWith(route.path)
   )
 
   if (matchedRoute) {
-    if (!session) {
-      // Redirect to login if no session exists
-      const loginUrl = new URL("/login", request.url)
-      loginUrl.searchParams.set("from", request.nextUrl.pathname)
-      return NextResponse.redirect(loginUrl)
-    }
+    const userRole = token.role as UserRole
 
-    try {
-      // In a real application, you would verify the session and get user data
-      // This is a simplified example
-      const userData = JSON.parse(session)
-
-      if (!matchedRoute.roles.includes(userData.role)) {
-        // Redirect to 403 page if user doesn't have required role
-        return NextResponse.redirect(new URL("/403", request.url))
-      }
-    } catch (error) {
-      // If session is invalid, redirect to login
-      const loginUrl = new URL("/login", request.url)
-      loginUrl.searchParams.set("from", request.nextUrl.pathname)
-      return NextResponse.redirect(loginUrl)
+    if (!matchedRoute.roles.includes(userRole)) {
+      // Redirect to unauthorized page if user doesn't have required role
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
   }
 
@@ -55,5 +87,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/metadata/:path*", "/admin/:path*", "/profile/:path*"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+  ],
 }
