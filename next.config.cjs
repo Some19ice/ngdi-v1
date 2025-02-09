@@ -8,10 +8,7 @@ module.exports = {
   },
   images: { unoptimized: true },
   experimental: {
-    serverActions: {
-      allowedOrigins: ["localhost:3000", "ngdi-v1.vercel.app"],
-      bodySizeLimit: "2mb",
-    },
+    serverActions: true,
   },
   optimizeFonts: true,
 }
