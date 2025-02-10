@@ -39,6 +39,14 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get("from") || "/"
 
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
+
   useEffect(() => {
     if (status === "authenticated") {
       router.replace(returnUrl)
@@ -54,14 +62,6 @@ function LoginForm() {
       </div>
     )
   }
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
