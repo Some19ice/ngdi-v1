@@ -59,6 +59,7 @@ import {
   Calendar,
   Tag,
 } from "lucide-react"
+import { redirect } from "next/navigation"
 
 // Mock data - replace with actual API call
 const mockMetadata = [
@@ -124,15 +125,11 @@ const statuses = ["All Statuses", "Published", "Draft", "Under Review"]
 const validationStatuses = ["All Validations", "Validated", "Pending", "Failed"]
 
 export default function MetadataPage() {
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user, can } = useAuth()
+
+  if (!user) {
+    redirect("/login")
+  }
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All Categories")

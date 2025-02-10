@@ -21,17 +21,14 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Bell, Globe, Lock, Mail } from "lucide-react"
+import { redirect } from "next/navigation"
 
 export default function SettingsPage() {
-  const { user } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user } = useAuth()
+
+  if (!user) {
+    redirect("/login")
+  }
 
   return (
     <div className="space-y-6">

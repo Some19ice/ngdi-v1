@@ -46,6 +46,7 @@ import {
   AlertTriangle,
   Save,
 } from "lucide-react"
+import { redirect } from "next/navigation"
 
 const systemSettingsSchema = z.object({
   siteName: z.string().min(2, {
@@ -90,15 +91,11 @@ const defaultSettings = {
 }
 
 export default function SettingsPage() {
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user, can } = useAuth()
+
+  if (!user) {
+    redirect("/login")
+  }
 
   const [isSaving, setIsSaving] = useState(false)
 

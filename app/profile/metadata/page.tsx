@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { PlusCircle, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 // Mock data - replace with actual API call
 const mockMetadata = [
@@ -50,15 +51,11 @@ const mockMetadata = [
 
 export default function MetadataPage() {
   const router = useRouter()
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user, can } = useAuth()
+
+  if (!user) {
+    redirect("/login")
+  }
 
   const [searchQuery, setSearchQuery] = useState("")
   const [metadata] = useState(mockMetadata)

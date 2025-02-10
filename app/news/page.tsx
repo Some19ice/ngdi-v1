@@ -50,6 +50,7 @@ import {
   PlusCircle,
   HelpCircle,
 } from "lucide-react"
+import { redirect } from "next/navigation"
 
 // Mock data - replace with actual API call
 const mockNews = [
@@ -134,14 +135,11 @@ const categories = [
 ]
 
 export default function NewsPage() {
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-    },
-  })
+  const { user, can } = useAuth()
+
+  if (!user) {
+    redirect("/login")
+  }
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All Categories")
