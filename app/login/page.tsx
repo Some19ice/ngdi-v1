@@ -47,6 +47,12 @@ function LoginForm() {
     },
   })
 
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      window.location.href = returnUrl
+    }
+  }, [status, session?.user, returnUrl])
+
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
@@ -60,8 +66,7 @@ function LoginForm() {
         throw new Error(result.error)
       }
 
-      // Force a hard reload to ensure session is properly initialized
-      window.location.replace(returnUrl)
+      // Let the useEffect handle the redirect after session is updated
     } catch (error) {
       toast.error("Invalid email or password")
     } finally {

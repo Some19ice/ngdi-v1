@@ -42,6 +42,33 @@ const protectedRoutes = [
   },
 ]
 
+// Add helper function to check role access
+function hasRequiredRole(token: any, pathname: string): boolean {
+  const matchedRoute = protectedRoutes.find(
+    route => pathname === route.path || pathname.startsWith(`${route.path}/`)
+  )
+  
+  if (!matchedRoute) return true // Not a protected route
+  return matchedRoute.roles.includes(token.role as UserRole)
+}
+
+// Update validateReturnUrl to check role access
+function validateReturnUrl(url: string | null, token: any): string {
+  try {
+    if (!url) return "/"
+    const pathname = url.startsWith("/") ? url : `/${url}`
+    
+    // Check if user has access to the requested URL
+    if (token && !hasRequiredRole(token, pathname)) {
+      return "/" // Redirect to home if user doesn't have access
+    }
+    
+    return pathname
+  } catch {
+    return "/"
+  }
+}
+
 export async function middleware(request: NextRequest) {
   console.log('Middleware - Request path:', request.nextUrl.pathname)
   
@@ -57,7 +84,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Enhanced public routes handling
+  // Handle public routes
   if (
     publicRoutes.some((route) => pathname === route) ||
     pathname.startsWith("/_next") ||
@@ -67,43 +94,30 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname.startsWith("/public/")
   ) {
+    // Special handling for login page when authenticated
     if (pathname === "/login" && token) {
-      // Validate return URL before redirecting
       const returnUrl = validateReturnUrl(
-        request.nextUrl.searchParams.get("from")
+        request.nextUrl.searchParams.get("from"),
+        token
       )
       return NextResponse.redirect(new URL(returnUrl, request.url))
     }
     return NextResponse.next()
   }
 
+  // Check authentication
   if (!token) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("from", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Enhanced role validation with path matching
-  const matchedRoute = protectedRoutes.find(
-    (route) => pathname === route.path || pathname.startsWith(`${route.path}/`)
-  )
-
-  if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
+  // Check role-based access
+  if (!hasRequiredRole(token, pathname)) {
     return NextResponse.redirect(new URL("/unauthorized", request.url))
   }
 
   return NextResponse.next()
-}
-
-// Add URL validation helper
-function validateReturnUrl(url: string | null): string {
-  try {
-    if (!url) return "/"
-    const parsed = new URL(url, process.env.NEXTAUTH_URL)
-    return parsed.pathname.startsWith("/") ? parsed.pathname : "/"
-  } catch {
-    return "/"
-  }
 }
 
 export const config = {
