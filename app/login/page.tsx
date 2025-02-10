@@ -50,30 +50,45 @@ function LoginForm() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      console.log('[Login] Attempting sign in with email:', data.email)
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
         password: data.password,
-        callbackUrl: returnUrl,
       })
-
-      console.log('[Login] SignIn result:', result)
 
       if (result?.error) {
         throw new Error(result.error)
       }
 
-      if (result?.url) {
-        console.log('[Login] Successful sign in - redirecting to:', result.url)
-        window.location.replace(result.url)
-      }
+      // Force a hard reload to ensure session is properly initialized
+      window.location.replace(returnUrl)
     } catch (error) {
-      console.error('[Login] Error:', error)
       toast.error("Invalid email or password")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading state while checking session
+  if (status === "loading") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-[350px] text-center text-muted-foreground">
+          Checking session...
+        </div>
+      </div>
+    )
+  }
+
+  // If already authenticated, show loading state
+  if (status === "authenticated") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-[350px] text-center text-muted-foreground">
+          Already authenticated, redirecting...
+        </div>
+      </div>
+    )
   }
 
   return (

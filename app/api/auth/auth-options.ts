@@ -53,14 +53,17 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  debug: process.env.NODE_ENV !== "production", // Enable debug mode in development
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: process.env.NODE_ENV === "production" 
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false
+        secure: process.env.NODE_ENV === "production"
       }
     }
   },
@@ -69,7 +72,6 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: "/verify-request",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: false, // Explicitly disable debug mode
   providers: [
     EmailProvider({
       server: process.env.EMAIL_SERVER || {
@@ -145,13 +147,17 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.role = user.role
-        token.organization = user.organization
-        token.department = user.department
-        token.createdAt = user.createdAt
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        // Initial sign in
+        return {
+          ...token,
+          id: user.id,
+          role: user.role,
+          organization: user.organization,
+          department: user.department,
+          createdAt: user.createdAt,
+        }
       }
       return token
     },
