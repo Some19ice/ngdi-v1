@@ -64,9 +64,21 @@ export async function middleware(request: NextRequest) {
 
   // Check authentication for protected routes
   if (!token) {
+    // Don't redirect to login if already on login page
+    if (pathname === "/login") {
+      return NextResponse.next()
+    }
+
     const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("from", pathname)
+    loginUrl.searchParams.set("from", encodeURIComponent(pathname))
     return NextResponse.redirect(loginUrl)
+  }
+
+  // If user is authenticated and tries to access login page, redirect to home
+  if (pathname === "/login") {
+    const redirectUrl = request.nextUrl.searchParams.get("from")
+    const destination = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
+    return NextResponse.redirect(new URL(destination, request.url))
   }
 
   // Check role-based access for protected routes

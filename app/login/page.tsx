@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
@@ -35,6 +35,7 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<LoginFormValues>({
@@ -45,21 +46,49 @@ function LoginForm() {
     },
   })
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      const redirectUrl = searchParams.get("from")
+      const destination = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
+      router.push(destination)
+      router.refresh()
+    }
+  }, [session, status, router, searchParams])
+
+  // Show nothing while checking authentication status
+  if (status === "loading") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-[350px] text-center text-muted-foreground">
+          Loading...
+        </div>
+      </div>
+    )
+  }
+
+  // Don't show login form if already authenticated
+  if (status === "authenticated") {
+    return null
+  }
+
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      const from = searchParams.get("from") || "/"
+      const redirectUrl = searchParams.get("from")
+      const callbackUrl = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
+
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
         password: data.password,
-        callbackUrl: from,
+        callbackUrl,
       })
 
       if (!result?.error) {
         // Successful login
         toast.success("Successfully signed in!")
-        router.push(from)
+        router.push(callbackUrl)
         router.refresh()
       } else {
         // Failed login
