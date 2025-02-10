@@ -155,14 +155,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
   const router = useRouter()
   const { data: session } = useSession()
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-    },
-  })
+  const { user, can } = useAuth()
 
   const handleSignOut = async () => {
     try {

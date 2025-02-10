@@ -1,14 +1,21 @@
 "use client"
 
 import { useCallback } from "react"
-import { type Permission } from "@/lib/auth/types"
+import { useSession } from "next-auth/react"
+import { type Permission, UserRole } from "@/lib/auth/types"
 import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
 
-interface UseAuthProps {
-  user: User | null
-}
+export function useAuth() {
+  const { data: session } = useSession()
+  const user = session?.user
+    ? ({
+        id: session.user.id,
+        email: session.user.email || "",
+        role: session.user.role.toLowerCase() as UserRole,
+        organizationId: session.user.organization || null,
+      } as User)
+    : null
 
-export function useAuth({ user }: UseAuthProps) {
   const checkPermission = useCallback(
     (permission: Permission) => {
       if (!user) return false

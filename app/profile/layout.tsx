@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import { UserRole, Permissions } from "@/lib/auth/types"
+import { redirect } from "next/navigation"
 
 export default function ProfileLayout({
   children,
@@ -12,17 +13,11 @@ export default function ProfileLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user, can } = useAuth()
 
-  if (!user) return null
+  if (!user) {
+    redirect("/login")
+  }
 
   const tabs = [
     {

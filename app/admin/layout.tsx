@@ -13,18 +13,10 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user, can } = useAuth({
-    // TODO: Replace with actual user data
-    user: {
-      id: "1",
-      email: "user@example.com",
-      role: UserRole.ADMIN,
-      organizationId: "1",
-    },
-  })
+  const { user, can } = useAuth()
 
   if (!user || user.role !== UserRole.ADMIN) {
-    redirect("/403")
+    redirect("/unauthorized")
   }
 
   const tabs = [
