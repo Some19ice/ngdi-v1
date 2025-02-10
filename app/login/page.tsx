@@ -46,16 +46,15 @@ function LoginForm() {
     },
   })
 
-  // Redirect if already authenticated
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (session?.user) {
       const returnUrl = searchParams.get("from")
-      router.push(returnUrl || "/")
+      const destination = returnUrl || "/"
+      window.location.href = destination
     }
-  }, [session?.user, status, router, searchParams])
+  }, [session, searchParams])
 
-  // Show loading state while checking authentication
-  if (status === "loading") {
+  if (status === "loading" || session?.user) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[350px] text-center text-muted-foreground">
@@ -80,7 +79,7 @@ function LoginForm() {
 
       if (!result?.error) {
         toast.success("Successfully signed in!")
-        router.push(callbackUrl)
+        window.location.href = callbackUrl
       } else {
         toast.error("Invalid email or password")
       }
