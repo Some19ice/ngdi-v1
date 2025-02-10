@@ -75,8 +75,8 @@ export default function SearchPage() {
       <div className="flex flex-col space-y-4">
         <h1 className="text-3xl font-bold">Search Metadata</h1>
         <p className="text-muted-foreground">
-          Search through Nigeria's geospatial data infrastructure using various
-          criteria.
+          Search through Nigeria&apos;s geospatial data infrastructure using
+          various criteria.
         </p>
       </div>
 

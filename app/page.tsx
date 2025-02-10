@@ -11,21 +11,19 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-                Nigeria's Geospatial Data Infrastructure Portal
+                Nigeria&apos;s Geospatial Data Infrastructure Portal
               </h1>
               <p className="mt-6 text-lg leading-8 text-muted-foreground">
-                Discover, share, and manage geospatial data across Nigeria. A comprehensive platform for government agencies, researchers, and the public.
+                Discover, share, and manage geospatial data across Nigeria. A
+                comprehensive platform for government agencies, researchers, and
+                the public.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <Button asChild size="lg">
-                  <Link href="/search">
-                    Explore Data
-                  </Link>
+                  <Link href="/search">Explore Data</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link href="/metadata/add">
-                    Contribute Data
-                  </Link>
+                  <Link href="/metadata/add">Contribute Data</Link>
                 </Button>
               </div>
             </div>
@@ -48,34 +46,46 @@ export default function Home() {
           <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                <Search className="h-5 w-5 flex-none text-primary" aria-hidden="true" />
+                <Search
+                  className="h-5 w-5 flex-none text-primary"
+                  aria-hidden="true"
+                />
                 Advanced Search
               </dt>
               <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
                 <p className="flex-auto">
-                  Powerful search capabilities with multi-criteria filtering and geospatial queries.
+                  Powerful search capabilities with multi-criteria filtering and
+                  geospatial queries.
                 </p>
               </dd>
             </div>
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                <Upload className="h-5 w-5 flex-none text-primary" aria-hidden="true" />
+                <Upload
+                  className="h-5 w-5 flex-none text-primary"
+                  aria-hidden="true"
+                />
                 Metadata Management
               </dt>
               <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
                 <p className="flex-auto">
-                  Standardized metadata creation and management system with quality control.
+                  Standardized metadata creation and management system with
+                  quality control.
                 </p>
               </dd>
             </div>
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                <Users className="h-5 w-5 flex-none text-primary" aria-hidden="true" />
+                <Users
+                  className="h-5 w-5 flex-none text-primary"
+                  aria-hidden="true"
+                />
                 User Management
               </dt>
               <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
                 <p className="flex-auto">
-                  Secure authentication and role-based access control for different user types.
+                  Secure authentication and role-based access control for
+                  different user types.
                 </p>
               </dd>
             </div>
@@ -83,5 +93,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  );
+  )
 }

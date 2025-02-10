@@ -9,25 +9,35 @@ export default function TermsPage() {
 
           <div className="prose dark:prose-invert max-w-none">
             <p className="lead">
-              Please read these terms of service carefully before using the NGDI Portal.
+              Please read these terms of service carefully before using the NGDI
+              Portal.
             </p>
 
-            <h2 className="text-2xl font-bold mt-8 mb-4">1. Acceptance of Terms</h2>
+            <h2 className="text-2xl font-bold mt-8 mb-4">
+              1. Acceptance of Terms
+            </h2>
             <p>
-              By accessing and using the NGDI Portal, you accept and agree to be bound by the terms and provisions of this agreement.
+              By accessing and using the NGDI Portal, you accept and agree to be
+              bound by the terms and provisions of this agreement.
             </p>
 
             <h2 className="text-2xl font-bold mt-8 mb-4">2. Use License</h2>
             <p>
-              Permission is granted to temporarily access the materials on NGDI's website for personal, non-commercial transitory viewing only.
+              Permission is granted to temporarily access the materials on
+              NGDI&apos;s website for personal, non-commercial transitory
+              viewing only.
             </p>
 
             <h2 className="text-2xl font-bold mt-8 mb-4">3. Data Usage</h2>
             <p>
-              All data accessed through the NGDI Portal must be used in accordance with the specified licenses and attribution requirements.
+              All data accessed through the NGDI Portal must be used in
+              accordance with the specified licenses and attribution
+              requirements.
             </p>
 
-            <h2 className="text-2xl font-bold mt-8 mb-4">4. User Obligations</h2>
+            <h2 className="text-2xl font-bold mt-8 mb-4">
+              4. User Obligations
+            </h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>Maintain accurate registration information</li>
               <li>Protect account credentials</li>
@@ -38,5 +48,5 @@ export default function TermsPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

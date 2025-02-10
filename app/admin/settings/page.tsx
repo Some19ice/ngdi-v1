@@ -121,7 +121,7 @@ export default function SettingsPage() {
           <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-lg font-semibold">Access Denied</h2>
           <p className="text-muted-foreground">
-            You don't have permission to access system settings.
+            You don&apos;t have permission to access system settings.
           </p>
         </div>
       </div>
