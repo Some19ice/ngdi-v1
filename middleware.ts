@@ -49,6 +49,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // If user is authenticated and tries to access login page, redirect to home or intended destination
+  if (token && pathname === "/login") {
+    const redirectUrl = request.nextUrl.searchParams.get("from")
+    const destination = redirectUrl || "/"
+    return NextResponse.redirect(new URL(destination, request.url))
+  }
+
   // Allow public routes and static files
   if (
     publicRoutes.some((route) => pathname === route) ||
@@ -70,16 +77,8 @@ export async function middleware(request: NextRequest) {
     }
 
     const loginUrl = new URL("/login", request.url)
-    // Use raw pathname without encoding
     loginUrl.searchParams.set("from", pathname)
     return NextResponse.redirect(loginUrl)
-  }
-
-  // If user is authenticated and tries to access login page, redirect to home
-  if (pathname === "/login") {
-    const redirectUrl = request.nextUrl.searchParams.get("from")
-    const destination = redirectUrl || "/"
-    return NextResponse.redirect(new URL(destination, request.url))
   }
 
   // Check role-based access for protected routes
