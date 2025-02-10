@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Mail, Lock } from "lucide-react"
 import { toast } from "sonner"
+import { Suspense } from "react"
 
 const loginFormSchema = z.object({
   email: z.string().email({
@@ -31,7 +32,7 @@ const loginFormSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
@@ -159,5 +160,19 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

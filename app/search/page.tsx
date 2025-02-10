@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { DateRange } from "react-day-picker"
+import { Suspense } from "react"
 
 const searchFormSchema = z.object({
   keyword: z.string().optional(),
@@ -50,7 +51,7 @@ const dataTypes = [
   { value: "utilities", label: "Utilities" },
 ]
 
-export default function SearchPage() {
+function SearchForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchResults, setSearchResults] = useState([])
@@ -176,5 +177,15 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={<div className="container mx-auto py-8">Loading...</div>}
+    >
+      <SearchForm />
+    </Suspense>
   )
 }
