@@ -34,9 +34,26 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 
 function LoginForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get("from") || "/"
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(returnUrl)
+    }
+  }, [status, returnUrl, router])
+
+  if (status === "loading") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-[350px] text-center text-muted-foreground">
+          Checking authentication status...
+        </div>
+      </div>
+    )
+  }
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -46,59 +63,28 @@ function LoginForm() {
     },
   })
 
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      const returnUrl = searchParams.get("from")
-      const destination = returnUrl || "/"
-      router.replace(destination)
-    }
-  }, [status, session?.user, searchParams, router])
-
-  if (status === "loading") {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-[350px] text-center text-muted-foreground">
-          Loading...
-        </div>
-      </div>
-    )
-  }
-
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      const returnUrl = searchParams.get("from")
-      const callbackUrl = returnUrl || "/"
-
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
         password: data.password,
-        callbackUrl,
+        callbackUrl: returnUrl,
       })
 
-      if (!result?.error) {
-        toast.success("Successfully signed in!")
-        router.replace(callbackUrl)
-      } else {
-        toast.error("Invalid email or password")
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      if (result?.url) {
+        window.location.href = result.url
       }
     } catch (error) {
-      console.error("Login error:", error)
-      toast.error("An error occurred during sign in")
+      toast.error("Invalid email or password")
     } finally {
       setIsLoading(false)
     }
-  }
-
-  if (status === "authenticated") {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-[350px] text-center text-muted-foreground">
-          Redirecting...
-        </div>
-      </div>
-    )
   }
 
   return (

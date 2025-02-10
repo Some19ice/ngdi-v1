@@ -59,19 +59,21 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname.startsWith("/public/")
   ) {
-    // Special handling for login page when authenticated
+    // Handle authenticated users trying to access login
     if (pathname === "/login" && token) {
-      const redirectUrl = request.nextUrl.searchParams.get("from")
-      const destination = redirectUrl || "/"
-      return NextResponse.redirect(new URL(destination, request.url))
+      const redirectUrl = request.nextUrl.searchParams.get("from") || "/"
+      return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
     return NextResponse.next()
   }
 
   // Check authentication for protected routes
   if (!token) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("from", pathname)
+    const loginUrl = new URL('/login', request.url)
+    // Preserve original destination for dynamic routes
+    if (!publicRoutes.includes(pathname)) {
+      loginUrl.searchParams.set('from', request.nextUrl.pathname)
+    }
     return NextResponse.redirect(loginUrl)
   }
 
