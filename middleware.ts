@@ -70,51 +70,55 @@ function validateReturnUrl(url: string | null, token: any): string {
 }
 
 export async function middleware(request: NextRequest) {
-  console.log('Middleware - Request path:', request.nextUrl.pathname)
+  // Add production-specific logging
+  const isProduction = process.env.NODE_ENV === 'production'
+  console.log('Environment:', process.env.NODE_ENV)
   
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: true // Force secure cookie handling
   })
-  
-  console.log('Middleware - Token present:', !!token)
+
+  // Debug logging
+  console.log('Token exists:', !!token)
+  console.log('Request path:', request.nextUrl.pathname)
   if (token) {
-    console.log('Middleware - Token role:', token.role)
+    console.log('Token role:', token.role)
   }
 
   const { pathname } = request.nextUrl
 
-  // Handle public routes
-  if (
-    publicRoutes.some((route) => pathname === route) ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/register") ||
-    pathname.startsWith("/api/public") ||
-    pathname === "/favicon.ico" ||
-    pathname.startsWith("/public/")
-  ) {
-    // Special handling for login page when authenticated
+  // Handle public routes first
+  if (publicRoutes.includes(pathname) ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api/") ||
+      pathname === "/favicon.ico") {
+    
+    // Special handling for login
     if (pathname === "/login" && token) {
       const returnUrl = validateReturnUrl(
         request.nextUrl.searchParams.get("from"),
         token
       )
-      return NextResponse.redirect(new URL(returnUrl, request.url))
+      // Use 307 temporary redirect to preserve the request method
+      return NextResponse.redirect(new URL(returnUrl, request.url), { status: 307 })
     }
     return NextResponse.next()
   }
 
-  // Check authentication
+  // Authentication check
   if (!token) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("from", pathname)
-    return NextResponse.redirect(loginUrl)
+    // Use 307 temporary redirect
+    return NextResponse.redirect(loginUrl, { status: 307 })
   }
 
-  // Check role-based access
+  // Authorization check
   if (!hasRequiredRole(token, pathname)) {
-    return NextResponse.redirect(new URL("/unauthorized", request.url))
+    // Use 307 temporary redirect
+    return NextResponse.redirect(new URL("/unauthorized", request.url), { status: 307 })
   }
 
   return NextResponse.next()

@@ -48,8 +48,15 @@ function LoginForm() {
   })
 
   useEffect(() => {
+    console.log('Session status:', status)
+    console.log('Session data:', session)
+  }, [status, session])
+
+  useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      window.location.href = returnUrl
+      setTimeout(() => {
+        window.location.href = returnUrl
+      }, 500)
     }
   }, [status, session?.user, returnUrl])
 
@@ -66,15 +73,15 @@ function LoginForm() {
         throw new Error(result.error)
       }
 
-      // Let the useEffect handle the redirect after session is updated
+      toast.success("Successfully signed in")
     } catch (error) {
+      console.error('Sign in error:', error)
       toast.error("Invalid email or password")
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Show loading state while checking session
   if (status === "loading") {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -85,7 +92,6 @@ function LoginForm() {
     )
   }
 
-  // If already authenticated, show loading state
   if (status === "authenticated") {
     return (
       <div className="flex-1 flex items-center justify-center">
