@@ -50,6 +50,12 @@ function LoginForm() {
   useEffect(() => {
     if (status === "authenticated") {
       router.replace(returnUrl)
+      
+      setTimeout(() => {
+        if (window.location.pathname === "/login") {
+          window.location.href = returnUrl
+        }
+      }, 1000)
     }
   }, [status, returnUrl, router])
 

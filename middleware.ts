@@ -15,6 +15,7 @@ const publicRoutes = [
   "/help",
   "/documentation",
   "/feedback",
+  "/unauthorized",
 ]
 
 // Define protected routes and their required roles
@@ -84,8 +85,9 @@ export async function middleware(request: NextRequest) {
 
   if (matchedRoute) {
     const userRole = token.role as UserRole
-
-    if (!matchedRoute.roles.includes(userRole)) {
+    const hasRequiredRole = matchedRoute.roles.includes(userRole)
+    
+    if (!hasRequiredRole) {
       return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
   }
