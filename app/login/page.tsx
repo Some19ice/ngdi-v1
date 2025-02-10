@@ -47,14 +47,14 @@ function LoginForm() {
   })
 
   useEffect(() => {
-    if (session?.user) {
+    if (status === "authenticated" && session?.user) {
       const returnUrl = searchParams.get("from")
       const destination = returnUrl || "/"
-      window.location.href = destination
+      router.replace(destination)
     }
-  }, [session, searchParams])
+  }, [status, session?.user, searchParams, router])
 
-  if (status === "loading" || session?.user) {
+  if (status === "loading") {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[350px] text-center text-muted-foreground">
@@ -79,7 +79,7 @@ function LoginForm() {
 
       if (!result?.error) {
         toast.success("Successfully signed in!")
-        window.location.href = callbackUrl
+        router.replace(callbackUrl)
       } else {
         toast.error("Invalid email or password")
       }
@@ -89,6 +89,16 @@ function LoginForm() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (status === "authenticated") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-[350px] text-center text-muted-foreground">
+          Redirecting...
+        </div>
+      </div>
+    )
   }
 
   return (
