@@ -23,17 +23,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+import { DateRange } from "react-day-picker"
 
 const searchFormSchema = z.object({
   keyword: z.string().optional(),
   dataType: z.string().optional(),
   organization: z.string().optional(),
   dateRange: z
-    .object({
-      from: z.date().optional(),
-      to: z.date().optional(),
-    })
-    .optional(),
+    .custom<DateRange>()
+    .optional()
+    .transform((val) => (!val?.from ? undefined : val)),
 })
 
 type SearchFormValues = z.infer<typeof searchFormSchema>
@@ -62,6 +61,7 @@ export default function SearchPage() {
       keyword: searchParams.get("keyword") || "",
       dataType: searchParams.get("dataType") || "",
       organization: searchParams.get("organization") || "",
+      dateRange: undefined,
     },
   })
 
