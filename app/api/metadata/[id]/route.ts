@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authOptions } from "../../auth/[...nextauth]/route"
+import { authOptions } from "@/app/api/auth/auth-options"
 import { prisma } from "@/lib/prisma"
 
 const updateMetadataSchema = z.object({
