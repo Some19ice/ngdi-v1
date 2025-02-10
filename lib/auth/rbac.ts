@@ -4,7 +4,7 @@ export interface User {
   id: string
   email: string
   role: UserRole
-  organizationId?: string
+  organizationId?: string | null
 }
 
 export function can(user: User, permission: Permission): boolean {
@@ -55,10 +55,9 @@ export function canAccessResource(user: User, resourceUserId: string): boolean {
 // Helper to check if user can access organization resource
 export function canAccessOrganizationResource(
   user: User,
-  resourceOrganizationId: string
+  resourceOrganizationId: string | null
 ): boolean {
-  return (
-    user.role === UserRole.ADMIN ||
-    (user.organizationId && user.organizationId === resourceOrganizationId)
-  )
+  if (user.role === UserRole.ADMIN) return true
+  if (!user.organizationId || !resourceOrganizationId) return false
+  return user.organizationId === resourceOrganizationId
 }
