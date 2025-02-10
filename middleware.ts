@@ -49,14 +49,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // If user is authenticated and tries to access login page, redirect to home or intended destination
-  if (token && pathname === "/login") {
-    const redirectUrl = request.nextUrl.searchParams.get("from")
-    const destination = redirectUrl || "/"
-    return NextResponse.redirect(new URL(destination, request.url))
-  }
-
-  // Allow public routes and static files
+  // Allow public routes and static files immediately
   if (
     publicRoutes.some((route) => pathname === route) ||
     pathname.startsWith("/_next") ||
@@ -66,16 +59,17 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname.startsWith("/public/")
   ) {
+    // Special handling for login page when authenticated
+    if (pathname === "/login" && token) {
+      const redirectUrl = request.nextUrl.searchParams.get("from")
+      const destination = redirectUrl || "/"
+      return NextResponse.redirect(new URL(destination, request.url))
+    }
     return NextResponse.next()
   }
 
   // Check authentication for protected routes
   if (!token) {
-    // Don't redirect to login if already on login page
-    if (pathname === "/login") {
-      return NextResponse.next()
-    }
-
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("from", pathname)
     return NextResponse.redirect(loginUrl)
@@ -90,7 +84,6 @@ export async function middleware(request: NextRequest) {
     const userRole = token.role as UserRole
 
     if (!matchedRoute.roles.includes(userRole)) {
-      // Redirect to unauthorized page if user doesn't have required role
       return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
   }

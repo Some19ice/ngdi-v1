@@ -48,12 +48,11 @@ function LoginForm() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (status === "authenticated" && session) {
+    if (status === "authenticated" && session?.user) {
       const returnUrl = searchParams.get("from")
-      const destination = returnUrl || "/"
-      router.replace(destination)
+      router.push(returnUrl || "/")
     }
-  }, [session, status, router, searchParams])
+  }, [session?.user, status, router, searchParams])
 
   // Show loading state while checking authentication
   if (status === "loading") {
@@ -61,17 +60,6 @@ function LoginForm() {
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[350px] text-center text-muted-foreground">
           Loading...
-        </div>
-      </div>
-    )
-  }
-
-  // Don't show login form if already authenticated
-  if (status === "authenticated") {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-[350px] text-center text-muted-foreground">
-          Redirecting...
         </div>
       </div>
     )
@@ -91,11 +79,9 @@ function LoginForm() {
       })
 
       if (!result?.error) {
-        // Successful login
         toast.success("Successfully signed in!")
-        router.replace(callbackUrl)
+        router.push(callbackUrl)
       } else {
-        // Failed login
         toast.error("Invalid email or password")
       }
     } catch (error) {
