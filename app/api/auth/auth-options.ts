@@ -56,12 +56,15 @@ export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV !== "production", // Enable debug mode in development
   cookies: {
     sessionToken: {
-      name: 'next-auth.session-token',
+      name: "next-auth.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true // Always use secure cookies
+        secure: process.env.NODE_ENV === "production",
+        domain: process.env.NODE_ENV === "production" 
+          ? ".vercel.app" 
+          : undefined
       }
     }
   },

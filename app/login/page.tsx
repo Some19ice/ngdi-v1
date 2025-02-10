@@ -54,11 +54,10 @@ function LoginForm() {
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      setTimeout(() => {
-        window.location.href = returnUrl
-      }, 500)
+      const redirectUrl = returnUrl || "/"
+      router.push(redirectUrl)
     }
-  }, [status, session?.user, returnUrl])
+  }, [status, session?.user, returnUrl, router])
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
