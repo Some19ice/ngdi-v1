@@ -39,6 +39,9 @@ const roleBasedNavItems = {
   [UserRole.USER]: [],
 }
 
+// Define elevated roles array
+const elevatedRoles: UserRole[] = [UserRole.ADMIN, UserRole.MODERATOR]
+
 // User menu items based on role
 const getUserMenuItems = (role: UserRole) => {
   const items = [
@@ -55,7 +58,7 @@ const getUserMenuItems = (role: UserRole) => {
   ]
 
   // Add role-specific menu items
-  if ([UserRole.ADMIN, UserRole.MODERATOR].includes(role)) {
+  if (elevatedRoles.includes(role)) {
     items.push({
       name: "My Metadata",
       href: "/metadata",
