@@ -47,28 +47,6 @@ function LoginForm() {
     },
   })
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.replace(returnUrl)
-      
-      setTimeout(() => {
-        if (window.location.pathname === "/login") {
-          window.location.href = returnUrl
-        }
-      }, 1000)
-    }
-  }, [status, returnUrl, router])
-
-  if (status === "loading") {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-[350px] text-center text-muted-foreground">
-          Checking authentication status...
-        </div>
-      </div>
-    )
-  }
-
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
@@ -84,7 +62,7 @@ function LoginForm() {
       }
 
       if (result?.url) {
-        window.location.href = result.url
+        window.location.replace(result.url)
       }
     } catch (error) {
       toast.error("Invalid email or password")
