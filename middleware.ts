@@ -70,14 +70,15 @@ export async function middleware(request: NextRequest) {
     }
 
     const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("from", encodeURIComponent(pathname))
+    // Use raw pathname without encoding
+    loginUrl.searchParams.set("from", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // If user is authenticated and tries to access login page, redirect to home
   if (pathname === "/login") {
     const redirectUrl = request.nextUrl.searchParams.get("from")
-    const destination = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
+    const destination = redirectUrl || "/"
     return NextResponse.redirect(new URL(destination, request.url))
   }
 

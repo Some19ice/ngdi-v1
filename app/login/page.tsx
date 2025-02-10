@@ -49,10 +49,8 @@ function LoginForm() {
   // Redirect if already authenticated
   useEffect(() => {
     if (status === "authenticated" && session) {
-      const redirectUrl = searchParams.get("from")
-      const destination = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
-      router.push(destination)
-      router.refresh()
+      const returnUrl = searchParams.get("from")
+      router.push(returnUrl || "/")
     }
   }, [session, status, router, searchParams])
 
@@ -75,8 +73,8 @@ function LoginForm() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      const redirectUrl = searchParams.get("from")
-      const callbackUrl = redirectUrl ? decodeURIComponent(redirectUrl) : "/"
+      const returnUrl = searchParams.get("from")
+      const callbackUrl = returnUrl ? decodeURIComponent(returnUrl) : "/"
 
       const result = await signIn("credentials", {
         redirect: false,
