@@ -8,10 +8,7 @@ module.exports = {
   },
   images: { unoptimized: true },
   experimental: {
-    serverActions: {
-      enabled: true,
-      bodySizeLimit: "2mb",
-    },
+    serverActions: true,
   },
   optimizeFonts: true,
 }
