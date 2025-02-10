@@ -46,40 +46,41 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production"
   })
+
+  console.log('[Middleware] Path:', request.nextUrl.pathname)
+  console.log('[Middleware] Token exists:', !!token)
 
   const { pathname } = request.nextUrl
 
-  // Enhanced public routes handling
-  if (
-    publicRoutes.some((route) => pathname === route) ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/register") ||
-    pathname.startsWith("/api/public") ||
-    pathname === "/favicon.ico" ||
-    pathname.startsWith("/public/")
-  ) {
+  // Enhanced public routes handling with logging
+  if (publicRoutes.some(route => pathname === route)) {
+    console.log('[Middleware] Public route access:', pathname)
     if (pathname === "/login" && token) {
-      // Validate return URL before redirecting
       const returnUrl = validateReturnUrl(request.nextUrl.searchParams.get("from"))
+      console.log('[Middleware] Redirecting authenticated user from login to:', returnUrl)
       return NextResponse.redirect(new URL(returnUrl, request.url))
     }
     return NextResponse.next()
   }
 
   if (!token) {
+    console.log('[Middleware] No token - redirecting to login')
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Enhanced role validation with path matching
+  console.log('[Middleware] User role:', token.role)
+  
+  // Enhanced role validation
   const matchedRoute = protectedRoutes.find(route => 
     pathname === route.path || pathname.startsWith(`${route.path}/`)
   )
 
   if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
+    console.log('[Middleware] Role mismatch - redirecting to unauthorized')
     return NextResponse.redirect(new URL("/unauthorized", request.url))
   }
 

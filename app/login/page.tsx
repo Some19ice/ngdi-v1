@@ -50,6 +50,7 @@ function LoginForm() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
+      console.log('[Login] Attempting sign in with email:', data.email)
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
@@ -57,14 +58,18 @@ function LoginForm() {
         callbackUrl: returnUrl,
       })
 
+      console.log('[Login] SignIn result:', result)
+
       if (result?.error) {
         throw new Error(result.error)
       }
 
       if (result?.url) {
+        console.log('[Login] Successful sign in - redirecting to:', result.url)
         window.location.replace(result.url)
       }
     } catch (error) {
+      console.error('[Login] Error:', error)
       toast.error("Invalid email or password")
     } finally {
       setIsLoading(false)
