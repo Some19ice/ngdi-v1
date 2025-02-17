@@ -2,6 +2,7 @@ import { getToken } from "next-auth/jwt"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { UserRole } from "@prisma/client"
+import { redis } from "@/lib/redis"
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -87,37 +88,12 @@ function validateReturnUrl(url: string | null, token: any): string {
   }
 }
 
-// Simple in-memory rate limiter
-const ratelimits = new Map<string, { count: number; resetTime: number }>()
-const RATE_LIMIT_DURATION = 10 * 1000 // 10 seconds
-const MAX_REQUESTS = 10 // 10 requests per duration
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const record = ratelimits.get(ip)
-
-  // Clean up expired records
-  if (record && now > record.resetTime) {
-    ratelimits.delete(ip)
-  }
-
-  if (!record || now > record.resetTime) {
-    // First request or reset period
-    ratelimits.set(ip, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_DURATION,
-    })
-    return true
-  }
-
-  if (record.count >= MAX_REQUESTS) {
-    return false
-  }
-
-  // Increment counter
-  record.count++
-  return true
+const rateLimit = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5 // limit each IP to 5 requests per windowMs for auth endpoints
 }
+
+const MAX_REQUESTS_WITHOUT_REDIS = 50 // Higher limit when Redis is unavailable
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({
@@ -172,17 +148,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/unauthorized", request.url))
   }
 
-  const ip = request.ip ?? "127.0.0.1"
-
-  // Rate limiting only for auth endpoints
+  // Update rate limiting section
   if (request.nextUrl.pathname.startsWith("/api/auth")) {
-    if (!checkRateLimit(ip)) {
-      return new NextResponse("Too Many Requests", {
-        status: 429,
-        headers: {
-          "Retry-After": "10",
-        },
-      })
+    try {
+      const ip = request.ip ?? "127.0.0.1"
+      const rateLimitKey = `rate-limit:${ip}`
+      
+      const currentRequests = await redis.incr(rateLimitKey)
+      if (currentRequests === 1) {
+        await redis.expire(rateLimitKey, rateLimit.windowMs / 1000)
+      }
+
+      const remaining = Math.max(0, rateLimit.max - currentRequests)
+
+      if (currentRequests > rateLimit.max) {
+        return new NextResponse("Too Many Requests", {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.windowMs / 1000),
+            "X-RateLimit-Limit": String(rateLimit.max),
+            "X-RateLimit-Remaining": String(remaining),
+            "X-RateLimit-Reset": String(Math.ceil(Date.now() / 1000) + rateLimit.windowMs / 1000),
+          },
+        })
+      }
+
+      const response = NextResponse.next()
+      response.headers.set("X-RateLimit-Limit", String(rateLimit.max))
+      response.headers.set("X-RateLimit-Remaining", String(remaining))
+      return response
+    } catch (error) {
+      console.error("Rate limiting error:", error)
+      // Use in-memory fallback when Redis is unavailable
+      const response = NextResponse.next()
+      response.headers.set("X-RateLimit-Limit", String(MAX_REQUESTS_WITHOUT_REDIS))
+      response.headers.set("X-RateLimit-Remaining", String(MAX_REQUESTS_WITHOUT_REDIS - 1))
+      return response
     }
   }
 
@@ -208,6 +209,24 @@ export async function middleware(request: NextRequest) {
       headers,
     },
   })
+
+  // Add security headers for auth routes
+  if (request.nextUrl.pathname.startsWith("/auth/")) {
+    const headers = new Headers(request.headers)
+    headers.set("X-Frame-Options", "DENY")
+    headers.set("X-Content-Type-Options", "nosniff")
+    headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+    headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    headers.set("X-XSS-Protection", "1; mode=block")
+    
+    const response = NextResponse.next({
+      request: {
+        headers,
+      },
+    })
+    
+    return response
+  }
 
   return response
 }

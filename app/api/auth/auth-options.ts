@@ -8,7 +8,6 @@ import { prisma } from "@/lib/prisma"
 import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
 import { UserRole } from "@prisma/client"
-import { SupabaseProvider } from "next-auth/providers/supabase"
 
 function html(params: { url: string; host: string | undefined }) {
   const { url, host } = params
@@ -77,10 +76,6 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
-    SupabaseProvider({
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    }),
     EmailProvider({
       server: process.env.EMAIL_SERVER || {
         host: process.env.SMTP_HOST,
@@ -164,18 +159,23 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      if (account && user) {
         return {
           ...token,
-          id: user.id,
-          role: user.role,
-          organization: user.organization,
-          department: user.department,
-          createdAt: user.createdAt,
+          accessToken: account.access_token,
+          refreshToken: account.refresh_token,
+          accessTokenExpires: account.expires_at * 1000,
         }
       }
-      return token
+
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < token.accessTokenExpires) {
+        return token
+      }
+
+      // Access token has expired, try to refresh it
+      return refreshAccessToken(token)
     },
   },
 }

@@ -25,18 +25,31 @@ export default function SignIn() {
   const handleSignIn = async () => {
     try {
       setIsLoading(true)
+      setError(null)
       const result = await signIn("google", { 
         callbackUrl,
         redirect: false 
       })
       
       if (result?.error) {
-        throw new Error(result.error)
+        switch (result.error) {
+          case "AccessDenied":
+            setError("Your account doesn't have access to this application")
+            break
+          case "EmailNotVerified":
+            setError("Please verify your email address first")
+            break
+          default:
+            setError("An error occurred during sign in")
+        }
+        return
       }
       
       router.push(callbackUrl)
     } catch (error) {
+      setError("An unexpected error occurred")
       console.error("Sign in error:", error)
+    } finally {
       setIsLoading(false)
     }
   }

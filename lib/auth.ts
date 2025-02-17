@@ -5,6 +5,9 @@ import { UserRole } from "@prisma/client"
 import { NextAuthOptions } from "next-auth"
 import { createClient } from "@supabase/supabase-js"
 import SupabaseProvider from "next-auth/providers/supabase"
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -48,4 +51,40 @@ export function isModerator(user: { role?: string }) {
 // Add a helper function for Supabase client
 export function getSupabase() {
   return supabase
+}
+
+export async function validateSession() {
+  const session = await getServerSession(authOptions)
+  
+  if (!session) {
+    return null
+  }
+
+  // Check if session is expired
+  const sessionExpiry = new Date(session.expires)
+  if (sessionExpiry < new Date()) {
+    return null
+  }
+
+  // Verify user still exists and is active
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { 
+      active: true,
+      role: true,
+      emailVerified: true
+    }
+  })
+
+  if (!user || !user.active) {
+    return null
+  }
+
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      role: user.role
+    }
+  }
 }
