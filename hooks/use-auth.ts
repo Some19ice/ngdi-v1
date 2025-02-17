@@ -7,11 +7,11 @@ import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
 
 export function useAuth() {
   const { data: session } = useSession()
-  const user = session?.user
+  const user = session?.user?.role
     ? ({
         id: session.user.id,
         email: session.user.email || "",
-        role: session.user.role.toLowerCase() as UserRole,
+        role: session.user.role as UserRole,
         organizationId: session.user.organization || null,
       } as User)
     : null
