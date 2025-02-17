@@ -177,18 +177,30 @@ export const authOptions: NextAuthOptions = {
           : undefined
       }
 
-      if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
+      if (!token.accessTokenExpires || Date.now() < token.accessTokenExpires) {
         return token
       }
 
-      return refreshAccessToken(token)
+      try {
+        const refreshedToken = await refreshAccessToken(token)
+        return {
+          ...refreshedToken,
+          error: undefined,
+        }
+      } catch (error) {
+        return {
+          ...token,
+          error: "RefreshAccessTokenError",
+        }
+      }
     },
   },
 }
 
-async function refreshAccessToken(token: JWT) {
+async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
     // Add refresh token logic here if needed
+    // For now, just return the token with an error
     return {
       ...token,
       error: "RefreshAccessTokenError",
