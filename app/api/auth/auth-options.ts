@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
 import { UserRole } from "@prisma/client"
+import { JWT } from "next-auth/jwt"
 
 function html(params: { url: string; host: string | undefined }) {
   const { url, host } = params
@@ -63,11 +64,10 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        domain: process.env.NODE_ENV === "production" 
-          ? ".vercel.app" 
-          : undefined
-      }
-    }
+        domain:
+          process.env.NODE_ENV === "production" ? ".vercel.app" : undefined,
+      },
+    },
   },
   pages: {
     signIn: "/auth/signin",
@@ -130,8 +130,8 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
-          email: user.email || '',
-          name: user.name || '',
+          email: user.email || "",
+          name: user.name || "",
           role: user.role as UserRole,
           image: user.image || null,
           emailVerified: user.emailVerified || null,
@@ -145,16 +145,16 @@ export const authOptions: NextAuthOptions = {
         params: {
           prompt: "consent",
           access_type: "offline",
-          response_type: "code"
-        }
-      }
+          response_type: "code",
+        },
+      },
     }),
   ],
   callbacks: {
     async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.sub!
-        session.user.role = token.role as string
+        session.user.role = token.role as UserRole
         session.user.organization = token.organization as string | null
         session.user.department = token.department as string | null
         session.user.createdAt = token.createdAt as Date | null
@@ -162,22 +162,41 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async jwt({ token, user, account }) {
-      if (account && user) {
-        return {
-          ...token,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token,
-          accessTokenExpires: account.expires_at * 1000,
-        }
+      if (user) {
+        token.role = user.role as UserRole
+        token.organization = user.organization
+        token.department = user.department
+        token.createdAt = user.createdAt
       }
 
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < token.accessTokenExpires) {
+      if (account) {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.accessTokenExpires = account.expires_at
+          ? account.expires_at * 1000
+          : undefined
+      }
+
+      if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
         return token
       }
 
-      // Access token has expired, try to refresh it
       return refreshAccessToken(token)
     },
   },
+}
+
+async function refreshAccessToken(token: JWT) {
+  try {
+    // Add refresh token logic here if needed
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    }
+  } catch (error) {
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    }
+  }
 }

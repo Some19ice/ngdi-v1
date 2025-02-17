@@ -7,7 +7,10 @@ declare module "next-auth" {
       id: string
       email: string
       name: string
-      role?: UserRole
+      role: UserRole | undefined
+      organization?: string | null
+      department?: string | null
+      createdAt?: Date | null
       access_token?: string
       token_type?: string
       image?: string | null
@@ -18,7 +21,10 @@ declare module "next-auth" {
     id: string
     email: string
     name: string
-    role?: UserRole
+    role: UserRole
+    organization?: string | null
+    department?: string | null
+    createdAt?: Date | null
     image?: string | null
     emailVerified?: Date | null
   }
@@ -27,8 +33,12 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: UserRole
+    organization?: string | null
+    department?: string | null
+    createdAt?: Date | null
     access_token?: string
-    token_type?: string
-    provider_token?: string
+    refresh_token?: string
+    accessTokenExpires?: number
+    error?: "RefreshAccessTokenError"
   }
 }

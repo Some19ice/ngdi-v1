@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { UserRole } from "@prisma/client"
 import { redis } from "@/lib/redis"
+import { Redis } from "@upstash/redis"
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -88,9 +89,32 @@ function validateReturnUrl(url: string | null, token: any): string {
   }
 }
 
-const rateLimit = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5 // limit each IP to 5 requests per windowMs for auth endpoints
+// Initialize Redis client
+const redisClient = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+})
+
+// Rate limiting configuration
+const RATE_LIMIT_REQUESTS = parseInt(process.env.RATE_LIMIT_REQUESTS || '60')
+const RATE_LIMIT_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW || '60') // in seconds
+
+async function rateLimit(request: NextRequest) {
+  const ip = request.ip || 'anonymous'
+  const key = `rate-limit:${ip}`
+
+  const current = await redisClient.get<number>(key) || 0
+  
+  if (current > RATE_LIMIT_REQUESTS) {
+    return false
+  }
+
+  await redisClient.pipeline()
+    .incr(key)
+    .expire(key, RATE_LIMIT_WINDOW)
+    .exec()
+
+  return true
 }
 
 const MAX_REQUESTS_WITHOUT_REDIS = 50 // Higher limit when Redis is unavailable
@@ -125,8 +149,9 @@ export async function middleware(request: NextRequest) {
   // Handle authentication
   if (!token) {
     const loginUrl = new URL("/auth/signin", request.url)
-    let from = request.nextUrl.searchParams.get("from") || request.nextUrl.pathname
-    
+    let from =
+      request.nextUrl.searchParams.get("from") || request.nextUrl.pathname
+
     // Sanitize from parameter
     if (from === "/login" || from === "%2Flogin") {
       from = "/metadata"
@@ -135,98 +160,50 @@ export async function middleware(request: NextRequest) {
     if (!publicRoutes.includes(from) && from !== "/metadata") {
       loginUrl.searchParams.set("from", from)
     }
-    
+
     return NextResponse.redirect(loginUrl)
   }
 
   // Handle authorization
-  const matchedRoute = protectedRoutes.find(
-    route => pathname.startsWith(route.path)
+  const matchedRoute = protectedRoutes.find((route) =>
+    pathname.startsWith(route.path)
   )
 
   if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
     return NextResponse.redirect(new URL("/unauthorized", request.url))
   }
 
-  // Update rate limiting section
-  if (request.nextUrl.pathname.startsWith("/api/auth")) {
-    try {
-      const ip = request.ip ?? "127.0.0.1"
-      const rateLimitKey = `rate-limit:${ip}`
-      
-      const currentRequests = await redis.incr(rateLimitKey)
-      if (currentRequests === 1) {
-        await redis.expire(rateLimitKey, rateLimit.windowMs / 1000)
-      }
-
-      const remaining = Math.max(0, rateLimit.max - currentRequests)
-
-      if (currentRequests > rateLimit.max) {
-        return new NextResponse("Too Many Requests", {
-          status: 429,
-          headers: {
-            "Retry-After": String(rateLimit.windowMs / 1000),
-            "X-RateLimit-Limit": String(rateLimit.max),
-            "X-RateLimit-Remaining": String(remaining),
-            "X-RateLimit-Reset": String(Math.ceil(Date.now() / 1000) + rateLimit.windowMs / 1000),
-          },
-        })
-      }
-
-      const response = NextResponse.next()
-      response.headers.set("X-RateLimit-Limit", String(rateLimit.max))
-      response.headers.set("X-RateLimit-Remaining", String(remaining))
-      return response
-    } catch (error) {
-      console.error("Rate limiting error:", error)
-      // Use in-memory fallback when Redis is unavailable
-      const response = NextResponse.next()
-      response.headers.set("X-RateLimit-Limit", String(MAX_REQUESTS_WITHOUT_REDIS))
-      response.headers.set("X-RateLimit-Remaining", String(MAX_REQUESTS_WITHOUT_REDIS - 1))
-      return response
-    }
+  // Skip rate limiting for non-API routes
+  if (!pathname.startsWith("/api")) {
+    return NextResponse.next()
   }
 
-  // Add security headers
-  const headers = new Headers(request.headers)
-  
-  // Content Security Policy
-  headers.set(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
-  )
+  const allowed = await rateLimit(request)
 
-  // Other security headers
-  headers.set("X-DNS-Prefetch-Control", "on")
-  headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-  headers.set("X-Frame-Options", "SAMEORIGIN")
-  headers.set("X-Content-Type-Options", "nosniff")
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
-  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-
-  const response = NextResponse.next({
-    request: {
-      headers,
-    },
-  })
-
-  // Add security headers for auth routes
-  if (request.nextUrl.pathname.startsWith("/auth/")) {
-    const headers = new Headers(request.headers)
-    headers.set("X-Frame-Options", "DENY")
-    headers.set("X-Content-Type-Options", "nosniff")
-    headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
-    headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    headers.set("X-XSS-Protection", "1; mode=block")
-    
-    const response = NextResponse.next({
-      request: {
-        headers,
+  if (!allowed) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: {
+        "Retry-After": RATE_LIMIT_WINDOW.toString(),
       },
     })
-    
-    return response
   }
+
+  // CORS headers
+  const response = NextResponse.next()
+  response.headers.set(
+    "Access-Control-Allow-Origin",
+    process.env.NEXTAUTH_URL || "*"
+  )
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  )
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  )
+  response.headers.set("Access-Control-Max-Age", "86400")
 
   return response
 }
