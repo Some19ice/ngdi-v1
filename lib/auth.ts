@@ -4,15 +4,20 @@ import { authOptions } from "@/app/api/auth/auth-options"
 import { UserRole } from "@prisma/client"
 import { NextAuthOptions } from "next-auth"
 import { createClient } from "@supabase/supabase-js"
-import SupabaseProvider from "next-auth/providers/supabase"
 import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
-// Initialize Supabase client
+// Initialize Supabase client (only for storage/database, not auth)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 )
 
 export async function getCurrentUser() {
@@ -22,40 +27,40 @@ export async function getCurrentUser() {
 
 export async function requireAuth() {
   const user = await getCurrentUser()
-  
+
   if (!user) {
     redirect("/auth/signin?error=Please sign in to continue")
   }
-  
+
   return user
 }
 
 export async function requireRole(allowedRoles: UserRole[]) {
   const user = await requireAuth()
-  
+
   if (!user.role || !allowedRoles.includes(user.role as UserRole)) {
     redirect("/unauthorized?error=Insufficient permissions")
   }
-  
+
   return user
 }
 
 export function isAdmin(user: { role?: string }) {
-  return user?.role === "ADMIN"
+  return user?.role === UserRole.ADMIN
 }
 
 export function isModerator(user: { role?: string }) {
-  return user?.role === "MODERATOR" || isAdmin(user)
+  return user?.role === UserRole.MODERATOR || isAdmin(user)
 }
 
-// Add a helper function for Supabase client
+// Add a helper function for Supabase client (for storage/database operations only)
 export function getSupabase() {
   return supabase
 }
 
 export async function validateSession() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session) {
     return null
   }
@@ -66,17 +71,16 @@ export async function validateSession() {
     return null
   }
 
-  // Verify user still exists and is active
+  // Verify user still exists
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { 
-      active: true,
+    select: {
       role: true,
-      emailVerified: true
-    }
+      emailVerified: true,
+    },
   })
 
-  if (!user || !user.active) {
+  if (!user) {
     return null
   }
 
@@ -84,7 +88,7 @@ export async function validateSession() {
     ...session,
     user: {
       ...session.user,
-      role: user.role
-    }
+      role: user.role,
+    },
   }
 }
