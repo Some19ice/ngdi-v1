@@ -10,6 +10,7 @@ declare module "next-auth" {
       role?: UserRole
       access_token?: string
       token_type?: string
+      image?: string | null
     }
   }
 
@@ -18,6 +19,8 @@ declare module "next-auth" {
     email: string
     name: string
     role?: UserRole
+    image?: string | null
+    emailVerified?: Date | null
   }
 }
 
