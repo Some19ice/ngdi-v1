@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
 import { UserRole } from "@prisma/client"
+import { SupabaseProvider } from "next-auth/providers/supabase"
 
 function html(params: { url: string; host: string | undefined }) {
   const { url, host } = params
@@ -76,6 +77,10 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
+    SupabaseProvider({
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    }),
     EmailProvider({
       server: process.env.EMAIL_SERVER || {
         host: process.env.SMTP_HOST,
