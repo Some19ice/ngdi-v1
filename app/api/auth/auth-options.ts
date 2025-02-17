@@ -3,6 +3,7 @@ import { compare } from "bcryptjs"
 import { type NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
+import GoogleProvider from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
 import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
@@ -69,8 +70,9 @@ export const authOptions: NextAuthOptions = {
     }
   },
   pages: {
-    signIn: "/login",
+    signIn: "/auth/signin",
     verifyRequest: "/verify-request",
+    error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -134,23 +136,31 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
+    }),
   ],
   callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.role = token.role as UserRole
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.id = token.sub!
+        session.user.role = token.role as string
         session.user.organization = token.organization as string | null
         session.user.department = token.department as string | null
         session.user.createdAt = token.createdAt as Date | null
       }
       return session
     },
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        // Initial sign in
+    async jwt({ token, user }) {
+      if (user) {
         return {
           ...token,
           id: user.id,

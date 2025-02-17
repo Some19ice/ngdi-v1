@@ -1,9 +1,8 @@
 import { Suspense } from "react"
-import { getServerSession } from "next-auth"
-import { redirect } from "next/navigation"
-import { authOptions } from "@/lib/auth"
+import { requireRole } from "@/lib/auth"
 import { MetadataForm } from "./components/metadata-form"
 import LoadingSpinner from "@/components/loading-spinner"
+import { UserRole } from "@prisma/client"
 
 export const metadata = {
   title: "Add Metadata",
@@ -11,20 +10,12 @@ export const metadata = {
 }
 
 export default async function AddMetadataPage() {
-  try {
-    const session = await getServerSession(authOptions)
+  // Check for required role
+  await requireRole([UserRole.ADMIN, UserRole.MODERATOR])
 
-    if (!session?.user) {
-      redirect("/auth/signin")
-    }
-
-    return (
-      <Suspense fallback={<LoadingSpinner />}>
-        <MetadataForm />
-      </Suspense>
-    )
-  } catch (error) {
-    console.error("Auth error:", error)
-    redirect("/auth/error")
-  }
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <MetadataForm />
+    </Suspense>
+  )
 }

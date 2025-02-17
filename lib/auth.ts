@@ -19,30 +19,30 @@ export async function getCurrentUser() {
 
 export async function requireAuth() {
   const user = await getCurrentUser()
-
+  
   if (!user) {
-    redirect("/login")
+    redirect("/auth/signin?error=Please sign in to continue")
   }
-
+  
   return user
 }
 
 export async function requireRole(allowedRoles: UserRole[]) {
   const user = await requireAuth()
-
-  if (!allowedRoles.includes(user.role as UserRole)) {
-    redirect("/unauthorized")
+  
+  if (!user.role || !allowedRoles.includes(user.role as UserRole)) {
+    redirect("/unauthorized?error=Insufficient permissions")
   }
-
+  
   return user
 }
 
-export function isAdmin(user: { role: string }) {
-  return user.role === "ADMIN"
+export function isAdmin(user: { role?: string }) {
+  return user?.role === "ADMIN"
 }
 
-export function isModerator(user: { role: string }) {
-  return user.role === "MODERATOR" || user.role === "ADMIN"
+export function isModerator(user: { role?: string }) {
+  return user?.role === "MODERATOR" || isAdmin(user)
 }
 
 export const authOptions: NextAuthOptions = {
