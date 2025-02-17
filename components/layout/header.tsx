@@ -30,7 +30,10 @@ const publicNavItems = [
 ]
 
 // Role-based navigation items
-const roleBasedNavItems = {
+const roleBasedNavItems: Record<
+  UserRole,
+  Array<{ name: string; href: string }>
+> = {
   [UserRole.ADMIN]: [
     { name: "Add Metadata", href: "/metadata/add" },
     { name: "Admin Dashboard", href: "/admin" },
@@ -43,8 +46,8 @@ const roleBasedNavItems = {
 const elevatedRoles: UserRole[] = [UserRole.ADMIN, UserRole.MODERATOR]
 
 // User menu items based on role
-const getUserMenuItems = (role: UserRole) => {
-  const items = [
+const getUserMenuItems = (role: UserRole | undefined) => {
+  const baseItems = [
     {
       name: "Profile",
       href: "/profile",
@@ -57,16 +60,16 @@ const getUserMenuItems = (role: UserRole) => {
     },
   ]
 
-  // Add role-specific menu items
-  if (elevatedRoles.includes(role)) {
-    items.push({
+  // Add role-specific menu items only if role is defined and is elevated
+  if (role && elevatedRoles.includes(role)) {
+    baseItems.push({
       name: "My Metadata",
       href: "/metadata",
       shortcut: "⌘M",
     })
   }
 
-  return items
+  return baseItems
 }
 
 // Support menu items
@@ -76,7 +79,14 @@ const supportMenuItems = [
   { name: "Feedback", href: "/feedback" },
 ]
 
-function UserAvatar({ user }: { user: any }) {
+interface User {
+  name?: string | null
+  email?: string | null
+  image?: string | null
+  role?: UserRole
+}
+
+function UserAvatar({ user }: { user: User }) {
   return (
     <Avatar className="h-8 w-8 border border-border">
       <AvatarImage src={user.image || ""} alt={user.name || ""} />
