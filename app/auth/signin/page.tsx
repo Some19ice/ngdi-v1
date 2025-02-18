@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -30,7 +30,7 @@ const signInSchema = z.object({
 
 type SignInValues = z.infer<typeof signInSchema>
 
-export default function SignIn() {
+function SignInForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -242,5 +242,13 @@ export default function SignIn() {
         </Button>
       </Card>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   )
 } 
