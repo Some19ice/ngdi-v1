@@ -179,6 +179,7 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     className="relative h-8 w-8 rounded-full"
+                    data-testid="user-menu"
                   >
                     <UserAvatar user={session.user} />
                   </Button>

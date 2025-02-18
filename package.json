@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
-    "db:init": "ts-node scripts/init-db.ts",
+    "db:init": "ts-node --project scripts/tsconfig.json scripts/init-db.ts",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
@@ -99,6 +99,7 @@
     "@playwright/test": "^1.50.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^6.4.17",
+    "dotenv": "^16.4.7",
     "ts-node": "^10.9.2"
   }
 }

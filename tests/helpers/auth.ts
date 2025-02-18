@@ -10,7 +10,9 @@ export async function signIn(
   password: string,
   rememberMe = false
 ) {
-  await page.goto(`${process.env.NEXTAUTH_URL}/auth/signin`)
+  await page.goto(
+    `${process.env.NEXTAUTH_URL}/auth/signin?callbackUrl=/profile`
+  )
 
   // Wait for the page to be ready
   await page.waitForLoadState("networkidle")
@@ -32,9 +34,29 @@ export async function signIn(
   }
 
   // Wait for and click the sign in button
-  const signInButton = page.getByRole("button", { name: "Sign in" })
+  const signInButton = page.getByRole("button", { name: "Sign in with Email" })
   await signInButton.waitFor({ state: "visible", timeout: 10000 })
   await signInButton.click()
+
+  // Wait for the sign-in request to complete
+  await Promise.race([
+    // Wait for successful navigation
+    page.waitForURL("**/profile", { timeout: 30000 }),
+    // Wait for error message
+    page.waitForSelector('[class*="bg-red-50"]', { timeout: 30000 }),
+    // Wait for loading state to finish
+    page.waitForSelector('button:has-text("Signing in...")', {
+      state: "hidden",
+      timeout: 30000,
+    }),
+  ])
+
+  // Check if we got an error
+  const errorElement = await page.$('[class*="bg-red-50"]')
+  if (errorElement) {
+    const errorText = await errorElement.textContent()
+    throw new Error(`Sign in failed: ${errorText}`)
+  }
 }
 
 export async function signInWithGoogle(page: Page) {
