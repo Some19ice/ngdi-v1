@@ -9,6 +9,13 @@ import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
 import { UserRole } from "@prisma/client"
 import { JWT } from "next-auth/jwt"
+import { checkAuthRateLimit } from "@/lib/auth/rate-limit"
+import {
+  passwordSchema,
+  verifyPassword,
+  calculateSessionExpiry,
+} from "@/lib/auth/validation"
+import { redis } from "@/lib/redis"
 
 function html(params: { url: string; host: string | undefined }) {
   const { url, host } = params
@@ -73,8 +80,41 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin",
     verifyRequest: "/verify-request",
     error: "/auth/error",
+    newUser: "/auth/new-user",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      if (isNewUser) {
+        // Set default role for new users
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: UserRole.USER },
+        })
+      }
+      // Log sign in attempt
+      await redis.lpush(
+        "auth:logs",
+        JSON.stringify({
+          event: "signIn",
+          userId: user.id,
+          provider: account?.provider,
+          timestamp: new Date().toISOString(),
+        })
+      )
+    },
+    async signOut({ session }) {
+      // Log sign out
+      await redis.lpush(
+        "auth:logs",
+        JSON.stringify({
+          event: "signOut",
+          userId: session?.user?.id,
+          timestamp: new Date().toISOString(),
+        })
+      )
+    },
+  },
   providers: [
     EmailProvider({
       server: process.env.EMAIL_SERVER || {
@@ -107,25 +147,43 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials")
         }
 
+        // Check rate limit
+        const rateLimitResult = await checkAuthRateLimit(credentials.email)
+        if (!rateLimitResult.success) {
+          throw new Error("Too many attempts. Please try again later.")
+        }
+
         const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
+          where: { email: credentials.email },
         })
 
         if (!user || !user.password) {
           throw new Error("Invalid credentials")
         }
 
-        const isValid = await compare(credentials.password, user.password)
+        // Validate password complexity for new passwords
+        try {
+          passwordSchema.parse(credentials.password)
+        } catch (error) {
+          throw new Error("Password does not meet security requirements")
+        }
+
+        const isValid = await verifyPassword(
+          credentials.password,
+          user.password
+        )
 
         if (!isValid) {
           throw new Error("Invalid credentials")
+        }
+
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email first")
         }
 
         return {
@@ -158,6 +216,10 @@ export const authOptions: NextAuthOptions = {
         session.user.organization = token.organization as string | null
         session.user.department = token.department as string | null
         session.user.createdAt = token.createdAt as Date | null
+
+        // Add session expiry based on remember me
+        const rememberMe = token.rememberMe as boolean | undefined
+        session.expires = calculateSessionExpiry(rememberMe).toISOString()
       }
       return session
     },
@@ -177,22 +239,23 @@ export const authOptions: NextAuthOptions = {
           : undefined
       }
 
-      if (!token.accessTokenExpires || Date.now() < token.accessTokenExpires) {
-        return token
+      // Check token expiration
+      if (token.accessTokenExpires && Date.now() > token.accessTokenExpires) {
+        try {
+          const refreshedToken = await refreshAccessToken(token)
+          return {
+            ...refreshedToken,
+            error: undefined,
+          }
+        } catch (error) {
+          return {
+            ...token,
+            error: "RefreshAccessTokenError",
+          }
+        }
       }
 
-      try {
-        const refreshedToken = await refreshAccessToken(token)
-        return {
-          ...refreshedToken,
-          error: undefined,
-        }
-      } catch (error) {
-        return {
-          ...token,
-          error: "RefreshAccessTokenError",
-        }
-      }
+      return token
     },
   },
 }

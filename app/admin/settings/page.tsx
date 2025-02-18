@@ -33,6 +33,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 import * as z from "zod"
 import {
   Settings,
@@ -47,6 +48,7 @@ import {
   Save,
 } from "lucide-react"
 import { redirect } from "next/navigation"
+import { updateSettings, type SystemSettings } from "@/app/actions/settings"
 
 const systemSettingsSchema = z.object({
   siteName: z.string().min(2, {
@@ -90,25 +92,40 @@ const defaultSettings = {
   apiRateLimit: "1000",
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({
+  initialSettings,
+}: {
+  initialSettings: SystemSettings
+}) {
   const { user, can } = useAuth()
+  const [isSaving, setIsSaving] = useState(false)
 
   if (!user) {
     redirect("/login")
   }
 
-  const [isSaving, setIsSaving] = useState(false)
-
-  const form = useForm<SystemSettingsValues>({
+  const form = useForm<SystemSettings>({
     resolver: zodResolver(systemSettingsSchema),
-    defaultValues: defaultSettings,
+    defaultValues: initialSettings,
   })
 
-  async function onSubmit(data: SystemSettingsValues) {
-    setIsSaving(true)
-    // TODO: Implement settings update
-    console.log(data)
-    setTimeout(() => setIsSaving(false), 1000)
+  async function onSubmit(data: SystemSettings) {
+    try {
+      setIsSaving(true)
+      const result = await updateSettings(data)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      toast.success("Settings updated successfully")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update settings"
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (!can(Permissions.MANAGE_SETTINGS)) {
@@ -263,7 +280,7 @@ export default function SettingsPage() {
                 <CardTitle>Storage Settings</CardTitle>
               </div>
               <CardDescription>
-                Configure storage and backup settings.
+                Configure storage provider and file upload settings.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -285,6 +302,9 @@ export default function SettingsPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="local">Local Storage</SelectItem>
+                          <SelectItem value="supabase">
+                            Supabase Storage
+                          </SelectItem>
                           <SelectItem value="s3">Amazon S3</SelectItem>
                           <SelectItem value="azure">Azure Blob</SelectItem>
                           <SelectItem value="gcs">
@@ -292,6 +312,9 @@ export default function SettingsPage() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        Choose where to store uploaded files.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -305,63 +328,14 @@ export default function SettingsPage() {
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Maximum allowed file size for uploads.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
-              <Separator />
-
-              <FormField
-                control={form.control}
-                name="autoBackup"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Automatic Backups
-                      </FormLabel>
-                      <FormDescription>
-                        Enable automatic system backups
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="backupFrequency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Backup Frequency</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 
@@ -482,11 +456,14 @@ export default function SettingsPage() {
           <div className="flex justify-end">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? (
-                <>Saving...</>
+                <>
+                  <Save className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Settings
+                  Save Changes
                 </>
               )}
             </Button>

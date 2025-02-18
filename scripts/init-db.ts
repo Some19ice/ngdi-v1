@@ -1,24 +1,34 @@
-import bcryptjs from "bcryptjs"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, UserRole } from "@prisma/client"
+import { hash } from "bcryptjs"
 
 const prisma = new PrismaClient()
 
 async function main() {
   try {
     // Create admin user
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin123"
-    const hashedPassword = await bcryptjs.hash(adminPassword, 10)
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@ngdi.gov.ng"
+    const adminPassword = process.env.ADMIN_PASSWORD
+
+    if (!adminPassword) {
+      throw new Error("ADMIN_PASSWORD environment variable is required")
+    }
+
+    const hashedPassword = await hash(adminPassword, 12)
 
     const admin = await prisma.user.upsert({
-      where: { email: "admin@ngdi.gov.ng" },
-      update: {},
+      where: { email: adminEmail },
+      update: {
+        password: hashedPassword,
+        emailVerified: new Date(),
+      },
       create: {
-        email: "admin@ngdi.gov.ng",
+        email: adminEmail,
         name: "NGDI Admin",
         password: hashedPassword,
-        role: "ADMIN",
+        role: UserRole.ADMIN,
         organization: "NGDI",
         department: "Administration",
+        emailVerified: new Date(), // Admin is pre-verified
       },
     })
 
