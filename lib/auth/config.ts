@@ -20,9 +20,10 @@ export const AUTH_CONFIG = {
   cookies: {
     prefix: "ngdi_auth",
     path: "/",
-    domain: process.env.NODE_ENV === "production" ? ".vercel.app" : undefined,
+    domain: undefined, // Let NextAuth handle the domain automatically
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
+    httpOnly: true,
   },
 
   providers: {

@@ -82,6 +82,11 @@ function validateReturnUrl(url: string | null, token: any): string {
     const cleanUrl = decodedUrl.replace(/^\/+|\/+$/g, "")
     const pathname = cleanUrl ? `/${cleanUrl}` : "/metadata"
 
+    // Ensure the URL is relative and doesn't contain protocol/domain
+    if (pathname.includes("://") || pathname.startsWith("//")) {
+      return "/metadata"
+    }
+
     // Don't redirect to public routes or auth routes
     if (publicRoutes.includes(pathname) || pathname.startsWith("/auth/")) {
       return "/metadata"
@@ -94,13 +99,19 @@ function validateReturnUrl(url: string | null, token: any): string {
 
     // If it's a protected route, check permissions
     if (matchedRoute) {
-      return matchedRoute.roles.includes(token.role as UserRole)
-        ? pathname
-        : "/metadata"
+      if (
+        !token?.role ||
+        !matchedRoute.roles.includes(token.role as UserRole)
+      ) {
+        return "/metadata"
+      }
+      return pathname
     }
 
-    // Allow the redirect for non-protected routes
-    return pathname
+    // For non-protected routes, ensure they're valid app routes
+    // This helps prevent open redirect vulnerabilities
+    const isValidRoute = pathname.startsWith("/") && !pathname.includes("..")
+    return isValidRoute ? pathname : "/metadata"
   } catch {
     return "/metadata"
   }
@@ -134,86 +145,97 @@ async function rateLimit(request: NextRequest) {
 const MAX_REQUESTS_WITHOUT_REDIS = 50 // Higher limit when Redis is unavailable
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  })
-
-  const { pathname } = request.nextUrl
-
-  // Handle signin page for authenticated users first
-  if (pathname === "/auth/signin" && token) {
-    const returnUrl = validateReturnUrl(
-      request.nextUrl.searchParams.get("from"),
-      token
-    )
-    return NextResponse.redirect(new URL(returnUrl, request.url))
-  }
-
-  // Handle static and public assets
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth/") ||
-    pathname.startsWith("/public/") ||
-    pathname === "/favicon.ico"
-  ) {
-    return NextResponse.next()
-  }
-
-  // Handle public routes
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next()
-  }
-
-  // Handle authentication
-  if (!token) {
-    const loginUrl = new URL("/auth/signin", request.url)
-    loginUrl.searchParams.set("from", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  // Handle authorization
-  const matchedRoute = protectedRoutes.find((route) =>
-    pathname.startsWith(route.path)
-  )
-
-  if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
-    return NextResponse.redirect(new URL("/unauthorized", request.url))
-  }
-
-  // Skip rate limiting for non-API routes
-  if (!pathname.startsWith("/api")) {
-    return NextResponse.next()
-  }
-
-  const allowed = await rateLimit(request)
-
-  if (!allowed) {
-    return new NextResponse("Too Many Requests", {
-      status: 429,
-      headers: {
-        "Retry-After": RATE_LIMIT_WINDOW.toString(),
-      },
+  try {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === "production",
     })
+
+    const { pathname } = request.nextUrl
+
+    // Handle signin page for authenticated users first
+    if (pathname === "/auth/signin" && token) {
+      const returnUrl = validateReturnUrl(
+        request.nextUrl.searchParams.get("from"),
+        token
+      )
+      return NextResponse.redirect(new URL(returnUrl, process.env.NEXTAUTH_URL))
+    }
+
+    // Handle static and public assets
+    if (
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api/auth/") ||
+      pathname.startsWith("/public/") ||
+      pathname === "/favicon.ico"
+    ) {
+      return NextResponse.next()
+    }
+
+    // Handle public routes
+    if (publicRoutes.includes(pathname)) {
+      return NextResponse.next()
+    }
+
+    // Handle authentication
+    if (!token) {
+      const loginUrl = new URL("/auth/signin", process.env.NEXTAUTH_URL)
+      loginUrl.searchParams.set("from", pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Handle authorization
+    const matchedRoute = protectedRoutes.find((route) =>
+      pathname.startsWith(route.path)
+    )
+
+    if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
+      return NextResponse.redirect(
+        new URL("/unauthorized", process.env.NEXTAUTH_URL)
+      )
+    }
+
+    // Skip rate limiting for non-API routes
+    if (!pathname.startsWith("/api")) {
+      return NextResponse.next()
+    }
+
+    const allowed = await rateLimit(request)
+
+    if (!allowed) {
+      return new NextResponse("Too Many Requests", {
+        status: 429,
+        headers: {
+          "Retry-After": RATE_LIMIT_WINDOW.toString(),
+        },
+      })
+    }
+
+    // CORS headers
+    const response = NextResponse.next()
+    response.headers.set(
+      "Access-Control-Allow-Origin",
+      process.env.NEXTAUTH_URL || "*"
+    )
+    response.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    )
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    )
+    response.headers.set("Access-Control-Max-Age", "86400")
+
+    return response
+  } catch (error) {
+    console.error("Middleware error:", error)
+    // In case of any errors, redirect to error page
+    return NextResponse.redirect(
+      new URL("/auth/error", process.env.NEXTAUTH_URL)
+    )
   }
-
-  // CORS headers
-  const response = NextResponse.next()
-  response.headers.set(
-    "Access-Control-Allow-Origin",
-    process.env.NEXTAUTH_URL || "*"
-  )
-  response.headers.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  )
-  response.headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  )
-  response.headers.set("Access-Control-Max-Age", "86400")
-
-  return response
 }
 
 export const config = {
