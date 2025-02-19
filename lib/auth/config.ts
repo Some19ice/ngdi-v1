@@ -1,5 +1,41 @@
 import { UserRole } from "@prisma/client"
 
+export interface ProtectedRoute {
+  path: string
+  roles: UserRole[]
+}
+
+export const protectedRoutes: ProtectedRoute[] = [
+  {
+    path: "/metadata",
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER],
+  },
+  {
+    path: "/admin",
+    roles: [UserRole.ADMIN],
+  },
+  {
+    path: "/profile",
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
+  },
+  {
+    path: "/search",
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
+  },
+  {
+    path: "/map",
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
+  },
+  {
+    path: "/news",
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
+  },
+  {
+    path: "/gallery",
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
+  },
+]
+
 export const AUTH_CONFIG = {
   session: {
     maxAge: 30 * 24 * 60 * 60, // 30 days

@@ -5,6 +5,7 @@ import { UserRole } from "@prisma/client"
 import { NextAuthOptions } from "next-auth"
 import { createClient } from "@supabase/supabase-js"
 import { PrismaClient } from "@prisma/client"
+import { protectedRoutes } from "@/lib/auth/config"
 
 const prisma = new PrismaClient()
 
@@ -90,5 +91,57 @@ export async function validateSession() {
       ...session.user,
       role: user.role,
     },
+  }
+}
+
+interface ProtectedRoute {
+  path: string
+  roles: UserRole[]
+}
+
+export function validateReturnUrl(
+  returnUrl: string | null,
+  token: any
+): string {
+  // Get default URL based on user role
+  const getDefaultUrl = (role: string) => {
+    switch (role) {
+      case "ADMIN":
+        return "/admin"
+      case "NODE_OFFICER":
+        return "/metadata"
+      default:
+        return "/"
+    }
+  }
+
+  // Default to role-based URL if no return URL
+  if (!returnUrl) {
+    return getDefaultUrl(token.role)
+  }
+
+  try {
+    // Ensure the return URL is a valid path
+    const url = new URL(returnUrl, "http://dummy.com")
+    const path = url.pathname + url.search
+
+    // Prevent open redirects by ensuring the path starts with /
+    if (!path.startsWith("/")) {
+      return getDefaultUrl(token.role)
+    }
+
+    // Check if the path is allowed based on user role
+    const matchedRoute = protectedRoutes.find((route: ProtectedRoute) =>
+      path.startsWith(route.path)
+    )
+
+    if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
+      return getDefaultUrl(token.role)
+    }
+
+    return path
+  } catch (error) {
+    // If URL parsing fails, return role-based default
+    return getDefaultUrl(token.role)
   }
 }
