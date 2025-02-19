@@ -4,6 +4,7 @@ export const AUTH_CONFIG = {
   session: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
     updateAge: 24 * 60 * 60, // 24 hours
+    strategy: "jwt" as const,
   },
 
   security: {

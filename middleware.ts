@@ -78,28 +78,28 @@ function validateReturnUrl(url: string | null, token: any): string {
     // Decode first before checking
     const decodedUrl = decodeURIComponent(url)
 
-    // Handle legacy login paths and encoded slashes
-    if (decodedUrl.startsWith("/login") || decodedUrl === "%2Flogin") {
-      return "/metadata"
-    }
-
     // Clean and validate the URL
     const cleanUrl = decodedUrl.replace(/^\/+|\/+$/g, "")
     const pathname = cleanUrl ? `/${cleanUrl}` : "/metadata"
+
+    // Don't redirect to public routes or auth routes
+    if (publicRoutes.includes(pathname) || pathname.startsWith("/auth/")) {
+      return "/metadata"
+    }
 
     // Check role access for protected routes
     const matchedRoute = protectedRoutes.find((route) =>
       pathname.startsWith(route.path)
     )
 
-    if (
-      matchedRoute &&
-      token &&
-      !matchedRoute.roles.includes(token.role as UserRole)
-    ) {
-      return "/metadata"
+    // If it's a protected route, check permissions
+    if (matchedRoute) {
+      return matchedRoute.roles.includes(token.role as UserRole)
+        ? pathname
+        : "/metadata"
     }
 
+    // Allow the redirect for non-protected routes
     return pathname
   } catch {
     return "/metadata"
@@ -108,28 +108,25 @@ function validateReturnUrl(url: string | null, token: any): string {
 
 // Initialize Redis client
 const redisClient = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 })
 
 // Rate limiting configuration
-const RATE_LIMIT_REQUESTS = parseInt(process.env.RATE_LIMIT_REQUESTS || '60')
-const RATE_LIMIT_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW || '60') // in seconds
+const RATE_LIMIT_REQUESTS = parseInt(process.env.RATE_LIMIT_REQUESTS || "60")
+const RATE_LIMIT_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW || "60") // in seconds
 
 async function rateLimit(request: NextRequest) {
-  const ip = request.ip || 'anonymous'
+  const ip = request.ip || "anonymous"
   const key = `rate-limit:${ip}`
 
-  const current = await redisClient.get<number>(key) || 0
-  
+  const current = (await redisClient.get<number>(key)) || 0
+
   if (current > RATE_LIMIT_REQUESTS) {
     return false
   }
 
-  await redisClient.pipeline()
-    .incr(key)
-    .expire(key, RATE_LIMIT_WINDOW)
-    .exec()
+  await redisClient.pipeline().incr(key).expire(key, RATE_LIMIT_WINDOW).exec()
 
   return true
 }
@@ -144,40 +141,34 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // More specific API route handling
+  // Handle signin page for authenticated users first
+  if (pathname === "/auth/signin" && token) {
+    const returnUrl = validateReturnUrl(
+      request.nextUrl.searchParams.get("from"),
+      token
+    )
+    return NextResponse.redirect(new URL(returnUrl, request.url))
+  }
+
+  // Handle static and public assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/public/") ||
-    pathname === "/favicon.ico" ||
-    publicRoutes.includes(pathname)
+    pathname === "/favicon.ico"
   ) {
-    // Handle login page for authenticated users
-    if (pathname === "/auth/signin" && token) {
-      const returnUrl = validateReturnUrl(
-        request.nextUrl.searchParams.get("from"),
-        token
-      )
-      return NextResponse.redirect(new URL(returnUrl, request.url))
-    }
+    return NextResponse.next()
+  }
+
+  // Handle public routes
+  if (publicRoutes.includes(pathname)) {
     return NextResponse.next()
   }
 
   // Handle authentication
   if (!token) {
     const loginUrl = new URL("/auth/signin", request.url)
-    let from =
-      request.nextUrl.searchParams.get("from") || request.nextUrl.pathname
-
-    // Sanitize from parameter
-    if (from === "/login" || from === "%2Flogin") {
-      from = "/metadata"
-    }
-
-    if (!publicRoutes.includes(from) && from !== "/metadata") {
-      loginUrl.searchParams.set("from", from)
-    }
-
+    loginUrl.searchParams.set("from", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
