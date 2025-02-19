@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test"
 import { AUTH_CONFIG } from "@/lib/auth/config"
 import { UserRole } from "@prisma/client"
+import { hash } from "bcryptjs"
+import { PrismaClient } from "@prisma/client"
 import {
   signIn,
   signInWithGoogle,
@@ -15,6 +17,7 @@ import {
 } from "./helpers/auth"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+const prisma = new PrismaClient()
 
 test.describe("Authentication Flow", () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
@@ -67,11 +70,19 @@ test.describe("Authentication Flow", () => {
     page: Page
   }) => {
     const user = getTestUser()
-    await mockGoogleAuth(page, { email: user.email, name: user.name })
-    await signInWithGoogle(page)
+    // Create user but don't verify email
+    await prisma.user.create({
+      data: {
+        email: user.email,
+        name: user.name,
+        password: await hash(user.password, 12),
+        role: UserRole.USER,
+        organization: user.organization,
+      },
+    })
 
-    await waitForRedirect(page, /.*\/auth\/new-user/)
-    await expect(page.getByText("Welcome to NGDI Portal")).toBeVisible()
+    await signIn(page, user.email, user.password)
+    await expect(page.getByText("Please verify your email first")).toBeVisible()
   })
 
   test("should complete onboarding flow", async ({ page }: { page: Page }) => {

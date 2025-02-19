@@ -38,11 +38,11 @@ function SignInForm() {
   const searchParamsError = searchParams.get("error")
   const from = searchParams.get("from")
   const callbackUrl = (() => {
-    if (from === "/login" || from === "%2Flogin") return "/metadata"
+    if (from === "/login" || from === "%2Flogin") return "/"
     try {
-      return from ? decodeURIComponent(from) : "/metadata"
+      return from ? decodeURIComponent(from) : "/"
     } catch {
-      return "/metadata"
+      return "/"
     }
   })()
 

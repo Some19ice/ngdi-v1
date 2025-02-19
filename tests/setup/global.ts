@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { hash } from "bcryptjs"
 import { UserRole } from "@prisma/client"
+import { getTestUser } from "../helpers/auth"
 
 async function globalSetup() {
   // Clean up the test database
@@ -21,6 +22,19 @@ async function globalSetup() {
       organization: "NGDI",
       department: "Administration",
       emailVerified: new Date(),
+    },
+  })
+
+  // Create test user
+  const testUser = getTestUser()
+  await prisma.user.create({
+    data: {
+      email: testUser.email,
+      name: testUser.name,
+      password: await hash(testUser.password, 12),
+      role: UserRole.USER,
+      organization: testUser.organization,
+      emailVerified: new Date(), // Pre-verify email for testing
     },
   })
 

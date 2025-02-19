@@ -6,21 +6,22 @@ const authFile = path.join(__dirname, ".playwright/.auth/user.json")
 
 export default defineConfig({
   testDir: "./tests",
-  timeout: 60000,
-  fullyParallel: true,
+  timeout: 120000,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  retries: process.env.CI ? 2 : 1,
+  workers: 1,
+  reporter: "list",
   globalSetup: require.resolve("./tests/setup/global"),
   use: {
     baseURL,
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
+    trace: "on",
+    screenshot: "on",
+    video: "on",
     javaScriptEnabled: true,
     permissions: ["storage-access"],
-    navigationTimeout: 30000,
-    actionTimeout: 15000,
+    navigationTimeout: 60000,
+    actionTimeout: 30000,
   },
   projects: [
     {

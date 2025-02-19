@@ -1,36 +1,59 @@
 export enum UserRole {
-  ADMIN = "admin",
-  NODE_OFFICER = "node_officer",
-  USER = "user",
+  ADMIN = "ADMIN",
+  NODE_OFFICER = "NODE_OFFICER",
+  USER = "USER",
 }
 
+export type Subject =
+  | "metadata"
+  | "user"
+  | "role"
+  | "organization"
+  | "analytics"
+  | "settings"
+
+export type Action =
+  | "create"
+  | "read"
+  | "update"
+  | "delete"
+  | "validate"
+  | "manage"
+  | "view"
+  | "assign"
+
 export interface Permission {
-  action: string
-  subject: string
+  action: Action
+  subject: Subject
+  conditions?: {
+    organizationId?: string
+    userId?: string
+    isOwner?: boolean
+  }
 }
 
 export const Permissions = {
   // Metadata permissions
-  CREATE_METADATA: { action: "create", subject: "metadata" },
-  READ_METADATA: { action: "read", subject: "metadata" },
-  UPDATE_METADATA: { action: "update", subject: "metadata" },
-  DELETE_METADATA: { action: "delete", subject: "metadata" },
-  VALIDATE_METADATA: { action: "validate", subject: "metadata" },
+  CREATE_METADATA: { action: "create", subject: "metadata" } as const,
+  READ_METADATA: { action: "read", subject: "metadata" } as const,
+  UPDATE_METADATA: { action: "update", subject: "metadata" } as const,
+  DELETE_METADATA: { action: "delete", subject: "metadata" } as const,
+  VALIDATE_METADATA: { action: "validate", subject: "metadata" } as const,
 
   // User management permissions
-  CREATE_USER: { action: "create", subject: "user" },
-  READ_USER: { action: "read", subject: "user" },
-  UPDATE_USER: { action: "update", subject: "user" },
-  DELETE_USER: { action: "delete", subject: "user" },
-  ASSIGN_ROLE: { action: "assign", subject: "role" },
+  CREATE_USER: { action: "create", subject: "user" } as const,
+  READ_USER: { action: "read", subject: "user" } as const,
+  UPDATE_USER: { action: "update", subject: "user" } as const,
+  DELETE_USER: { action: "delete", subject: "user" } as const,
+  ASSIGN_ROLE: { action: "assign", subject: "role" } as const,
 
   // Organization permissions
-  MANAGE_ORGANIZATION: { action: "manage", subject: "organization" },
-  READ_ORGANIZATION: { action: "read", subject: "organization" },
+  MANAGE_ORGANIZATION: { action: "manage", subject: "organization" } as const,
+  READ_ORGANIZATION: { action: "read", subject: "organization" } as const,
 
   // System permissions
-  VIEW_ANALYTICS: { action: "view", subject: "analytics" },
-  MANAGE_SETTINGS: { action: "manage", subject: "settings" },
+  VIEW_ANALYTICS: { action: "view", subject: "analytics" } as const,
+  MANAGE_SETTINGS: { action: "manage", subject: "settings" } as const,
 } as const
 
 export const RolePermissions: Record<UserRole, Permission[]> = {

@@ -204,7 +204,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
             const Icon = item.icon
             const isActive = pathname === item.href
 
-            if (!can(item.permission)) return null
+            if (!item.permission || !can(item.permission)) return null
 
             return (
               <Link key={item.href} href={item.href}>

@@ -14,48 +14,73 @@ export async function signIn(
     `${process.env.NEXTAUTH_URL}/auth/signin?callbackUrl=/profile`
   )
 
-  // Wait for the page to be ready
-  await page.waitForLoadState("networkidle")
+  // Wait for the form to be ready
+  await page.waitForSelector("form", { state: "visible", timeout: 10000 })
 
-  // Wait for and verify the email input is present
+  // Fill in email
   const emailInput = page.getByLabel("Email")
   await emailInput.waitFor({ state: "visible", timeout: 10000 })
   await emailInput.fill(email)
 
-  // Wait for and verify the password input is present
+  // Fill in password
   const passwordInput = page.getByLabel("Password")
   await passwordInput.waitFor({ state: "visible", timeout: 10000 })
   await passwordInput.fill(password)
 
+  // Handle remember me checkbox if needed
   if (rememberMe) {
     const rememberMeCheckbox = page.getByLabel("Remember me")
     await rememberMeCheckbox.waitFor({ state: "visible", timeout: 10000 })
     await rememberMeCheckbox.check()
   }
 
-  // Wait for and click the sign in button
+  // Find and click the email sign in button specifically
   const signInButton = page.getByRole("button", { name: "Sign in with Email" })
   await signInButton.waitFor({ state: "visible", timeout: 10000 })
   await signInButton.click()
 
-  // Wait for the sign-in request to complete
-  await Promise.race([
-    // Wait for successful navigation
-    page.waitForURL("**/profile", { timeout: 30000 }),
-    // Wait for error message
-    page.waitForSelector('[class*="bg-red-50"]', { timeout: 30000 }),
-    // Wait for loading state to finish
-    page.waitForSelector('button:has-text("Signing in...")', {
-      state: "hidden",
-      timeout: 30000,
-    }),
-  ])
+  // Wait for the sign-in process to complete with increased timeout
+  try {
+    // Wait for either successful navigation or error
+    await Promise.race([
+      page.waitForURL("**/profile", { timeout: 30000 }),
+      page.waitForSelector('[class*="bg-red-50"]', { timeout: 30000 }),
+    ])
 
-  // Check if we got an error
-  const errorElement = await page.$('[class*="bg-red-50"]')
-  if (errorElement) {
-    const errorText = await errorElement.textContent()
-    throw new Error(`Sign in failed: ${errorText}`)
+    // Check if we got an error
+    const errorElement = await page.$('[class*="bg-red-50"]')
+    if (errorElement) {
+      const errorText = await errorElement.textContent()
+      throw new Error(`Sign in failed: ${errorText}`)
+    }
+
+    // Wait for authentication to complete and verify localStorage
+    await page.waitForFunction(
+      () => {
+        const user = window.localStorage.getItem("user")
+        const expiry = window.localStorage.getItem("sessionExpiry")
+        return user && expiry
+      },
+      { timeout: 10000 }
+    )
+
+    // Double check the authentication state
+    const isAuthenticated = await page.evaluate(() => {
+      const user = window.localStorage.getItem("user")
+      const expiry = window.localStorage.getItem("sessionExpiry")
+      return { user, expiry }
+    })
+
+    if (!isAuthenticated.user || !isAuthenticated.expiry) {
+      throw new Error("Authentication failed - session data not properly set")
+    }
+  } catch (error: any) {
+    if (error.message?.includes("Timeout")) {
+      throw new Error(
+        "Sign in timed out - no redirect or error message received"
+      )
+    }
+    throw error
   }
 }
 
@@ -84,13 +109,24 @@ export async function mockSession(
   page: Page,
   userData: { email: string; name: string }
 ) {
+  const storage: { [key: string]: string } = {}
+
   await page.addInitScript(() => {
     Object.defineProperty(window, "localStorage", {
       value: {
-        getItem: (key: string) => null,
-        setItem: (key: string, value: string) => {},
-        removeItem: (key: string) => {},
-        clear: () => {},
+        getItem: function (key: string) {
+          return this.store[key] || null
+        },
+        setItem: function (key: string, value: string) {
+          this.store[key] = value
+        },
+        removeItem: function (key: string) {
+          delete this.store[key]
+        },
+        clear: function () {
+          this.store = {}
+        },
+        store: {},
       },
       writable: true,
     })
@@ -107,6 +143,14 @@ export async function mockSession(
       console.error("Failed to set localStorage:", error)
     }
   }, userData)
+
+  // Verify the data was set
+  const storedUser = await page.evaluate(() =>
+    window.localStorage.getItem("user")
+  )
+  if (!storedUser) {
+    throw new Error("Failed to set user data in localStorage")
+  }
 }
 
 export async function clearSession(page: Page) {

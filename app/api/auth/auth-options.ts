@@ -7,7 +7,7 @@ import GoogleProvider from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
 import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/auth/types"
 import { JWT } from "next-auth/jwt"
 import { checkAuthRateLimit } from "@/lib/auth/rate-limit"
 import {
@@ -16,6 +16,30 @@ import {
   calculateSessionExpiry,
 } from "@/lib/auth/validation"
 import { redis } from "@/lib/redis"
+
+// Add type for the session
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      email: string
+      name?: string | null
+      role: UserRole
+      organization?: string | null
+      department?: string | null
+      createdAt?: Date | null
+      image?: string | null
+    }
+    expires: string
+  }
+
+  interface User {
+    role: UserRole
+    organization?: string | null
+    department?: string | null
+    createdAt?: Date | null
+  }
+}
 
 function html(params: { url: string; host: string | undefined }) {
   const { url, host } = params
@@ -62,7 +86,20 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: process.env.NODE_ENV !== "production", // Enable debug mode in development
+  debug: process.env.DEBUG === "true" && process.env.NODE_ENV === "development",
+  logger: {
+    error(code, ...message) {
+      console.error(code, ...message)
+    },
+    warn(code, ...message) {
+      console.warn(code, ...message)
+    },
+    debug(code, ...message) {
+      if (process.env.DEBUG === "true") {
+        console.debug(code, ...message)
+      }
+    },
+  },
   cookies: {
     sessionToken: {
       name: "next-auth.session-token",
@@ -71,8 +108,6 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        domain:
-          process.env.NODE_ENV === "production" ? ".vercel.app" : undefined,
       },
     },
   },
@@ -86,18 +121,23 @@ export const authOptions: NextAuthOptions = {
   events: {
     async signIn({ user, account, isNewUser }) {
       if (isNewUser) {
-        // Set default role for new users
+        // Set default role for new users with correct format
         await prisma.user.update({
           where: { id: user.id },
           data: { role: UserRole.USER },
         })
+
+        // Update the user object to reflect the new role
+        user.role = UserRole.USER
       }
+
       // Log sign in attempt
       await redis.lpush(
         "auth:logs",
         JSON.stringify({
           event: "signIn",
           userId: user.id,
+          role: user.role,
           provider: account?.provider,
           timestamp: new Date().toISOString(),
         })
@@ -182,7 +222,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials")
         }
 
-        if (!user.emailVerified) {
+        // Only check email verification in production
+        if (process.env.NODE_ENV === "production" && !user.emailVerified) {
           throw new Error("Please verify your email first")
         }
 
@@ -225,7 +266,8 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account }) {
       if (user) {
-        token.role = user.role as UserRole
+        // Ensure role is always set
+        token.role = user.role ?? UserRole.USER
         token.organization = user.organization
         token.department = user.department
         token.createdAt = user.createdAt

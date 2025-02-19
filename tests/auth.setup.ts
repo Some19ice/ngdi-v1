@@ -19,52 +19,25 @@ setup("authenticate", async ({ browser }) => {
     // Sign in
     await signIn(page, user.email, user.password)
 
-    // Wait for the sign-in process to complete
-    await Promise.race([
-      // Wait for successful redirect to profile
-      page.waitForURL("**/profile", { timeout: 30000 }),
-      // Wait for error message to appear
-      page.waitForSelector('[class*="bg-red-50"]', { timeout: 30000 }),
-    ])
+    // Ensure we're on the profile page
+    await page.waitForURL("**/profile", { timeout: 30000 })
 
-    // Check if we got an error
-    const errorElement = await page.$('[class*="bg-red-50"]')
-    if (errorElement) {
-      const errorText = await errorElement.textContent()
-      throw new Error(`Sign in failed: ${errorText}`)
+    // Verify authentication state
+    const isAuthenticated = await page.evaluate(() => {
+      return !!window.localStorage.getItem("user")
+    })
+
+    if (!isAuthenticated) {
+      throw new Error("Failed to authenticate - no user data in localStorage")
     }
 
-    // Additional check to ensure we're authenticated
-    await page.waitForSelector('[data-testid="user-menu"]', { timeout: 10000 })
-
-    // Ensure the auth directory exists
-    const authDir = path.dirname(authFile)
-    fs.mkdirSync(authDir, { recursive: true })
-
-    // Save signed-in state
+    // Save storage state to file
     await context.storageState({ path: authFile })
-  } catch (error) {
-    console.error("Auth setup failed:", error)
-
-    // Take a screenshot on failure to help with debugging
-    if (page) {
-      await page.screenshot({ path: "auth-failure.png" })
-      console.log("Current URL:", page.url())
-
-      // Log the page content for debugging
-      console.log("Page content:", await page.content())
-
-      // Log any console errors
-      page.on("console", (msg) => {
-        if (msg.type() === "error") {
-          console.log("Browser console error:", msg.text())
-        }
-      })
-    }
-
+    console.log("Authentication state saved to:", authFile)
+  } catch (error: any) {
+    console.error("Authentication setup failed:", error.message)
     throw error
   } finally {
-    // Always close the context
     await context.close()
   }
 })

@@ -97,8 +97,8 @@ model User {
 enum UserRole {
   /// System administrator with full access
   ADMIN
-  /// Content moderator with elevated privileges
-  MODERATOR
+  /// Node officer with elevated privileges
+  NODE_OFFICER
   /// Regular user with basic access
   USER
 }

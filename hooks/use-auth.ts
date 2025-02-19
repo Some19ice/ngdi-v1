@@ -6,42 +6,76 @@ import { type Permission, UserRole } from "@/lib/auth/types"
 import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
 
 export function useAuth() {
-  const { data: session } = useSession()
-  const user = session?.user?.role
-    ? ({
-        id: session.user.id,
-        email: session.user.email || "",
-        role: session.user.role as UserRole,
-        organizationId: session.user.organization || null,
-      } as User)
-    : null
+  const { data: session, status } = useSession()
+  const isLoading = status === "loading"
+
+  const userRole = session?.user?.role as UserRole | undefined
+
+  // Debug logging
+  if (process.env.NODE_ENV === "development") {
+    console.log("Auth Status:", status)
+    console.log("Session:", session)
+    console.log("User role:", userRole)
+    console.log("Valid roles:", Object.values(UserRole))
+    console.log(
+      "Role is valid:",
+      userRole && Object.values(UserRole).includes(userRole)
+    )
+  }
+
+  const user =
+    !isLoading &&
+    userRole &&
+    session?.user &&
+    Object.values(UserRole).includes(userRole)
+      ? ({
+          id: session.user.id,
+          email: session.user.email || "",
+          role: userRole,
+          organizationId: session.user.organization || null,
+        } as User)
+      : null
 
   const checkPermission = useCallback(
     (permission: Permission) => {
-      if (!user) return false
-      return can(user, permission)
+      if (isLoading || !user) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("Permission check failed:", {
+            isLoading,
+            hasUser: !!user,
+            permission,
+          })
+        }
+        return false
+      }
+      const hasPermission = can(user, permission)
+      if (process.env.NODE_ENV === "development") {
+        console.log("Permission check:", { user, permission, hasPermission })
+      }
+      return hasPermission
     },
-    [user]
+    [user, isLoading]
   )
 
   const checkAllPermissions = useCallback(
     (permissions: Permission[]) => {
-      if (!user) return false
+      if (isLoading || !user) return false
       return canAll(user, permissions)
     },
-    [user]
+    [user, isLoading]
   )
 
   const checkAnyPermission = useCallback(
     (permissions: Permission[]) => {
-      if (!user) return false
+      if (isLoading || !user) return false
       return canAny(user, permissions)
     },
-    [user]
+    [user, isLoading]
   )
 
   return {
     user,
+    isLoading,
     isAuthenticated: !!user,
     can: checkPermission,
     canAll: checkAllPermissions,
