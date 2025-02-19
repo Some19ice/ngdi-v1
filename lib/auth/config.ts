@@ -40,7 +40,7 @@ export const AUTH_CONFIG = {
 
   roles: {
     default: UserRole.USER,
-    elevated: [UserRole.ADMIN, UserRole.MODERATOR],
+    elevated: [UserRole.ADMIN, UserRole.NODE_OFFICER],
   },
 
   pages: {

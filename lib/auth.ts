@@ -49,8 +49,8 @@ export function isAdmin(user: { role?: string }) {
   return user?.role === UserRole.ADMIN
 }
 
-export function isModerator(user: { role?: string }) {
-  return user?.role === UserRole.MODERATOR || isAdmin(user)
+export function isNodeOfficer(user: { role?: string }) {
+  return user?.role === UserRole.NODE_OFFICER || isAdmin(user)
 }
 
 // Add a helper function for Supabase client (for storage/database operations only)

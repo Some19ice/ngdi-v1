@@ -20,16 +20,16 @@ export default function UnauthorizedPage() {
           </div>
           <CardTitle className="text-2xl">Access Denied</CardTitle>
           <CardDescription>
-            You don't have permission to access this resource
+            You don&apos;t have permission to access this resource
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-muted-foreground">This could be because:</p>
           <ul className="text-sm text-muted-foreground list-disc list-inside space-y-2">
-            <li>You're not logged in</li>
+            <li>You&apos;re not logged in</li>
             <li>Your session has expired</li>
-            <li>You don't have the required permissions</li>
-            <li>You're trying to access a restricted area</li>
+            <li>You don&apos;t have the required permissions</li>
+            <li>You&apos;re trying to access a restricted area</li>
           </ul>
         </CardContent>
         <CardFooter className="flex justify-center space-x-4">

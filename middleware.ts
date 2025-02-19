@@ -24,19 +24,19 @@ const publicRoutes = [
 const protectedRoutes = [
   {
     path: "/metadata/add",
-    roles: [UserRole.ADMIN, UserRole.MODERATOR],
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER],
   },
   {
     path: "/metadata",
-    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
   },
   {
     path: "/profile",
-    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
   },
   {
     path: "/settings",
-    roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER],
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
   },
   {
     path: "/admin",

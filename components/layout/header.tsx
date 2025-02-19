@@ -38,12 +38,15 @@ const roleBasedNavItems: Record<
     { name: "Add Metadata", href: "/metadata/add" },
     { name: "Admin Dashboard", href: "/admin" },
   ],
-  [UserRole.MODERATOR]: [{ name: "Add Metadata", href: "/metadata/add" }],
+  [UserRole.NODE_OFFICER]: [
+    { name: "Add Metadata", href: "/metadata/add" },
+    { name: "My Metadata", href: "/metadata" },
+  ],
   [UserRole.USER]: [],
 }
 
 // Define elevated roles array
-const elevatedRoles: UserRole[] = [UserRole.ADMIN, UserRole.MODERATOR]
+const elevatedRoles: UserRole[] = [UserRole.ADMIN, UserRole.NODE_OFFICER]
 
 // User menu items based on role
 const getUserMenuItems = (role: UserRole | undefined) => {

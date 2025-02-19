@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function AddMetadataPage() {
   // Check for required role
-  await requireRole([UserRole.ADMIN, UserRole.MODERATOR])
+  await requireRole([UserRole.ADMIN, UserRole.NODE_OFFICER])
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
