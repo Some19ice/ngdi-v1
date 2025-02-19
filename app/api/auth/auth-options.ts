@@ -250,54 +250,19 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role
+        token.id = user.id
+      }
+      return token
+    },
     async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.sub!
+      if (session.user) {
         session.user.role = token.role as UserRole
-        session.user.organization = token.organization as string | null
-        session.user.department = token.department as string | null
-        session.user.createdAt = token.createdAt as Date | null
-
-        // Add session expiry based on remember me
-        const rememberMe = token.rememberMe as boolean | undefined
-        session.expires = calculateSessionExpiry(rememberMe).toISOString()
+        session.user.id = token.id as string
       }
       return session
-    },
-    async jwt({ token, user, account }) {
-      if (user) {
-        // Ensure role is always set
-        token.role = user.role ?? UserRole.USER
-        token.organization = user.organization
-        token.department = user.department
-        token.createdAt = user.createdAt
-      }
-
-      if (account) {
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.accessTokenExpires = account.expires_at
-          ? account.expires_at * 1000
-          : undefined
-      }
-
-      // Check token expiration
-      if (token.accessTokenExpires && Date.now() > token.accessTokenExpires) {
-        try {
-          const refreshedToken = await refreshAccessToken(token)
-          return {
-            ...refreshedToken,
-            error: undefined,
-          }
-        } catch (error) {
-          return {
-            ...token,
-            error: "RefreshAccessTokenError",
-          }
-        }
-      }
-
-      return token
     },
   },
 }

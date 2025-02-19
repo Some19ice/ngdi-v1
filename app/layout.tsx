@@ -1,6 +1,9 @@
 import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { getServerSession } from "next-auth"
+import { authOptions } from "./api/auth/auth-options"
+import { Providers } from "@/components/providers"
 import RootLayoutClient from "@/components/layout/root-layout-client"
 
 const inter = Inter({
@@ -17,15 +20,19 @@ export const metadata: Metadata = {
     "The central platform for Nigeria's geospatial data management, discovery, and sharing.",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions)
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <RootLayoutClient>{children}</RootLayoutClient>
+        <Providers session={session}>
+          <RootLayoutClient>{children}</RootLayoutClient>
+        </Providers>
       </body>
     </html>
   )

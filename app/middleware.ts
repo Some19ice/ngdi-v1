@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server"
-import { jwtVerify, createRemoteJWKSet } from "jose"
+import { jwtVerify } from "jose"
+import { UserRole } from "@/lib/auth/types"
 
 // Public routes that don't require authentication
 const publicRoutes = [
@@ -15,36 +16,36 @@ const publicRoutes = [
 const protectedRoutes = [
   {
     path: "/metadata",
-    roles: ["ADMIN", "NODE_OFFICER"],
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER],
   },
   {
     path: "/admin",
-    roles: ["ADMIN"],
+    roles: [UserRole.ADMIN],
   },
   {
     path: "/profile",
-    roles: ["USER", "NODE_OFFICER", "ADMIN"],
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
   {
     path: "/search",
-    roles: ["USER", "NODE_OFFICER", "ADMIN"],
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
   {
     path: "/map",
-    roles: ["USER", "NODE_OFFICER", "ADMIN"],
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
   {
     path: "/news",
-    roles: ["USER", "NODE_OFFICER", "ADMIN"],
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
   {
     path: "/gallery",
-    roles: ["USER", "NODE_OFFICER", "ADMIN"],
+    roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
 ]
 
 interface JWTPayload {
-  role: string
+  role: UserRole
   [key: string]: unknown
 }
 
@@ -53,11 +54,11 @@ function validateReturnUrl(
   token: JWTPayload
 ): string {
   // Get default URL based on user role
-  const getDefaultUrl = (role: string) => {
+  const getDefaultUrl = (role: UserRole) => {
     switch (role) {
-      case "ADMIN":
+      case UserRole.ADMIN:
         return "/admin"
-      case "NODE_OFFICER":
+      case UserRole.NODE_OFFICER:
         return "/metadata"
       default:
         return "/"
@@ -100,8 +101,8 @@ export async function middleware(request: NextRequest) {
     // Handle static and public assets
     if (
       pathname.startsWith("/_next") ||
-      pathname.startsWith("/api/auth/") ||
-      pathname.startsWith("/public/") ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/public") ||
       pathname === "/favicon.ico"
     ) {
       return NextResponse.next()
@@ -127,6 +128,14 @@ export async function middleware(request: NextRequest) {
       const { payload } = await jwtVerify(token, secret)
       const jwtPayload = payload as JWTPayload
 
+      // Ensure role exists
+      if (!jwtPayload.role) {
+        console.error("No role found in token:", jwtPayload)
+        const loginUrl = new URL("/auth/signin", request.url)
+        loginUrl.searchParams.set("from", pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+
       // Handle signin page for authenticated users
       if (pathname === "/auth/signin") {
         const decodedFrom = from ? decodeURIComponent(from) : null
@@ -141,6 +150,9 @@ export async function middleware(request: NextRequest) {
       )
 
       if (matchedRoute && !matchedRoute.roles.includes(jwtPayload.role)) {
+        console.error(
+          `Access denied: User role ${jwtPayload.role} not allowed for ${pathname}`
+        )
         const unauthorizedUrl = new URL("/unauthorized", request.url)
         return NextResponse.redirect(unauthorizedUrl)
       }
@@ -163,6 +175,7 @@ export async function middleware(request: NextRequest) {
 
       return response
     } catch (error) {
+      console.error("Token verification failed:", error)
       // If token verification fails, redirect to login
       const loginUrl = new URL("/auth/signin", request.url)
       loginUrl.searchParams.set("from", pathname)
@@ -176,5 +189,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/api/:path*"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+  ],
 }
