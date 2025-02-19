@@ -29,34 +29,63 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const handleSession = async () => {
-      if (status !== "loading") {
-        setIsLoading(false)
-      }
-    }
-
-    handleSession()
-  }, [status])
-
-  const userRole = useMemo(
-    () => session?.user?.role as UserRole | null,
-    [session]
-  )
-
+  // Memoize valid roles to prevent recreation
   const validRoles = useMemo(
     () => [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
     []
   )
 
+  // Memoize user role with proper type checking
+  const userRole = useMemo(() => {
+    if (!session?.user?.role) return null
+    const role = session.user.role as string
+    return validRoles.includes(role as UserRole) ? (role as UserRole) : null
+  }, [session, validRoles])
+
+  // Memoize role validation
   const isValidRole = useMemo(
-    () => (userRole ? validRoles.includes(userRole) : false),
+    () => Boolean(userRole && validRoles.includes(userRole)),
     [userRole, validRoles]
   )
 
+  // Handle session initialization and updates
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        if (status === "loading") {
+          setIsLoading(true)
+          return
+        }
+
+        if (status === "authenticated" && session) {
+          // Ensure session is up to date
+          await updateSession()
+          setIsLoading(false)
+        } else {
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        setIsLoading(false)
+      }
+    }
+
+    initializeAuth()
+
+    // Set up session check interval
+    const interval = setInterval(async () => {
+      if (status === "authenticated") {
+        await updateSession()
+      }
+    }, 5 * 60 * 1000) // Check every 5 minutes
+
+    return () => clearInterval(interval)
+  }, [status, session, updateSession])
+
+  // Memoize context value
   const value = useMemo(
     () => ({
       session,
@@ -67,6 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [session, status, userRole, isValidRole, isLoading]
   )
+
+  if (process.env.NODE_ENV === "development") {
+    // Debug logging
+    console.log("Auth Status:", status)
+    console.log("Session:", session)
+    console.log("User role:", userRole)
+    console.log("Role is valid:", isValidRole)
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

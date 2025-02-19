@@ -29,6 +29,7 @@ declare module "next-auth" {
       department?: string | null
       createdAt?: Date | null
       image?: string | null
+      accessToken?: string | null
     }
     expires: string
   }
@@ -85,6 +86,10 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: process.env.DEBUG === "true" && process.env.NODE_ENV === "development",
   logger: {
@@ -102,12 +107,17 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     sessionToken: {
-      name: "next-auth.session-token",
+      name: `${
+        process.env.NODE_ENV === "production" ? "__Secure-" : ""
+      }next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
+        domain: process.env.NEXTAUTH_URL
+          ? new URL(process.env.NEXTAUTH_URL).hostname
+          : undefined,
       },
     },
   },
@@ -252,22 +262,37 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
       // Initial sign in
-      if (user) {
-        token.role = user.role
-        token.id = user.id
+      if (account && user) {
+        return {
+          ...token,
+          role: user.role,
+          id: user.id,
+          accessToken: account.access_token,
+          refreshToken: account.refresh_token,
+          accessTokenExpires: account.expires_at
+            ? account.expires_at * 1000
+            : null,
+        }
       }
 
       // Handle session update
-      if (trigger === "update" && session?.user) {
-        token.role = session.user.role
+      if (trigger === "update" && session) {
+        return { ...token, ...session.user }
       }
 
-      return token
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < (token.accessTokenExpires || 0)) {
+        return token
+      }
+
+      // Access token has expired, try to refresh it
+      return refreshAccessToken(token)
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as UserRole
+        session.user.accessToken = token.accessToken as string | null
       }
       return session
     },
