@@ -42,14 +42,30 @@ const protectedRoutes = [
     path: "/admin",
     roles: [UserRole.ADMIN],
   },
+  {
+    path: "/search",
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
+  },
+  {
+    path: "/map",
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
+  },
+  {
+    path: "/news",
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
+  },
+  {
+    path: "/gallery",
+    roles: [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
+  },
 ]
 
 // Add helper function to check role access
 function hasRequiredRole(token: any, pathname: string): boolean {
   const matchedRoute = protectedRoutes.find(
-    route => pathname === route.path || pathname.startsWith(`${route.path}/`)
+    (route) => pathname === route.path || pathname.startsWith(`${route.path}/`)
   )
-  
+
   if (!matchedRoute) return true // Not a protected route
   return matchedRoute.roles.includes(token.role as UserRole)
 }
@@ -57,32 +73,33 @@ function hasRequiredRole(token: any, pathname: string): boolean {
 // Update validateReturnUrl to handle special cases
 function validateReturnUrl(url: string | null, token: any): string {
   if (!url) return "/metadata"
-  
+
   try {
     // Decode first before checking
     const decodedUrl = decodeURIComponent(url)
-    
+
     // Handle legacy login paths and encoded slashes
     if (decodedUrl.startsWith("/login") || decodedUrl === "%2Flogin") {
       return "/metadata"
     }
 
     // Clean and validate the URL
-    const cleanUrl = decodedUrl.replace(/^\/+|\/+$/g, '')
+    const cleanUrl = decodedUrl.replace(/^\/+|\/+$/g, "")
     const pathname = cleanUrl ? `/${cleanUrl}` : "/metadata"
-    
-    // Additional validation for non-existent paths
-    const isValidPath = protectedRoutes.some(route => 
-      pathname.startsWith(route.path) || publicRoutes.includes(pathname)
+
+    // Check role access for protected routes
+    const matchedRoute = protectedRoutes.find((route) =>
+      pathname.startsWith(route.path)
     )
 
-    if (!isValidPath) return "/metadata"
-
-    // Check role access
-    if (token && !hasRequiredRole(token, pathname)) {
+    if (
+      matchedRoute &&
+      token &&
+      !matchedRoute.roles.includes(token.role as UserRole)
+    ) {
       return "/metadata"
     }
-    
+
     return pathname
   } catch {
     return "/metadata"

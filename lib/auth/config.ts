@@ -64,7 +64,16 @@ export const AUTH_CONFIG = {
 
   urls: {
     baseUrl: process.env.NEXTAUTH_URL,
-    allowedRedirects: ["/metadata", "/profile", "/admin", "/settings"],
+    allowedRedirects: [
+      "/metadata",
+      "/profile",
+      "/admin",
+      "/settings",
+      "/search",
+      "/map",
+      "/news",
+      "/gallery",
+    ],
   },
 
   cache: {
