@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useState, Suspense } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail, Chrome } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -30,9 +30,15 @@ const signInSchema = z.object({
 
 type SignInValues = z.infer<typeof signInSchema>
 
+interface AuthError {
+  message: string
+  type?: "error" | "warning" | "info"
+}
+
 function SignInForm() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isEmailLoading, setIsEmailLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [error, setError] = useState<AuthError | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const searchParamsError = searchParams.get("error")
@@ -57,7 +63,7 @@ function SignInForm() {
 
   const handleCredentialsSignIn = async (data: SignInValues) => {
     try {
-      setIsLoading(true)
+      setIsEmailLoading(true)
       setError(null)
       const result = await signIn("credentials", {
         email: data.email,
@@ -69,55 +75,64 @@ function SignInForm() {
       if (result?.error) {
         switch (result.error) {
           case "AccessDenied":
-            setError("Your account doesn't have access to this application")
+            setError({
+              message: "Your account doesn't have access to this application",
+              type: "error",
+            })
             break
           case "EmailNotVerified":
-            setError("Please verify your email address first")
+            setError({
+              message: "Please verify your email address first",
+              type: "warning",
+            })
             break
           default:
-            setError("Invalid email or password")
+            setError({
+              message: "Invalid email or password",
+              type: "error",
+            })
         }
         return
       }
 
       router.push(callbackUrl)
     } catch (error) {
-      setError("An unexpected error occurred")
+      setError({
+        message: "An unexpected error occurred",
+        type: "error",
+      })
       console.error("Sign in error:", error)
     } finally {
-      setIsLoading(false)
+      setIsEmailLoading(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true)
+      setIsGoogleLoading(true)
       setError(null)
-      const result = await signIn("google", {
+      await signIn("google", {
         callbackUrl,
-        redirect: false,
       })
-
-      if (result?.error) {
-        switch (result.error) {
-          case "AccessDenied":
-            setError("Your account doesn't have access to this application")
-            break
-          case "EmailNotVerified":
-            setError("Please verify your email address first")
-            break
-          default:
-            setError("An error occurred during sign in")
-        }
-        return
-      }
-
-      router.push(callbackUrl)
     } catch (error) {
-      setError("An unexpected error occurred")
+      setError({
+        message: "An unexpected error occurred",
+        type: "error",
+      })
       console.error("Sign in error:", error)
     } finally {
-      setIsLoading(false)
+      setIsGoogleLoading(false)
+    }
+  }
+
+  const getErrorStyles = (type: AuthError["type"] = "error") => {
+    switch (type) {
+      case "warning":
+        return "bg-yellow-50 text-yellow-600"
+      case "info":
+        return "bg-blue-50 text-blue-600"
+      default:
+        return "bg-red-50 text-red-600"
     }
   }
 
@@ -125,121 +140,145 @@ function SignInForm() {
     <div className="flex min-h-screen items-center justify-center">
       <Card className="p-6 w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Sign In</h1>
+          <h1 className="text-2xl font-bold">Welcome Back</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your credentials to access your account
+            Choose your preferred sign in method
           </p>
         </div>
 
         {(error || searchParamsError) && (
-          <div className="p-4 bg-red-50 text-red-600 rounded-md text-sm">
-            {error || searchParamsError}
+          <div
+            className={`p-4 rounded-md text-sm ${getErrorStyles(error?.type)}`}
+          >
+            {error?.message || searchParamsError}
           </div>
         )}
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleCredentialsSignIn)}
-            className="space-y-4"
+        <div className="grid gap-4">
+          <Button
+            variant="outline"
+            onClick={handleGoogleSignIn}
+            className="w-full"
+            disabled={isGoogleLoading || isEmailLoading}
           >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Signing in with Google...
+              </>
+            ) : (
+              <>
+                <Chrome className="mr-2 h-4 w-4" />
+                Sign in with Google
+              </>
+            )}
+          </Button>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Enter your password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or with email
+              </span>
+            </div>
+          </div>
 
-            <div className="flex items-center space-x-2">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleCredentialsSignIn)}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
-                name="rememberMe"
+                name="email"
                 render={({ field }) => (
-                  <FormItem className="flex items-center space-x-2">
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+                      <Input
+                        type="email"
+                        placeholder="Enter your email"
+                        {...field}
                       />
                     </FormControl>
-                    <Label
-                      htmlFor="rememberMe"
-                      className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Remember me
-                    </Label>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in with Email"
-              )}
-            </Button>
-          </form>
-        </Form>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Enter your password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
+              <div className="flex items-center justify-between">
+                <FormField
+                  control={form.control}
+                  name="rememberMe"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <Label
+                        htmlFor="rememberMe"
+                        className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Remember me
+                      </Label>
+                    </FormItem>
+                  )}
+                />
+                <Button variant="link" className="px-0" asChild>
+                  <a href="/auth/forgot-password">Forgot password?</a>
+                </Button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isEmailLoading || isGoogleLoading}
+              >
+                {isEmailLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Sign in with Email
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={handleGoogleSignIn}
-          className="w-full"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing in...
-            </>
-          ) : (
-            "Sign in with Google"
-          )}
-        </Button>
+        <div className="text-center text-sm">
+          Don&apos;t have an account?{" "}
+          <Button variant="link" className="px-1" asChild>
+            <a href="/auth/signup">Sign up</a>
+          </Button>
+        </div>
       </Card>
     </div>
   )
@@ -247,7 +286,13 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      }
+    >
       <SignInForm />
     </Suspense>
   )

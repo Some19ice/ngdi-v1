@@ -46,10 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => session?.user?.role as UserRole | null,
     [session]
   )
-  const validRoles = [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER]
+
+  const validRoles = useMemo(
+    () => [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
+    []
+  )
+
   const isValidRole = useMemo(
     () => (userRole ? validRoles.includes(userRole) : false),
-    [userRole]
+    [userRole, validRoles]
   )
 
   const value = useMemo(
