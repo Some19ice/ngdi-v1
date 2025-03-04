@@ -72,6 +72,10 @@ export async function validateSession() {
     return null
   }
 
+  if (!session.user?.id) {
+    return null
+  }
+
   // Verify user still exists
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },

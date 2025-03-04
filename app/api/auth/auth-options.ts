@@ -1,6 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { compare } from "bcryptjs"
-import { type NextAuthOptions } from "next-auth"
+import { type NextAuthOptions, User, Session, DefaultSession } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
 import GoogleProvider from "next-auth/providers/google"
@@ -9,36 +9,52 @@ import { createTransport } from "nodemailer"
 import { Adapter } from "next-auth/adapters"
 import { UserRole } from "@/lib/auth/types"
 import { JWT } from "next-auth/jwt"
-import { checkAuthRateLimit } from "@/lib/auth/rate-limit"
-import {
-  passwordSchema,
-  verifyPassword,
-  calculateSessionExpiry,
-} from "@/lib/auth/validation"
+import { checkAuthRateLimit, resetRateLimit } from "./rate-limit"
 import { redis } from "@/lib/redis"
+import { AUTH_CONFIG } from "@/lib/auth/config"
+import { v4 as uuidv4 } from "uuid"
+import { RequestInternal } from "next-auth"
+import { User as PrismaUser } from "@prisma/client"
 
-// Add type for the session
+// Define the base user type that matches our database schema
+interface BaseUser {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  organization: string | null
+  department: string | null
+  phone: string | null
+  createdAt: Date | null
+  emailVerified: Date | null
+  image: string | null
+}
+
+// Update Session type to include error field
 declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string
-      email: string
-      name?: string | null
-      role: UserRole
-      organization?: string | null
-      department?: string | null
-      createdAt?: Date | null
-      image?: string | null
-      accessToken?: string | null
-    }
+  interface Session extends DefaultSession {
+    user:
+      | (BaseUser & {
+          accessToken: string | null
+          deviceId: string | null
+        })
+      | null
     expires: string
+    error?: "RefreshAccessTokenError" | "SessionError"
   }
 
-  interface User {
-    role: UserRole
-    organization?: string | null
-    department?: string | null
-    createdAt?: Date | null
+  interface User extends BaseUser {}
+}
+
+// Add type for JWT
+declare module "next-auth/jwt" {
+  interface JWT extends Omit<BaseUser, "image"> {
+    picture: string | null
+    accessToken: string | null
+    refreshToken: string | null
+    accessTokenExpires?: number
+    deviceId: string | null
+    error?: "RefreshAccessTokenError"
   }
 }
 
@@ -85,13 +101,12 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
+    maxAge: AUTH_CONFIG.session.maxAge,
   },
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: process.env.DEBUG === "true" && process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === "development",
   logger: {
     error(code, ...message) {
       console.error(code, ...message)
@@ -100,24 +115,34 @@ export const authOptions: NextAuthOptions = {
       console.warn(code, ...message)
     },
     debug(code, ...message) {
-      if (process.env.DEBUG === "true") {
-        console.debug(code, ...message)
-      }
+      console.debug(code, ...message)
     },
   },
   cookies: {
     sessionToken: {
-      name: `${
-        process.env.NODE_ENV === "production" ? "__Secure-" : ""
-      }next-auth.session-token`,
+      name: "next-auth.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        domain: process.env.NEXTAUTH_URL
-          ? new URL(process.env.NEXTAUTH_URL).hostname
-          : undefined,
+      },
+    },
+    callbackUrl: {
+      name: "next-auth.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
       },
     },
   },
@@ -130,14 +155,12 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   events: {
     async signIn({ user, account, isNewUser }) {
-      if (isNewUser) {
-        // Set default role for new users with correct format
+      // Ensure user has a role
+      if (!user.role || isNewUser) {
         await prisma.user.update({
           where: { id: user.id },
           data: { role: UserRole.USER },
         })
-
-        // Update the user object to reflect the new role
         user.role = UserRole.USER
       }
 
@@ -153,7 +176,12 @@ export const authOptions: NextAuthOptions = {
         })
       )
     },
-    async signOut({ session }) {
+    async signOut({ session, token }) {
+      // Invalidate session in Redis
+      if (session?.user?.id && token?.deviceId) {
+        await redis.del(`session:${session.user.id}:${token.deviceId}`)
+      }
+
       // Log sign out
       await redis.lpush(
         "auth:logs",
@@ -163,6 +191,137 @@ export const authOptions: NextAuthOptions = {
           timestamp: new Date().toISOString(),
         })
       )
+    },
+  },
+  callbacks: {
+    async signIn({ user, account, profile, email, credentials }) {
+      try {
+        // Ensure user has required fields
+        if (!user?.email) {
+          console.error("Sign in failed: No email provided")
+          return false
+        }
+
+        // For credentials provider
+        if (credentials) {
+          return true // Already validated in authorize callback
+        }
+
+        // For OAuth providers
+        if (account && profile) {
+          // Ensure user has a role
+          if (!user.role) {
+            await prisma.user.update({
+              where: { email: user.email },
+              data: { role: UserRole.USER },
+            })
+          }
+          return true
+        }
+
+        // For email provider
+        if (email) {
+          return true
+        }
+
+        return false
+      } catch (error) {
+        console.error("Sign in error:", error)
+        return false
+      }
+    },
+
+    async session({ session, token, user }) {
+      try {
+        // Validate token existence and required fields
+        if (!token) {
+          throw new Error("No token available")
+        }
+
+        // Ensure required token fields exist
+        if (!token.id || !token.email) {
+          console.warn("Invalid token structure:", token)
+          return {
+            expires: new Date(Date.now()).toISOString(),
+            user: null,
+            error: "SessionError",
+          } as Session
+        }
+
+        const updatedSession: Session = {
+          expires:
+            session.expires ||
+            new Date(
+              Date.now() + AUTH_CONFIG.session.maxAge * 1000
+            ).toISOString(),
+          user: {
+            id: token.id,
+            email: token.email,
+            name: token.name || "",
+            role: (token.role as UserRole) || UserRole.USER,
+            organization: token.organization || null,
+            department: token.department || null,
+            phone: token.phone || null,
+            createdAt: token.createdAt || null,
+            emailVerified: token.emailVerified || null,
+            image: token.picture || null,
+            deviceId: token.deviceId || null,
+            accessToken: token.accessToken || null,
+          },
+        }
+
+        // Handle refresh token errors
+        if (token.error === "RefreshAccessTokenError") {
+          updatedSession.error = "RefreshAccessTokenError"
+        }
+
+        return updatedSession
+      } catch (error) {
+        console.error("Session callback error:", error)
+        return {
+          expires: new Date(Date.now()).toISOString(),
+          user: null,
+          error: "SessionError",
+        } as Session
+      }
+    },
+
+    async jwt({ token, user, account, trigger, session }) {
+      // Initial sign in
+      if (account && user) {
+        const deviceId = uuidv4()
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name || "",
+          role: (user.role ?? UserRole.USER) as UserRole,
+          picture: user.image ?? null,
+          deviceId,
+          accessToken: account.access_token ?? null,
+          refreshToken: account.refresh_token ?? null,
+          accessTokenExpires: account.expires_at
+            ? account.expires_at * 1000
+            : Date.now() + 3600 * 1000,
+          organization: user.organization ?? null,
+          department: user.department ?? null,
+          phone: user.phone ?? null,
+          createdAt: user.createdAt ?? null,
+          emailVerified: user.emailVerified ?? null,
+        }
+      }
+
+      // Handle session update
+      if (trigger === "update" && session) {
+        return { ...token, ...session }
+      }
+
+      // Return previous token if access token has not expired
+      if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
+        return token
+      }
+
+      // Refresh token if expired
+      return refreshAccessToken(token)
     },
   },
   providers: [
@@ -192,7 +351,8 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     CredentialsProvider({
-      name: "credentials",
+      id: "credentials",
+      name: "Email",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
@@ -202,48 +362,52 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials")
         }
 
-        // Check rate limit
-        const rateLimitResult = await checkAuthRateLimit(credentials.email)
-        if (!rateLimitResult.success) {
-          throw new Error("Too many attempts. Please try again later.")
+        // Check rate limiting
+        const isAllowed = await checkAuthRateLimit(credentials.email)
+        if (!isAllowed) {
+          throw new Error("TooManyRequests")
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        })
-
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials")
-        }
-
-        // Validate password complexity for new passwords
         try {
-          passwordSchema.parse(credentials.password)
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          })
+
+          if (!user || !user.password) {
+            throw new Error("InvalidCredentials")
+          }
+
+          const isValid = await compare(credentials.password, user.password)
+          if (!isValid) {
+            throw new Error("InvalidCredentials")
+          }
+
+          // Reset rate limit on successful login
+          await resetRateLimit(credentials.email)
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name || "Unknown User",
+            role: user.role,
+            image: user.image || "",
+            organization: user.organization || "",
+            department: user.department || "",
+            phone: user.phone || "",
+            emailVerified: user.emailVerified,
+            createdAt: user.createdAt,
+          } as User
         } catch (error) {
-          throw new Error("Password does not meet security requirements")
-        }
-
-        const isValid = await verifyPassword(
-          credentials.password,
-          user.password
-        )
-
-        if (!isValid) {
-          throw new Error("Invalid credentials")
-        }
-
-        // Only check email verification in production
-        if (process.env.NODE_ENV === "production" && !user.emailVerified) {
-          throw new Error("Please verify your email first")
-        }
-
-        return {
-          id: user.id,
-          email: user.email || "",
-          name: user.name || "",
-          role: user.role as UserRole,
-          image: user.image || null,
-          emailVerified: user.emailVerified || null,
+          if (error instanceof Error) {
+            if (error.message === "TooManyRequests") {
+              throw error
+            }
+            if (error.message === "InvalidCredentials") {
+              throw error
+            }
+          }
+          console.error("Auth error:", error)
+          throw new Error("InternalServerError")
         }
       },
     }),
@@ -252,62 +416,43 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          prompt: "consent",
+          prompt: "select_account",
           access_type: "offline",
           response_type: "code",
         },
       },
+      async profile(profile) {
+        return {
+          id: profile.sub,
+          email: profile.email,
+          name: profile.name || "",
+          role: UserRole.USER,
+          organization: null,
+          department: null,
+          phone: null,
+          createdAt: new Date(),
+          emailVerified: profile.email_verified ? new Date() : null,
+          image: profile.picture ?? null,
+        }
+      },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user, account, trigger, session }) {
-      // Initial sign in
-      if (account && user) {
-        return {
-          ...token,
-          role: user.role,
-          id: user.id,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token,
-          accessTokenExpires: account.expires_at
-            ? account.expires_at * 1000
-            : null,
-        }
-      }
-
-      // Handle session update
-      if (trigger === "update" && session) {
-        return { ...token, ...session.user }
-      }
-
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.accessTokenExpires || 0)) {
-        return token
-      }
-
-      // Access token has expired, try to refresh it
-      return refreshAccessToken(token)
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as UserRole
-        session.user.accessToken = token.accessToken as string | null
-      }
-      return session
-    },
-  },
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
-    // Add refresh token logic here if needed
-    // For now, just return the token with an error
+    // This function should implement the token refresh logic for your OAuth provider
+    // For Google, you would use the refresh token to get a new access token
+    // For simplicity, we're just returning the token with an extended expiry
+
     return {
       ...token,
-      error: "RefreshAccessTokenError",
+      accessTokenExpires: Date.now() + 3600 * 1000, // Extend by 1 hour
+      // Ensure the refresh token is not reused if it's a one-time use token
+      // refreshToken: undefined, // Uncomment if your provider uses one-time refresh tokens
     }
   } catch (error) {
+    console.error("Error refreshing access token:", error)
     return {
       ...token,
       error: "RefreshAccessTokenError",

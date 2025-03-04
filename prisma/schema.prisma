@@ -10,8 +10,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
         
@@ -29,9 +29,9 @@ model Account {
   /// Account ID from the provider
   providerAccountId String
   /// OAuth refresh token
-  refresh_token     String? @db.Text
+  refresh_token     String?
   /// OAuth access token
-  access_token      String? @db.Text
+  access_token      String?
   /// Token expiration timestamp
   expires_at        Int?
   /// OAuth token type
@@ -39,7 +39,7 @@ model Account {
   /// OAuth scope
   scope             String?
   /// OAuth ID token
-  id_token          String? @db.Text
+  id_token          String?
   /// OAuth session state
   session_state     String?
 
@@ -64,130 +64,132 @@ model Session {
 /// User account information
 model User {
   /// Unique identifier for the user
-  id            String    @id @default(cuid())
+  id            String     @id @default(uuid())
   /// User's full name
   name          String?
   /// User's email address
-  email         String?   @unique
+  email         String     @unique
   /// Timestamp of email verification
   emailVerified DateTime?
   /// User's profile image URL
   image         String?
   /// Hashed password for local authentication
-  password      String?
+  password      String
   /// User's role in the system
-  role          UserRole  @default(USER)
+  role          UserRole   @default(USER)
   /// User's organization name
   organization  String?
   /// User's department within the organization
   department    String?
   /// User's contact phone number
   phone         String?
-  /// Account creation timestamp
-  createdAt     DateTime  @default(now())
-  /// Last update timestamp
-  updatedAt     DateTime  @updatedAt
 
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 /// User roles for access control
 enum UserRole {
-  /// System administrator with full access
-  ADMIN
-  /// Node officer with elevated privileges
-  NODE_OFFICER
   /// Regular user with basic access
   USER
+  /// System administrator with full access
+  ADMIN
+  /// Node officer with specific privileges
+  NODE_OFFICER
 }
 
 /// Geospatial metadata information
 model Metadata {
   /// Unique identifier for the metadata entry
-  id              String   @id @default(cuid())
+  id                      String   @id @default(uuid())
   /// Title of the dataset
-  title           String
+  title                   String
   /// Author of the dataset
-  author          String
-  /// Organization that owns the dataset
-  organization    String
-  /// Start date of data coverage
-  dateFrom        DateTime
-  /// End date of data coverage
-  dateTo          DateTime
-  /// Detailed description of the dataset
-  abstract        String   @db.Text
-  /// Purpose and intended use of the dataset
-  purpose         String   @db.Text
-  /// URL to dataset preview image
-  thumbnailUrl    String?
-  /// Type of geospatial framework (vector, raster, etc.)
-  frameworkType   String
-  /// Dataset categories/tags
-  categories      String[]
-
-  /// Geographic coordinate system used
-  coordinateSystem String
-  /// Map projection used
-  projection       String
-  /// Map scale denominator
-  scale            Float
-  /// Spatial resolution of the dataset
-  resolution       String?
-  /// Level of spatial accuracy
-  accuracyLevel    String
-  /// Dataset completeness percentage
-  completeness     Float?
-  /// Data consistency check status
-  consistency      Boolean @default(false)
-  /// Data validation status
-  validationStatus String?
-  /// File format of the dataset
-  fileFormat       String
-  /// File size in megabytes
-  fileSize         Float?
-  /// Number of features in the dataset
-  numFeatures      Int?
-  /// Required software and versions
-  softwareReqs     String?
-  /// Update frequency cycle
-  updateCycle      String?
-  /// Last update timestamp
-  lastUpdate       DateTime?
-  /// Next scheduled update
-  nextUpdate       DateTime?
-
-  /// Format for data distribution
-  distributionFormat String
-  /// Primary method of data access
-  accessMethod       String
-  /// Direct download URL
-  downloadUrl        String?
-  /// API endpoint for programmatic access
-  apiEndpoint        String?
-  /// Type of license
-  licenseType        String
-  /// Terms of usage
-  usageTerms         String?
+  author                  String
+  /// Organization name
+  organization            String
+  /// Start date of the dataset
+  dateFrom               String
+  /// End date of the dataset
+  dateTo                 String
+  /// Abstract/description of the dataset
+  abstract               String
+  /// Purpose of the dataset
+  purpose                String
+  /// URL to the thumbnail image
+  thumbnailUrl           String
+  /// Name of the image file
+  imageName              String
+  /// Type of framework used
+  frameworkType          String
+  /// Categories of the dataset
+  categories             String[] @default([])
+  /// Coordinate system used
+  coordinateSystem       String
+  /// Projection used
+  projection             String
+  /// Scale of the dataset
+  scale                  Int
+  /// Resolution of the dataset
+  resolution             String?
+  /// Accuracy level
+  accuracyLevel          String
+  /// Completeness percentage
+  completeness           Int?
+  /// Consistency check status
+  consistencyCheck       Boolean?
+  /// Validation status
+  validationStatus       String?
+  /// File format
+  fileFormat             String
+  /// File size in bytes
+  fileSize              Int?
+  /// Number of features
+  numFeatures           Int?
+  /// Software requirements
+  softwareReqs          String?
+  /// Update cycle
+  updateCycle           String?
+  /// Last update date
+  lastUpdate            DateTime?
+  /// Next update date
+  nextUpdate            DateTime?
+  /// Distribution format
+  distributionFormat     String
+  /// Access method
+  accessMethod           String
+  /// Download URL
+  downloadUrl           String?
+  /// API endpoint
+  apiEndpoint           String?
+  /// License type
+  licenseType           String
+  /// Usage terms
+  usageTerms             String
   /// Attribution requirements
-  attribution        String?
-  /// Access restriction levels
-  accessRestrictions String[]
+  attributionRequirements String
+  /// Access restrictions
+  accessRestrictions     String[] @default([])
+  /// Contact person
+  contactPerson          String
+  /// Contact email
+  email                  String
+  /// Department
+  department            String?
 
   /// Reference to the user who created this entry
-  createdBy    User      @relation(fields: [userId], references: [id])
-  userId       String
-  /// Creation timestamp
-  createdAt    DateTime  @default(now())
-  /// Last update timestamp
-  updatedAt    DateTime  @updatedAt
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id])
 
-  @@index([title])
-  @@index([organization])
-  @@index([frameworkType])
-  @@index([categories])
+  /// Creation timestamp
+  createdAt              DateTime @default(now())
+  /// Last update timestamp
+  updatedAt              DateTime @updatedAt
+
+  @@index([userId])
 }
 
 /// Token for email verification and password reset

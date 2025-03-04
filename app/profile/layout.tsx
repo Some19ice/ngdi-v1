@@ -51,7 +51,7 @@ export default function ProfileLayout({
       </div>
 
       <Card className="p-6">
-        <Tabs value={pathname} className="space-y-6">
+        <Tabs value={pathname || ""} className="space-y-6">
           <TabsList>
             {tabs.map((tab) => (
               <TabsTrigger

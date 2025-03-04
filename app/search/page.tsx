@@ -59,9 +59,9 @@ function SearchForm() {
   const form = useForm<SearchFormValues>({
     resolver: zodResolver(searchFormSchema),
     defaultValues: {
-      keyword: searchParams.get("keyword") || "",
-      dataType: searchParams.get("dataType") || "",
-      organization: searchParams.get("organization") || "",
+      keyword: searchParams?.get("keyword") || "",
+      dataType: searchParams?.get("dataType") || "",
+      organization: searchParams?.get("organization") || "",
       dateRange: undefined,
     },
   })

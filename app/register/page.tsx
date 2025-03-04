@@ -23,7 +23,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Mail, Lock, User, Building2, Phone } from "lucide-react"
+import {
+  Mail,
+  Lock,
+  User,
+  Building2,
+  Phone,
+  AlertCircle,
+  Loader2,
+} from "lucide-react"
+import Link from "next/link"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { passwordSchema } from "@/lib/auth/validation"
 
 const registerFormSchema = z
   .object({
@@ -33,17 +44,13 @@ const registerFormSchema = z
     email: z.string().email({
       message: "Please enter a valid email address.",
     }),
-    password: z.string().min(8, {
-      message: "Password must be at least 8 characters.",
-    }),
+    password: passwordSchema,
     confirmPassword: z.string(),
     organization: z.string().min(2, {
       message: "Organization must be at least 2 characters.",
     }),
+    department: z.string().optional(),
     phone: z.string().optional(),
-    role: z.enum(["user", "node_officer"], {
-      required_error: "Please select a role.",
-    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -55,6 +62,7 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>
 export default function RegisterPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -64,218 +72,242 @@ export default function RegisterPage() {
       password: "",
       confirmPassword: "",
       organization: "",
+      department: "",
       phone: "",
-      role: "user",
     },
   })
 
   async function onSubmit(data: RegisterFormValues) {
     setIsLoading(true)
-    try {
-      // TODO: Implement actual registration logic
-      console.log(data)
+    setError(null)
 
-      // After successful registration, redirect to login
-      router.push("/login")
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          organization: data.organization,
+          department: data.department || undefined,
+          phone: data.phone || undefined,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Registration failed")
+      }
+
+      // Registration successful - redirect to login page
+      router.push("/auth/signin?registered=true")
     } catch (error) {
-      console.error(error)
+      setError(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center py-4">
-      <div className="w-full max-w-[450px] space-y-4">
-        <div className="flex flex-col space-y-1.5 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Create an account
-          </h1>
+    <div className="flex flex-col justify-center items-center p-4 sm:p-6 md:p-8">
+      <Card className="w-full max-w-md">
+        <div className="p-6 text-center">
+          <h1 className="text-2xl font-semibold mb-2">Create Account</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your details to create your account
+            Fill in your details to create your account
           </p>
         </div>
 
-        <Card>
-          <CardContent className="pt-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-3"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Enter your full name"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Enter your email"
-                            type="email"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid gap-3 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              type="password"
-                              placeholder="Create password"
-                              className="pl-9"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              type="password"
-                              placeholder="Confirm password"
-                              className="pl-9"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="organization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Enter your organization"
-                            className="pl-9"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid gap-3 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number (Optional)</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              type="tel"
-                              placeholder="Enter phone number"
-                              className="pl-9"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select your role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="user">Regular User</SelectItem>
-                            <SelectItem value="node_officer">
-                              Node Officer
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Create account"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-          <CardFooter>
-            <div className="text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <a
-                className="hover:text-primary underline underline-offset-4"
-                href="/login"
-              >
-                Sign in
-              </a>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
+        {error && (
+          <Alert variant="destructive" className="mx-6 mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="John Doe"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="user@example.com"
+                          type="email"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="********"
+                          type="password"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="********"
+                          type="password"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="organization"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Organization</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="Your Organization"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Your Department"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="+1234567890"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+
+              <div className="text-center text-sm">
+                Already have an account?{" "}
+                <Link href="/auth/signin" className="text-primary font-medium">
+                  Sign in
+                </Link>
+              </div>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
     </div>
   )
 }

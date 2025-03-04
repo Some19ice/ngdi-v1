@@ -1,3 +1,6 @@
+// Mark this route as dynamic to prevent static optimization attempts
+export const dynamic = "force-dynamic"
+
 import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -8,17 +11,12 @@ const updateMetadataSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
   author: z.string().min(1, "Author is required").optional(),
   organization: z.string().min(1, "Organization is required").optional(),
-  dateFrom: z
-    .string()
-    .transform((str) => new Date(str))
-    .optional(),
-  dateTo: z
-    .string()
-    .transform((str) => new Date(str))
-    .optional(),
+  dateFrom: z.string().min(1, "Start date is required").optional(),
+  dateTo: z.string().min(1, "End date is required").optional(),
   abstract: z.string().min(1, "Abstract is required").optional(),
   purpose: z.string().min(1, "Purpose is required").optional(),
   thumbnailUrl: z.string().optional(),
+  imageName: z.string().min(1, "Image name is required").optional(),
   frameworkType: z.string().min(1, "Framework type is required").optional(),
   categories: z
     .array(z.string())
@@ -35,7 +33,7 @@ const updateMetadataSchema = z.object({
   resolution: z.string().optional(),
   accuracyLevel: z.string().min(1, "Accuracy level is required").optional(),
   completeness: z.number().min(0).max(100).optional(),
-  consistency: z.boolean().optional(),
+  consistencyCheck: z.boolean().optional(),
   validationStatus: z.string().optional(),
   fileFormat: z.string().min(1, "File format is required").optional(),
   fileSize: z.number().positive().optional(),
@@ -73,7 +71,7 @@ export async function GET(
     const metadata = await prisma.metadata.findUnique({
       where: { id: params.id },
       include: {
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,
@@ -128,7 +126,7 @@ export async function PATCH(
       where: { id: params.id },
       data: body,
       include: {
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,

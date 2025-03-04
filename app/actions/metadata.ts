@@ -73,8 +73,9 @@ export async function createMetadata(data: MetadataFormData) {
       data: {
         ...validatedData,
         organization: validatedData.organizationName,
-        categories: { set: validatedData.categories },
-        accessRestrictions: { set: validatedData.accessRestrictions },
+        // Pass arrays directly for PostgreSQL
+        categories: validatedData.categories,
+        accessRestrictions: validatedData.accessRestrictions,
         scale: parseInt(validatedData.scale),
         completeness: validatedData.completeness
           ? parseInt(validatedData.completeness)
@@ -86,10 +87,10 @@ export async function createMetadata(data: MetadataFormData) {
           ? parseInt(validatedData.numFeatures)
           : null,
         userId: session.user.id,
-        dateFrom: new Date(validatedData.dateFrom),
-        dateTo: new Date(validatedData.dateTo),
+        dateFrom: validatedData.dateFrom,
+        dateTo: validatedData.dateTo,
         lastUpdate: validatedData.lastUpdate
-          ? new Date(validatedData.lastUpdate)
+          ? new Date(validatedData.lastUpdate).toISOString()
           : null,
         nextUpdate: validatedData.nextUpdate
           ? new Date(validatedData.nextUpdate)

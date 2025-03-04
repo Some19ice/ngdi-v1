@@ -11,7 +11,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarDays, Mail, MapPin, Building } from "lucide-react"
+import { CalendarDays, Mail, MapPin, Building, Edit } from "lucide-react"
+import Link from "next/link"
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -35,7 +36,12 @@ export default async function ProfilePage() {
               Manage your profile settings and preferences.
             </p>
           </div>
-          <Button>Edit Profile</Button>
+          <Button asChild>
+            <Link href="/profile/edit">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Link>
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -74,7 +80,7 @@ export default async function ProfilePage() {
                 <div className="flex items-center gap-4">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">{user.organization}</p>
+                    <p className="text-sm font-medium">{user.organization || "Not specified"}</p>
                     <p className="text-xs text-muted-foreground">
                       Organization
                     </p>
@@ -83,7 +89,7 @@ export default async function ProfilePage() {
                 <div className="flex items-center gap-4">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">{user.department}</p>
+                    <p className="text-sm font-medium">{user.department || "Not specified"}</p>
                     <p className="text-xs text-muted-foreground">Department</p>
                   </div>
                 </div>
@@ -91,7 +97,9 @@ export default async function ProfilePage() {
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">
-                      {user.createdAt?.toLocaleDateString()}
+                      {user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString()
+                        : "Unknown"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Member since
@@ -149,17 +157,37 @@ export default async function ProfilePage() {
               </TabsContent>
               <TabsContent value="settings" className="h-full">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Settings</CardTitle>
-                    <CardDescription>
-                      Manage your account settings and preferences.
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Settings</CardTitle>
+                      <CardDescription>
+                        Manage your account settings and preferences.
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" asChild>
+                      <Link href="/profile/settings">
+                        View All Settings
+                      </Link>
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    {/* Add settings form component here */}
-                    <p className="text-sm text-muted-foreground">
-                      Settings coming soon.
-                    </p>
+                    <p className="mb-2 font-medium">Account Security</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Password</span>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href="/reset-password">
+                            Change
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Two-factor authentication</span>
+                        <Button variant="outline" size="sm" disabled>
+                          Setup
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

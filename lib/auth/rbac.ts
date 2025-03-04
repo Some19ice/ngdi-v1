@@ -9,8 +9,13 @@ import {
 export interface User {
   id: string
   email: string
+  name?: string | null
   role: UserRole
-  organizationId?: string | null
+  organization?: string | null
+  department?: string | null
+  phone?: string | null
+  createdAt?: string | null
+  image?: string | null
 }
 
 export class PermissionError extends Error {
@@ -55,11 +60,11 @@ export function can(
       // Check organization-based access
       if (
         (permission.conditions?.organizationId || resource?.organizationId) &&
-        user.organizationId
+        user.organization
       ) {
         const targetOrgId =
           permission.conditions?.organizationId || resource?.organizationId
-        if (targetOrgId !== user.organizationId) {
+        if (targetOrgId !== user.organization) {
           return false
         }
       }

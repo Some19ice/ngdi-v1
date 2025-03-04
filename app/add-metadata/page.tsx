@@ -1,4 +1,4 @@
-import { MetadataForm } from "@/components/ui/metadata-form";
+import { MetadataForm } from "@/components/metadata/metadata-form"
 
 export default function AddMetadataPage() {
   return (
@@ -6,5 +6,5 @@ export default function AddMetadataPage() {
       <h1 className="text-3xl font-bold mb-8">Add New Metadata</h1>
       <MetadataForm />
     </div>
-  );
-} 
+  )
+}

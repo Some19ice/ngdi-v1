@@ -61,7 +61,7 @@ export default function AdminLayout({
       </div>
 
       <Card className="p-6">
-        <Tabs value={pathname} className="space-y-6">
+        <Tabs value={pathname || ""} className="space-y-6">
           <TabsList className="w-full justify-start h-auto gap-2 bg-transparent p-0">
             {tabs.map(
               (tab) =>

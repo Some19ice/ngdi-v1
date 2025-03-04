@@ -18,7 +18,7 @@ async function main() {
         emailVerified: new Date(),
       },
       create: {
-        email: process.env.ADMIN_EMAIL,
+        email: process.env.ADMIN_EMAIL || "admin@example.com",
         password: hashedPassword,
         role: UserRole.ADMIN,
         name: "Admin User",

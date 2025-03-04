@@ -4,25 +4,45 @@ import { UserRole } from "@prisma/client"
 import { hash } from "bcryptjs"
 import { PrismaClient } from "@prisma/client"
 import {
-  signIn,
+  enhancedSignIn as signIn,
   signInWithGoogle,
   signOut,
   mockGoogleAuth,
   mockSession,
-  clearSession,
+  enhancedClearSession as clearSession,
   completeOnboarding,
   waitForRedirect,
   getTestUser,
-  setupTestUser,
+  enhancedSetupTestUser as setupTestUser,
 } from "./helpers/auth"
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
 const prisma = new PrismaClient()
 
 test.describe("Authentication Flow", () => {
+  let testStartTime: number
+
   test.beforeEach(async ({ page }: { page: Page }) => {
+    testStartTime = Date.now()
     await clearSession(page)
     await page.goto(BASE_URL)
+  })
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== "passed") {
+      const timestamp = Date.now()
+      await page.screenshot({
+        path: `test-results/failure-${testInfo.title}-${timestamp}.png`,
+        fullPage: true,
+      })
+    }
+
+    // Log test metrics
+    console.log(`Test metrics - ${testInfo.title}:`, {
+      duration: Date.now() - testStartTime,
+      status: testInfo.status,
+      retries: testInfo.retry,
+    })
   })
 
   test("should show sign in page", async ({ page }: { page: Page }) => {
@@ -167,12 +187,12 @@ test.describe("Authentication Flow", () => {
       await expect(page.getByText("Admin Dashboard")).toBeVisible()
     })
 
-    test("should allow moderator routes for moderators", async ({
+    test("should allow node officer routes for node officers", async ({
       page,
     }: {
       page: Page
     }) => {
-      await setupTestUser(page, UserRole.MODERATOR)
+      await setupTestUser(page, UserRole.NODE_OFFICER)
       await page.goto(`${BASE_URL}/metadata/add`)
       await expect(page.getByText("Add Metadata")).toBeVisible()
     })

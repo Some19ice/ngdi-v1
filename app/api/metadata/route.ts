@@ -1,3 +1,6 @@
+// Mark this route as dynamic to prevent static optimization attempts
+export const dynamic = "force-dynamic"
+
 import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -9,11 +12,12 @@ const metadataSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
   organization: z.string().min(1, "Organization is required"),
-  dateFrom: z.string().transform((str) => new Date(str)),
-  dateTo: z.string().transform((str) => new Date(str)),
+  dateFrom: z.string().min(1, "Start date is required"),
+  dateTo: z.string().min(1, "End date is required"),
   abstract: z.string().min(1, "Abstract is required"),
   purpose: z.string().min(1, "Purpose is required"),
-  thumbnailUrl: z.string().optional(),
+  thumbnailUrl: z.string().url("Must be a valid URL"),
+  imageName: z.string().min(1, "Image name is required"),
   frameworkType: z.string().min(1, "Framework type is required"),
   categories: z.array(z.string()).min(1, "At least one category is required"),
 
@@ -24,21 +28,15 @@ const metadataSchema = z.object({
   resolution: z.string().optional(),
   accuracyLevel: z.string().min(1, "Accuracy level is required"),
   completeness: z.number().min(0).max(100).optional(),
-  consistency: z.boolean().default(false),
+  consistencyCheck: z.boolean().optional(),
   validationStatus: z.string().optional(),
   fileFormat: z.string().min(1, "File format is required"),
   fileSize: z.number().positive().optional(),
   numFeatures: z.number().int().positive().optional(),
   softwareReqs: z.string().optional(),
   updateCycle: z.string().optional(),
-  lastUpdate: z
-    .string()
-    .transform((str) => new Date(str))
-    .optional(),
-  nextUpdate: z
-    .string()
-    .transform((str) => new Date(str))
-    .optional(),
+  lastUpdate: z.string().optional(),
+  nextUpdate: z.string().optional(),
 
   // Access Information
   distributionFormat: z.string().min(1, "Distribution format is required"),
@@ -46,9 +44,17 @@ const metadataSchema = z.object({
   downloadUrl: z.string().url().optional(),
   apiEndpoint: z.string().url().optional(),
   licenseType: z.string().min(1, "License type is required"),
-  usageTerms: z.string().optional(),
-  attribution: z.string().optional(),
-  accessRestrictions: z.array(z.string()),
+  usageTerms: z.string().min(1, "Usage terms are required"),
+  attributionRequirements: z
+    .string()
+    .min(1, "Attribution requirements are required"),
+  accessRestrictions: z
+    .array(z.string())
+    .min(1, "Select at least one access restriction"),
+  contactPerson: z.string().min(1, "Contact person is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  department: z.string().optional(),
 })
 
 export async function GET(req: Request) {
@@ -69,13 +75,13 @@ export async function GET(req: Request) {
                 {
                   title: {
                     contains: search,
-                    mode: "insensitive" as Prisma.QueryMode,
+                    mode: "insensitive",
                   },
                 },
                 {
                   abstract: {
                     contains: search,
-                    mode: "insensitive" as Prisma.QueryMode,
+                    mode: "insensitive",
                   },
                 },
               ],
@@ -95,7 +101,7 @@ export async function GET(req: Request) {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          createdBy: {
+          user: {
             select: {
               id: true,
               name: true,
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
       },
       include: {
-        createdBy: {
+        user: {
           select: {
             id: true,
             name: true,

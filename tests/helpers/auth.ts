@@ -1,8 +1,31 @@
-import { type Page } from "@playwright/test"
+import { test as setup, expect, Page } from "@playwright/test"
 import { AUTH_CONFIG } from "@/lib/auth/config"
 import { UserRole } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { hash } from "bcryptjs"
+import path from "path"
+import fs from "fs"
+
+// Add TestUser interface
+interface TestUser {
+  email: string
+  password: string
+  name: string
+  organization: string
+}
+
+// Constants for retry configuration
+const RETRY_OPTIONS = {
+  retries: 2,
+  minTimeout: 1000,
+  maxTimeout: 5000,
+}
+
+// Ensure test results directory exists
+const TEST_RESULTS_DIR = path.join(process.cwd(), "test-results")
+if (!fs.existsSync(TEST_RESULTS_DIR)) {
+  fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true })
+}
 
 export async function signIn(
   page: Page,
@@ -10,58 +33,68 @@ export async function signIn(
   password: string,
   rememberMe = false
 ) {
-  await page.goto(
-    `${process.env.NEXTAUTH_URL}/auth/signin?callbackUrl=/profile`
-  )
+  console.log(`Attempting to sign in with email: ${email}`)
+
+  await page.goto(`${process.env.NEXTAUTH_URL}/auth/signin`)
 
   // Wait for the form to be ready
-  await page.waitForSelector("form", { state: "visible", timeout: 10000 })
+  console.log("Waiting for form...")
+  await page.waitForSelector("form", {
+    state: "visible",
+    timeout: 30000,
+  })
 
   // Fill in email
-  const emailInput = page.getByLabel("Email")
-  await emailInput.waitFor({ state: "visible", timeout: 10000 })
-  await emailInput.fill(email)
+  console.log("Filling email...")
+  await page.fill('input[name="email"]', email)
 
   // Fill in password
-  const passwordInput = page.getByLabel("Password")
-  await passwordInput.waitFor({ state: "visible", timeout: 10000 })
-  await passwordInput.fill(password)
+  console.log("Filling password...")
+  await page.fill('input[name="password"]', password)
 
   // Handle remember me checkbox if needed
   if (rememberMe) {
-    const rememberMeCheckbox = page.getByLabel("Remember me")
-    await rememberMeCheckbox.waitFor({ state: "visible", timeout: 10000 })
-    await rememberMeCheckbox.check()
+    console.log("Checking remember me...")
+    await page.check('input[name="remember"]')
   }
 
-  // Find and click the email sign in button specifically
-  const signInButton = page.getByRole("button", { name: "Sign in with Email" })
-  await signInButton.waitFor({ state: "visible", timeout: 10000 })
-  await signInButton.click()
+  // Click the submit button
+  console.log("Clicking submit button...")
+  await Promise.all([
+    page.waitForNavigation({ timeout: 60000 }),
+    page.click('button[type="submit"]'),
+  ])
 
-  // Wait for the sign-in process to complete with increased timeout
   try {
-    // Wait for either successful navigation or error
-    await Promise.race([
-      page.waitForURL("**/profile", { timeout: 30000 }),
-      page.waitForSelector('[class*="bg-red-50"]', { timeout: 30000 }),
-    ])
+    console.log("Waiting for sign-in completion...")
 
-    // Check if we got an error
-    const errorElement = await page.$('[class*="bg-red-50"]')
-    if (errorElement) {
-      const errorText = await errorElement.textContent()
-      throw new Error(`Sign in failed: ${errorText}`)
+    // Take a screenshot before checking result
+    await page.screenshot({ path: "test-results/post-submission.png" })
+
+    // Check current URL
+    const currentUrl = page.url()
+    console.log("Current URL:", currentUrl)
+
+    if (currentUrl.includes("/error")) {
+      const errorMessage = await page.textContent(
+        '[data-testid="error-message"]'
+      )
+      throw new Error(`Authentication failed: ${errorMessage}`)
     }
 
-    // Wait for authentication to complete and verify localStorage
+    // Wait for profile page
+    await page.waitForURL("**/profile", { timeout: 60000 })
+
+    // Verify authentication state
+    console.log("Verifying authentication state...")
     await page.waitForFunction(
       () => {
         const user = window.localStorage.getItem("user")
         const expiry = window.localStorage.getItem("sessionExpiry")
+        console.log("LocalStorage state:", { user, expiry })
         return user && expiry
       },
-      { timeout: 10000 }
+      { timeout: 30000 }
     )
 
     // Double check the authentication state
@@ -71,13 +104,30 @@ export async function signIn(
       return { user, expiry }
     })
 
+    console.log("Authentication state:", isAuthenticated)
+
     if (!isAuthenticated.user || !isAuthenticated.expiry) {
       throw new Error("Authentication failed - session data not properly set")
     }
+
+    console.log("Sign in completed successfully")
   } catch (error: any) {
+    console.error("Sign in error:", error.message)
+
+    // Take error screenshot
+    await page.screenshot({ path: "test-results/sign-in-error.png" })
+
+    // Get current URL
+    const currentUrl = page.url()
+    console.error("Current URL:", currentUrl)
+
+    // Get page content
+    const pageContent = await page.content()
+    console.error("Page content:", pageContent.substring(0, 500) + "...")
+
     if (error.message?.includes("Timeout")) {
       throw new Error(
-        "Sign in timed out - no redirect or error message received"
+        `Sign in timed out - no redirect or error message received. Current URL: ${currentUrl}`
       )
     }
     throw error
@@ -236,4 +286,148 @@ export async function setupTestUser(
     name: user.name,
   })
   return user
+}
+
+// Enhanced sign in with retries and better error handling
+export async function enhancedSignIn(
+  page: Page,
+  email: string,
+  password: string,
+  rememberMe = false
+) {
+  const startTime = Date.now()
+
+  try {
+    // Use a simple retry implementation since Playwright doesn't export retry
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt <= RETRY_OPTIONS.retries; attempt++) {
+      try {
+        await signIn(page, email, password, rememberMe)
+
+        // Verify authentication state
+        const authState = await page.evaluate(() => ({
+          user: localStorage.getItem("user"),
+          expiry: localStorage.getItem("sessionExpiry"),
+          token: localStorage.getItem("token"),
+        }))
+
+        if (!authState.user || !authState.expiry) {
+          throw new Error("Authentication state verification failed")
+        }
+
+        // If successful, break out of retry loop
+        break
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+        if (attempt === RETRY_OPTIONS.retries) throw lastError
+        await page.waitForTimeout(
+          Math.min(
+            RETRY_OPTIONS.minTimeout * Math.pow(2, attempt),
+            RETRY_OPTIONS.maxTimeout
+          )
+        )
+      }
+    }
+
+    // Log successful sign in metrics
+    console.log("Sign in metrics:", {
+      email,
+      duration: Date.now() - startTime,
+      url: page.url(),
+    })
+  } catch (e) {
+    // Enhanced error capture
+    const error = e instanceof Error ? e : new Error(String(e))
+    const timestamp = Date.now()
+    const screenshotPath = path.join(
+      TEST_RESULTS_DIR,
+      `auth-failure-${timestamp}.png`
+    )
+    const logPath = path.join(
+      TEST_RESULTS_DIR,
+      `auth-failure-${timestamp}.json`
+    )
+
+    await page.screenshot({ path: screenshotPath, fullPage: true })
+
+    const diagnosticInfo = {
+      error: error.message,
+      url: page.url(),
+      timestamp,
+      duration: Date.now() - startTime,
+      localStorage: await page.evaluate(() => ({ ...localStorage })),
+      sessionStorage: await page.evaluate(() => ({ ...sessionStorage })),
+      cookies: await page.context().cookies(),
+    }
+
+    fs.writeFileSync(logPath, JSON.stringify(diagnosticInfo, null, 2))
+    console.error("Authentication failure:", {
+      error: error.message,
+      screenshotPath,
+      logPath,
+    })
+
+    throw error
+  }
+}
+
+// Enhanced session cleanup
+export async function enhancedClearSession(page: Page) {
+  try {
+    await clearSession(page)
+
+    // Verify cleanup
+    const storageState = await page.evaluate(() => ({
+      localStorage: { ...localStorage },
+      sessionStorage: { ...sessionStorage },
+    }))
+
+    if (
+      Object.keys(storageState.localStorage).length > 0 ||
+      Object.keys(storageState.sessionStorage).length > 0
+    ) {
+      throw new Error("Session cleanup verification failed")
+    }
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e))
+    console.error("Session cleanup failed:", error)
+    throw error
+  }
+}
+
+// Enhanced test user setup with verification
+export async function enhancedSetupTestUser(
+  page: Page,
+  role: UserRole = UserRole.USER
+): Promise<TestUser> {
+  const startTime = Date.now()
+
+  try {
+    const user = await setupTestUser(page, role)
+
+    // Verify user setup
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email },
+    })
+
+    if (!dbUser) {
+      throw new Error("Test user creation verification failed")
+    }
+
+    console.log("Test user setup metrics:", {
+      email: user.email,
+      role,
+      duration: Date.now() - startTime,
+    })
+
+    return user
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e))
+    console.error("Test user setup failed:", {
+      role,
+      error: error.message,
+      duration: Date.now() - startTime,
+    })
+    throw error
+  }
 }

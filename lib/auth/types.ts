@@ -88,3 +88,20 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permissions.READ_ORGANIZATION,
   ],
 }
+
+export interface BaseUserData {
+  id: string
+  email: string // Required field for NextAuth
+  name: string | null
+  role: UserRole
+  organization: string | null
+  department: string | null
+  phone: string | null
+  createdAt: Date | null
+  emailVerified: Date | null
+  image: string | null
+}
+
+export interface AuthUser extends BaseUserData {
+  password?: string | null
+}

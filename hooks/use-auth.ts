@@ -6,7 +6,7 @@ import { type Permission, UserRole } from "@/lib/auth/types"
 import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
 
 export function useAuth() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const isLoading = status === "loading"
 
   const userRole = session?.user?.role as UserRole | undefined
@@ -28,12 +28,17 @@ export function useAuth() {
     userRole &&
     session?.user &&
     Object.values(UserRole).includes(userRole)
-      ? ({
+      ? {
           id: session.user.id,
           email: session.user.email || "",
+          name: session.user.name || "",
           role: userRole,
-          organizationId: session.user.organization || null,
-        } as User)
+          organization: session.user.organization || null,
+          department: session.user.department || null,
+          phone: session.user.phone || null,
+          createdAt: session.user.createdAt || null,
+          image: session.user.image || null,
+        }
       : null
 
   const checkPermission = useCallback(
@@ -48,9 +53,27 @@ export function useAuth() {
         }
         return false
       }
-      const hasPermission = can(user, permission)
+
+      // Create a User object that matches the RBAC User interface for permission checks
+      const rbacUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        organization: user.organization,
+        department: user.department,
+        phone: user.phone,
+        createdAt: user.createdAt?.toISOString() || null,
+        image: user.image,
+      }
+
+      const hasPermission = can(rbacUser, permission)
       if (process.env.NODE_ENV === "development") {
-        console.log("Permission check:", { user, permission, hasPermission })
+        console.log("Permission check:", {
+          user: rbacUser,
+          permission,
+          hasPermission,
+        })
       }
       return hasPermission
     },
@@ -60,7 +83,21 @@ export function useAuth() {
   const checkAllPermissions = useCallback(
     (permissions: Permission[]) => {
       if (isLoading || !user) return false
-      return canAll(user, permissions)
+
+      // Create a User object that matches the RBAC User interface for permission checks
+      const rbacUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        organization: user.organization,
+        department: user.department,
+        phone: user.phone,
+        createdAt: user.createdAt?.toISOString() || null,
+        image: user.image,
+      }
+
+      return canAll(rbacUser, permissions)
     },
     [user, isLoading]
   )
@@ -68,7 +105,21 @@ export function useAuth() {
   const checkAnyPermission = useCallback(
     (permissions: Permission[]) => {
       if (isLoading || !user) return false
-      return canAny(user, permissions)
+
+      // Create a User object that matches the RBAC User interface for permission checks
+      const rbacUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        organization: user.organization,
+        department: user.department,
+        phone: user.phone,
+        createdAt: user.createdAt?.toISOString() || null,
+        image: user.image,
+      }
+
+      return canAny(rbacUser, permissions)
     },
     [user, isLoading]
   )
@@ -80,5 +131,6 @@ export function useAuth() {
     can: checkPermission,
     canAll: checkAllPermissions,
     canAny: checkAnyPermission,
+    update,
   }
 }

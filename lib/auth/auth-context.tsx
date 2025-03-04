@@ -7,105 +7,203 @@ import {
   useState,
   ReactNode,
   useMemo,
+  useCallback,
 } from "react"
 import { Session } from "next-auth"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { UserRole } from "./types"
+import {
+  isSessionExpired,
+  shouldRefreshSession,
+  sanitizeSession,
+} from "./validation"
+import { AUTH_CONFIG } from "./config"
+
+// Define a type for the session with error property
+type ExtendedSession = Omit<Session, "expires"> & {
+  error?: string
+  expires: string | Date
+  user: {
+    id: string
+    name?: string | null
+    email?: string | null
+    image?: string | null
+    role?: UserRole
+    organization?: string | null
+    department?: string | null
+    phone?: string | null
+    emailVerified?: Date | null
+    lastLogin?: Date | null
+  } | null
+}
 
 interface AuthContextType {
-  session: Session | null
+  session: ExtendedSession | null
   status: "loading" | "authenticated" | "unauthenticated"
   userRole: UserRole | null
   isValidRole: boolean
   isLoading: boolean
+  error: string | null
+  refreshSession: () => Promise<void>
+  validateSession: () => Promise<boolean>
+  clearSession: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({
+const defaultContext: AuthContextType = {
   session: null,
   status: "loading",
   userRole: null,
   isValidRole: false,
   isLoading: true,
-})
+  error: null,
+  refreshSession: async () => {},
+  validateSession: async () => false,
+  clearSession: async () => {},
+}
+
+const AuthContext = createContext<AuthContextType>(defaultContext)
+
+// Helper to safely get user role
+function getUserRole(session: ExtendedSession | null): UserRole | null {
+  if (!session?.user?.role) return null
+  const role = session.user.role
+  return Object.values(UserRole).includes(role) ? role : null
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: session, status, update: updateSession } = useSession()
+  const { data: sessionData, status: sessionStatus, update } = useSession()
+  const [session, setSession] = useState<ExtendedSession | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Memoize valid roles to prevent recreation
-  const validRoles = useMemo(
-    () => [UserRole.ADMIN, UserRole.NODE_OFFICER, UserRole.USER],
-    []
-  )
-
-  // Memoize user role with proper type checking
-  const userRole = useMemo(() => {
-    if (!session?.user?.role) return null
-    const role = session.user.role as string
-    return validRoles.includes(role as UserRole) ? (role as UserRole) : null
-  }, [session, validRoles])
-
-  // Memoize role validation
-  const isValidRole = useMemo(
-    () => Boolean(userRole && validRoles.includes(userRole)),
-    [userRole, validRoles]
-  )
-
-  // Handle session initialization and updates
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        if (status === "loading") {
-          setIsLoading(true)
-          return
-        }
-
-        if (status === "authenticated" && session) {
-          // Ensure session is up to date
-          await updateSession()
-          setIsLoading(false)
+  const refreshSession = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const result = await update()
+      if (result) {
+        const sanitizedSession = sanitizeSession(result)
+        if (sanitizedSession) {
+          setSession(sanitizedSession as ExtendedSession)
+          setError(null)
         } else {
-          setIsLoading(false)
+          throw new Error("Invalid session data")
         }
-      } catch (error) {
-        console.error("Error initializing auth:", error)
-        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error("Failed to refresh session:", err)
+      setError("Failed to refresh session")
+      await signOut({ redirect: false })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [update])
+
+  const validateSession = useCallback(async (): Promise<boolean> => {
+    if (!session) return false
+
+    try {
+      // Check session expiry
+      if (isSessionExpired(session.expires)) {
+        await signOut({ redirect: false })
+        return false
+      }
+
+      // Check if session needs refresh
+      if (shouldRefreshSession(session.expires)) {
+        await refreshSession()
+      }
+
+      return true
+    } catch (err) {
+      console.error("Session validation failed:", err)
+      return false
+    }
+  }, [session, refreshSession])
+
+  const clearSession = useCallback(async () => {
+    try {
+      await signOut({ redirect: false })
+      setSession(null)
+      setError(null)
+    } catch (err) {
+      console.error("Failed to clear session:", err)
+      setError("Failed to clear session")
+    }
+  }, [])
+
+  useEffect(() => {
+    if (sessionData) {
+      const sanitizedSession = sanitizeSession(sessionData)
+      if (sanitizedSession) {
+        setSession(sanitizedSession as ExtendedSession)
+        setError(null)
+      } else {
+        setError("Invalid session data")
+        clearSession()
       }
     }
+    setIsLoading(false)
+  }, [sessionData, clearSession])
 
-    initializeAuth()
+  // Set up session refresh interval
+  useEffect(() => {
+    if (!session) return
 
-    // Set up session check interval
-    const interval = setInterval(async () => {
-      if (status === "authenticated") {
-        await updateSession()
+    const checkInterval = setInterval(async () => {
+      const isValid = await validateSession()
+      if (!isValid) {
+        clearSession()
       }
-    }, 5 * 60 * 1000) // Check every 5 minutes
+    }, AUTH_CONFIG.cache.sessionDuration)
 
-    return () => clearInterval(interval)
-  }, [status, session, updateSession])
+    return () => clearInterval(checkInterval)
+  }, [session, validateSession, clearSession])
 
-  // Memoize context value
-  const value = useMemo(
+  const userRole = useMemo(() => getUserRole(session), [session])
+  const isValidRole = useMemo(
+    () => !!userRole && Object.values(UserRole).includes(userRole),
+    [userRole]
+  )
+
+  const contextValue = useMemo(
     () => ({
       session,
-      status,
+      status: sessionStatus,
       userRole,
       isValidRole,
       isLoading,
+      error,
+      refreshSession,
+      validateSession,
+      clearSession,
     }),
-    [session, status, userRole, isValidRole, isLoading]
+    [
+      session,
+      sessionStatus,
+      userRole,
+      isValidRole,
+      isLoading,
+      error,
+      refreshSession,
+      validateSession,
+      clearSession,
+    ]
   )
 
   if (process.env.NODE_ENV === "development") {
-    // Debug logging
-    console.log("Auth Status:", status)
+    console.group("Auth Context Debug")
+    console.log("Status:", sessionStatus)
     console.log("Session:", session)
     console.log("User role:", userRole)
     console.log("Role is valid:", isValidRole)
+    console.log("Loading:", isLoading)
+    console.log("Error:", error)
+    console.groupEnd()
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

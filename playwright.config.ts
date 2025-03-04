@@ -1,79 +1,95 @@
 import { defineConfig, devices } from "@playwright/test"
 import path from "path"
+import { env } from "./env.mjs"
 
-const baseURL = process.env.NEXTAUTH_URL || "http://localhost:3000"
-const authFile = path.join(__dirname, ".playwright/.auth/user.json")
+const PORT = process.env.PORT || 3000
+const baseURL = `http://localhost:${PORT}`
 
 export default defineConfig({
   testDir: "./tests",
-  timeout: 120000,
-  fullyParallel: false,
+  outputDir: "./test-results",
+  timeout: 30000,
+  globalSetup: require.resolve("./tests/global-setup.ts"),
+  expect: {
+    timeout: 5000,
+  },
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: 1,
-  reporter: "list",
-  globalSetup: require.resolve("./tests/setup/global"),
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [
+    ["html"],
+    ["json", { outputFile: "test-results/test-results.json" }],
+    ["list"],
+  ],
   use: {
-    baseURL,
-    trace: "on",
-    screenshot: "on",
-    video: "on",
+    baseURL: process.env.NEXTAUTH_URL || baseURL,
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
     javaScriptEnabled: true,
-    permissions: ["storage-access"],
-    navigationTimeout: 60000,
+    navigationTimeout: 30000,
     actionTimeout: 30000,
+    colorScheme: "no-preference",
   },
   projects: [
     {
-      name: "setup",
-      testMatch: /.*\.setup\.ts/,
-    },
-    {
       name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: authFile,
-      },
-      dependencies: ["setup"],
+      use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "firefox",
-      use: {
-        ...devices["Desktop Firefox"],
-        storageState: authFile,
-      },
-      dependencies: ["setup"],
+      use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "webkit",
-      use: {
-        ...devices["Desktop Safari"],
-        storageState: authFile,
-      },
-      dependencies: ["setup"],
+      use: { ...devices["Desktop Safari"] },
     },
     {
       name: "Mobile Chrome",
-      use: {
-        ...devices["Pixel 5"],
-        storageState: authFile,
-      },
-      dependencies: ["setup"],
+      use: { ...devices["Pixel 5"] },
     },
     {
       name: "Mobile Safari",
-      use: {
-        ...devices["iPhone 12"],
-        storageState: authFile,
-      },
-      dependencies: ["setup"],
+      use: { ...devices["iPhone 12"] },
     },
   ],
   webServer: {
-    command: "npm run dev",
-    url: baseURL,
+    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
+    url: process.env.NEXTAUTH_URL || baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 180000,
     stdout: "pipe",
+    stderr: "pipe",
+    timeout: 30000,
+    env: {
+      NODE_ENV: "test",
+      DATABASE_URL:
+        process.env.DATABASE_URL ||
+        "postgresql://postgres:postgres@localhost:5432/ngdi_test?schema=test",
+      DIRECT_URL:
+        process.env.DIRECT_URL ||
+        "postgresql://postgres:postgres@localhost:5432/ngdi_test?schema=test",
+      DEBUG: "true",
+    },
+  },
+  testMatch: "**/?(*.)@(spec|test).[tj]s?(x)",
+  testIgnore: ["**/node_modules/**", "**/.next/**"],
+  metadata: {
+    "auth/security": {
+      testDir: "tests/auth.security.test.ts",
+      description: "Authentication security tests",
+    },
+    "auth/social": {
+      testDir: "tests/auth.social.test.ts",
+      description: "Social authentication tests",
+    },
+    "auth/performance": {
+      testDir: "tests/auth.performance.test.ts",
+      description: "Authentication performance tests",
+    },
+    "auth/accessibility": {
+      testDir: "tests/auth.accessibility.test.ts",
+      description: "Authentication accessibility tests",
+    },
   },
 })

@@ -38,19 +38,32 @@ export const protectedRoutes: ProtectedRoute[] = [
 
 export const AUTH_CONFIG = {
   session: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
+    maxAge: 24 * 60 * 60, // Reduce to 24 hours for better security
+    updateAge: 4 * 60 * 60, // Refresh every 4 hours
     strategy: "jwt" as const,
+    rememberMeAge: 30 * 24 * 60 * 60, // 30 days for remember me
   },
 
   security: {
-    passwordMinLength: 8,
+    passwordMinLength: 12, // Increased from 8
     passwordMaxLength: 100,
     maxLoginAttempts: 5,
-    lockoutDuration: 15 * 60, // 15 minutes
-    jwtMaxAge: 60 * 60 * 24 * 30, // 30 days
-    refreshTokenMaxAge: 60 * 60 * 24 * 90, // 90 days
-    csrfTokenMaxAge: 60 * 60 * 24, // 24 hours
+    lockoutDuration: 30 * 60, // Increased to 30 minutes
+    jwtMaxAge: 24 * 60 * 60, // Reduced to 24 hours
+    refreshTokenMaxAge: 7 * 24 * 60 * 60, // Reduced to 7 days
+    csrfTokenMaxAge: 1 * 60 * 60, // Reduced to 1 hour
+    passwordRequirements: {
+      minLength: 12,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: true,
+    },
+    rateLimiting: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      maxAttempts: 5,
+      blockDuration: 30 * 60 * 1000, // 30 minutes
+    },
   },
 
   cookies: {
@@ -60,6 +73,7 @@ export const AUTH_CONFIG = {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     httpOnly: true,
+    maxAge: 24 * 60 * 60, // 24 hours
   },
 
   providers: {
@@ -116,7 +130,22 @@ export const AUTH_CONFIG = {
 
   cache: {
     permissionDuration: 5 * 60 * 1000, // 5 minutes
-    sessionDuration: 60 * 1000, // 1 minute
+    sessionDuration: 30 * 1000, // Reduced to 30 seconds for faster updates
+    refreshThreshold: 5 * 60 * 1000, // 5 minutes before expiry
+  },
+
+  logging: {
+    level: process.env.NODE_ENV === "production" ? "error" : "debug",
+    maxRetention: 30 * 24 * 60 * 60, // 30 days
+    sensitiveFields: ["password", "token", "secret"],
+    events: {
+      signIn: true,
+      signOut: true,
+      passwordReset: true,
+      emailVerification: true,
+      profileUpdate: true,
+      error: true,
+    },
   },
 } as const
 
