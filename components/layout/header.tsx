@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { MapIcon, Loader2 } from "lucide-react"
+import { MapIcon, Loader2, LogOut } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useSession, signOut } from "next-auth/react"
+import { useAuth } from "@/lib/auth/auth-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +19,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/auth/types"
+import { toast } from "sonner"
 
 // Public navigation items
 const publicNavItems = [
@@ -82,19 +83,25 @@ const supportMenuItems = [
   { name: "Feedback", href: "/feedback" },
 ]
 
-interface User {
-  name?: string | null
-  email?: string | null
-  image?: string | null
-  role?: UserRole
+interface UserWithMetadata {
+  id: string
+  email?: string
+  user_metadata: {
+    name?: string
+    role?: UserRole
+    avatar_url?: string
+  }
 }
 
-function UserAvatar({ user }: { user: User }) {
+function UserAvatar({ user }: { user: UserWithMetadata }) {
   return (
     <Avatar className="h-8 w-8 border border-border">
-      <AvatarImage src={user.image || ""} alt={user.name || ""} />
+      <AvatarImage
+        src={user.user_metadata.avatar_url || ""}
+        alt={user.user_metadata.name || ""}
+      />
       <AvatarFallback className="bg-primary/10">
-        {user.name
+        {user.user_metadata.name
           ?.split(" ")
           .map((n: string) => n[0])
           .join("")
@@ -116,39 +123,39 @@ function LoadingHeader() {
   )
 }
 
-export default function Header() {
+export function Header() {
+  const { user, signOut } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-  const { data: session, status } = useSession()
   const [isSigningOut, setIsSigningOut] = useState(false)
+
+  const userWithMetadata = user as UserWithMetadata | null
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut({
-        redirect: false,
-        callbackUrl: "/",
-      })
+      await signOut()
       router.push("/")
       router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+      toast.error("Failed to sign out")
     } finally {
       setIsSigningOut(false)
     }
   }
 
-  // Get navigation items based on user role
   const getNavItems = () => {
     const items = [...publicNavItems]
-    if (session?.user?.role) {
-      items.push(...(roleBasedNavItems[session.user.role] || []))
+    const userRole = userWithMetadata?.user_metadata?.role
+    if (userRole && Object.values(UserRole).includes(userRole)) {
+      items.push(...(roleBasedNavItems[userRole] || []))
     }
     return items
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" aria-label="Top">
         <div className="flex w-full items-center justify-between py-4">
           <div className="flex items-center">
@@ -174,9 +181,7 @@ export default function Header() {
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {status === "loading" ? (
-              <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-            ) : session?.user ? (
+            {userWithMetadata ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -184,75 +189,58 @@ export default function Header() {
                     className="relative h-8 w-8 rounded-full"
                     data-testid="user-menu"
                   >
-                    <UserAvatar user={session.user} />
+                    <UserAvatar user={userWithMetadata} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {session.user.name}
+                        {userWithMetadata.user_metadata.name ||
+                          userWithMetadata.email?.split("@")[0]}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {session.user.email}
+                        {userWithMetadata.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    {getUserMenuItems(session.user.role).map((item) => (
-                      <DropdownMenuItem key={item.href} asChild>
-                        <Link href={item.href}>
-                          {item.name}
-                          {item.shortcut && (
-                            <DropdownMenuShortcut>
-                              {item.shortcut}
-                            </DropdownMenuShortcut>
-                          )}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    {supportMenuItems.map((item) => (
-                      <DropdownMenuItem key={item.href} asChild>
-                        <Link href={item.href}>{item.name}</Link>
-                      </DropdownMenuItem>
-                    ))}
+                    {getUserMenuItems(userWithMetadata.user_metadata.role).map(
+                      (item) => (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link href={item.href}>{item.name}</Link>
+                        </DropdownMenuItem>
+                      )
+                    )}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
-                    disabled={isSigningOut}
-                    onSelect={(event) => {
-                      event.preventDefault()
+                    className="cursor-pointer"
+                    onSelect={(e) => {
+                      e.preventDefault()
                       handleSignOut()
                     }}
+                    disabled={isSigningOut}
                   >
                     {isSigningOut ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing out...
+                        <span>Signing out...</span>
                       </>
                     ) : (
                       <>
-                        Sign out
-                        <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Sign out</span>
                       </>
                     )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <Button asChild variant="outline">
-                  <Link href="/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/register">Register</Link>
-                </Button>
-              </>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/auth/signin">Sign in</Link>
+              </Button>
             )}
           </div>
         </div>

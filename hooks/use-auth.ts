@@ -4,18 +4,22 @@ import { useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { type Permission, UserRole } from "@/lib/auth/types"
 import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
+import { useAuth as useSupabaseAuth } from "@/lib/auth/auth-context"
 
 export function useAuth() {
   const { data: session, status, update } = useSession()
-  const isLoading = status === "loading"
+  const auth = useSupabaseAuth()
+  const isLoading = status === "loading" || auth.isLoading
 
-  const userRole = session?.user?.role as UserRole | undefined
+  // Use the userRole directly from the auth context
+  const userRole = auth.userRole
 
   // Debug logging
   if (process.env.NODE_ENV === "development") {
     console.log("Auth Status:", status)
     console.log("Session:", session)
-    console.log("User role:", userRole)
+    console.log("Supabase user:", auth.user)
+    console.log("User role from context:", userRole)
     console.log("Valid roles:", Object.values(UserRole))
     console.log(
       "Role is valid:",
@@ -26,18 +30,18 @@ export function useAuth() {
   const user =
     !isLoading &&
     userRole &&
-    session?.user &&
+    auth.user &&
     Object.values(UserRole).includes(userRole)
       ? {
-          id: session.user.id,
-          email: session.user.email || "",
-          name: session.user.name || "",
+          id: auth.user.id,
+          email: auth.user.email || "",
+          name: auth.user.user_metadata?.name || "",
           role: userRole,
-          organization: session.user.organization || null,
-          department: session.user.department || null,
-          phone: session.user.phone || null,
-          createdAt: session.user.createdAt || null,
-          image: session.user.image || null,
+          organization: auth.user.user_metadata?.organization || null,
+          department: auth.user.user_metadata?.department || null,
+          phone: auth.user.user_metadata?.phone || null,
+          createdAt: auth.user.user_metadata?.createdAt || null,
+          image: auth.user.user_metadata?.avatar_url || null,
         }
       : null
 
@@ -63,7 +67,7 @@ export function useAuth() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: user.createdAt?.toString() || null,
         image: user.image,
       }
 
@@ -93,7 +97,7 @@ export function useAuth() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: user.createdAt?.toString() || null,
         image: user.image,
       }
 
@@ -115,7 +119,7 @@ export function useAuth() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: user.createdAt?.toString() || null,
         image: user.image,
       }
 
@@ -125,9 +129,12 @@ export function useAuth() {
   )
 
   return {
+    ...auth,
     user,
-    isLoading,
-    isAuthenticated: !!user,
+    userRole,
+    isAdmin: userRole === UserRole.ADMIN,
+    isNodeOfficer: userRole === UserRole.NODE_OFFICER,
+    isUser: userRole === UserRole.USER,
     can: checkPermission,
     canAll: checkAllPermissions,
     canAny: checkAnyPermission,

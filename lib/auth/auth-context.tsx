@@ -10,7 +10,7 @@ import {
   useCallback,
 } from "react"
 import { Session } from "next-auth"
-import { useSession, signOut } from "next-auth/react"
+import { useSession, signOut as nextAuthSignOut, signIn } from "next-auth/react"
 import { UserRole } from "./types"
 import {
   isSessionExpired,
@@ -18,6 +18,15 @@ import {
   sanitizeSession,
 } from "./validation"
 import { AUTH_CONFIG } from "./config"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createClient } from "@/lib/supabase-client"
+import {
+  type User,
+  AuthChangeEvent,
+  Session as SupabaseSession,
+} from "@supabase/supabase-js"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 
 // Define a type for the session with error property
 type ExtendedSession = Omit<Session, "expires"> & {
@@ -38,128 +47,319 @@ type ExtendedSession = Omit<Session, "expires"> & {
 }
 
 interface AuthContextType {
-  session: ExtendedSession | null
-  status: "loading" | "authenticated" | "unauthenticated"
+  session: SupabaseSession | null
+  user: User | null
   userRole: UserRole | null
-  isValidRole: boolean
   isLoading: boolean
-  error: string | null
+  signOut: () => Promise<void>
   refreshSession: () => Promise<void>
-  validateSession: () => Promise<boolean>
-  clearSession: () => Promise<void>
 }
 
-const defaultContext: AuthContextType = {
+const AuthContext = createContext<AuthContextType>({
   session: null,
-  status: "loading",
+  user: null,
   userRole: null,
-  isValidRole: false,
   isLoading: true,
-  error: null,
+  signOut: async () => {},
   refreshSession: async () => {},
-  validateSession: async () => false,
-  clearSession: async () => {},
-}
-
-const AuthContext = createContext<AuthContextType>(defaultContext)
+})
 
 // Helper to safely get user role
 function getUserRole(session: ExtendedSession | null): UserRole | null {
   if (!session?.user?.role) return null
   const role = session.user.role
-  return Object.values(UserRole).includes(role) ? role : null
+  return Object.values(UserRole).includes(role as UserRole)
+    ? (role as UserRole)
+    : null
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: sessionData, status: sessionStatus, update } = useSession()
-  const [session, setSession] = useState<ExtendedSession | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+// Check if we're in a browser environment
+const isBrowser =
+  typeof window !== "undefined" && typeof document !== "undefined"
 
-  const refreshSession = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const result = await update()
-      if (result) {
-        const sanitizedSession = sanitizeSession(result)
-        if (sanitizedSession) {
-          setSession(sanitizedSession as ExtendedSession)
-          setError(null)
-        } else {
-          throw new Error("Invalid session data")
-        }
+interface AuthProviderProps {
+  children: ReactNode
+  initialUser?: User | null
+}
+
+export function AuthProvider({ children, initialUser }: AuthProviderProps) {
+  const [session, setSession] = useState<SupabaseSession | null>(null)
+  const [user, setUser] = useState<User | null>(initialUser || null)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [isLoading, setIsLoading] = useState(!initialUser)
+  const [authError, setAuthError] = useState<Error | null>(null)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [supabase, setSupabase] = useState<ReturnType<
+    typeof createClient
+  > | null>(null)
+
+  // Initialize Supabase client only on the client side
+  useEffect(() => {
+    // Only initialize the client in the browser
+    if (isBrowser) {
+      try {
+        const client = createClient()
+        setSupabase(client)
+      } catch (error) {
+        console.error("Error initializing Supabase client:", error)
+        setAuthError(error instanceof Error ? error : new Error(String(error)))
       }
-    } catch (err) {
-      console.error("Failed to refresh session:", err)
-      setError("Failed to refresh session")
-      await signOut({ redirect: false })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [update])
-
-  const validateSession = useCallback(async (): Promise<boolean> => {
-    if (!session) return false
-
-    try {
-      // Check session expiry
-      if (isSessionExpired(session.expires)) {
-        await signOut({ redirect: false })
-        return false
-      }
-
-      // Check if session needs refresh
-      if (shouldRefreshSession(session.expires)) {
-        await refreshSession()
-      }
-
-      return true
-    } catch (err) {
-      console.error("Session validation failed:", err)
-      return false
-    }
-  }, [session, refreshSession])
-
-  const clearSession = useCallback(async () => {
-    try {
-      await signOut({ redirect: false })
-      setSession(null)
-      setError(null)
-    } catch (err) {
-      console.error("Failed to clear session:", err)
-      setError("Failed to clear session")
     }
   }, [])
 
+  // Fetch user role from the database
+  const fetchUserRole = useCallback(
+    async (userId: string) => {
+      if (!supabase || !userId) return null
+
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", userId)
+          .single()
+
+        if (error) {
+          console.error("Error fetching user role:", error)
+          return null
+        }
+
+        if (
+          data?.role &&
+          Object.values(UserRole).includes(data.role as UserRole)
+        ) {
+          return data.role as UserRole
+        }
+
+        return null
+      } catch (error) {
+        console.error("Error fetching user role:", error)
+        return null
+      }
+    },
+    [supabase]
+  )
+
+  // Handle redirection based on authentication state
+  const handleRedirection = useCallback(
+    (role: UserRole | null) => {
+      if (!isBrowser) return
+
+      const isAuthPath = pathname?.includes("/auth/signin")
+
+      // If we're on the sign-in page and have a valid role, redirect to home or the requested page
+      if (role && isAuthPath) {
+        const from = searchParams?.get("from") || "/"
+        const redirectPath = from === "/auth/signin" ? "/" : from
+
+        console.log(
+          "Auth context: Redirecting authenticated user from signin to:",
+          redirectPath
+        )
+
+        // Use window.location for a full page reload to clear any stale state
+        window.location.href = redirectPath
+      }
+    },
+    [pathname, searchParams]
+  )
+
+  // Fetch initial user role if we have an initialUser
   useEffect(() => {
-    if (sessionData) {
-      const sanitizedSession = sanitizeSession(sessionData)
-      if (sanitizedSession) {
-        setSession(sanitizedSession as ExtendedSession)
-        setError(null)
-      } else {
-        setError("Invalid session data")
-        clearSession()
+    if (initialUser?.id && supabase) {
+      console.log(
+        "Auth context: Fetching role for initial user:",
+        initialUser.email
+      )
+      fetchUserRole(initialUser.id)
+        .then((role) => {
+          if (role) {
+            console.log("Auth context: Initial user role:", role)
+            setUserRole(role)
+            handleRedirection(role)
+          } else {
+            console.log("Auth context: No role found for initial user")
+          }
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          console.error("Error fetching initial user role:", error)
+          setIsLoading(false)
+        })
+    }
+  }, [initialUser, supabase, fetchUserRole, handleRedirection])
+
+  useEffect(() => {
+    // Only set up auth state change listener if supabase client is available
+    if (!supabase || !isBrowser) return
+
+    console.log("Auth context: Setting up auth state change listener")
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      async (
+        event: AuthChangeEvent,
+        currentSession: SupabaseSession | null
+      ) => {
+        console.log("Auth context: Auth state change:", event, !!currentSession)
+
+        setSession(currentSession)
+
+        // Use getUser() for better security
+        if (currentSession) {
+          try {
+            const { data, error } = await supabase.auth.getUser()
+            if (error) {
+              console.error("Error getting authenticated user:", error)
+              setUser(null)
+              setUserRole(null)
+              setIsLoading(false)
+              return
+            }
+
+            console.log("Auth context: User authenticated:", data.user.email)
+            setUser(data.user)
+
+            // Fetch user role if user is authenticated
+            if (data.user?.id) {
+              const role = await fetchUserRole(data.user.id)
+              console.log("Auth context: User role:", role)
+              setUserRole(role)
+              handleRedirection(role)
+            }
+          } catch (error) {
+            console.error("Error in auth state change:", error)
+            setUser(null)
+            setUserRole(null)
+          }
+        } else {
+          console.log("Auth context: No session in auth state change")
+          setUser(null)
+          setUserRole(null)
+        }
+
+        setIsLoading(false)
+      }
+    )
+
+    // Initial session check (only if we don't have initialUser)
+    const checkSession = async () => {
+      if (initialUser) {
+        console.log(
+          "Auth context: Skipping session check, using initial user:",
+          initialUser.email
+        )
+        return
+      }
+
+      console.log("Auth context: Checking session")
+
+      try {
+        // Use getUser() for better security
+        const { data, error } = await supabase.auth.getUser()
+
+        if (error) {
+          if (error.name !== "AuthSessionMissingError") {
+            console.error("Error getting authenticated user:", error)
+          } else {
+            console.log("Auth context: No session found")
+          }
+          setUser(null)
+          setUserRole(null)
+          setIsLoading(false)
+          return
+        }
+
+        // Get the session for compatibility
+        const { data: sessionData } = await supabase.auth.getSession()
+        setSession(sessionData.session)
+
+        if (data.user) {
+          console.log(
+            "Auth context: User found in session check:",
+            data.user.email
+          )
+          setUser(data.user)
+
+          if (data.user.id) {
+            const role = await fetchUserRole(data.user.id)
+            console.log("Auth context: User role from session check:", role)
+            setUserRole(role)
+            handleRedirection(role)
+          } else {
+            setUserRole(null)
+          }
+        } else {
+          console.log("Auth context: No user found in session check")
+          setUserRole(null)
+        }
+
+        setIsLoading(false)
+      } catch (error) {
+        console.error("Error checking session:", error)
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
-  }, [sessionData, clearSession])
 
-  // Set up session refresh interval
-  useEffect(() => {
-    if (!session) return
+    checkSession()
 
-    const checkInterval = setInterval(async () => {
-      const isValid = await validateSession()
-      if (!isValid) {
-        clearSession()
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase, fetchUserRole, handleRedirection, initialUser])
+
+  const signOut = async () => {
+    try {
+      if (supabase) {
+        console.log("Auth context: Signing out")
+        await supabase.auth.signOut()
       }
-    }, AUTH_CONFIG.cache.sessionDuration)
+      setUserRole(null)
+      setUser(null)
+      setSession(null)
 
-    return () => clearInterval(checkInterval)
-  }, [session, validateSession, clearSession])
+      // Use window.location for a full page reload
+      window.location.href = "/auth/signin"
+    } catch (error) {
+      console.error("Error signing out:", error)
+      toast.error("Failed to sign out")
+    }
+  }
 
-  const userRole = useMemo(() => getUserRole(session), [session])
+  const refreshSession = async () => {
+    try {
+      if (supabase) {
+        console.log("Auth context: Refreshing session")
+        // Refresh the session
+        const { data: sessionData } = await supabase.auth.refreshSession()
+        setSession(sessionData.session)
+
+        // Get the user with getUser() for better security
+        const { data, error } = await supabase.auth.getUser()
+
+        if (error) {
+          console.error("Error getting authenticated user:", error)
+          return
+        }
+
+        console.log("Auth context: Session refreshed, user:", data.user.email)
+        setUser(data.user)
+
+        if (data.user?.id) {
+          const role = await fetchUserRole(data.user.id)
+          console.log("Auth context: User role after refresh:", role)
+          setUserRole(role)
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing session:", error)
+      toast.error("Failed to refresh session")
+    }
+  }
+
   const isValidRole = useMemo(
     () => !!userRole && Object.values(UserRole).includes(userRole),
     [userRole]
@@ -168,36 +368,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(
     () => ({
       session,
-      status: sessionStatus,
+      user,
       userRole,
-      isValidRole,
       isLoading,
-      error,
+      signOut,
       refreshSession,
-      validateSession,
-      clearSession,
     }),
-    [
-      session,
-      sessionStatus,
-      userRole,
-      isValidRole,
-      isLoading,
-      error,
-      refreshSession,
-      validateSession,
-      clearSession,
-    ]
+    [session, user, userRole, isLoading, signOut, refreshSession]
   )
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "development" && isBrowser) {
     console.group("Auth Context Debug")
-    console.log("Status:", sessionStatus)
+    console.log("Status:", isLoading ? "loading" : "authenticated")
     console.log("Session:", session)
+    console.log("User:", user?.email)
     console.log("User role:", userRole)
     console.log("Role is valid:", isValidRole)
     console.log("Loading:", isLoading)
-    console.log("Error:", error)
+    console.log("Auth error:", authError)
     console.groupEnd()
   }
 
@@ -206,7 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider")

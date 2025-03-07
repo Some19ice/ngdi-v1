@@ -1,23 +1,15 @@
-import "./globals.css"
-import type { Metadata } from "next"
+import "@/styles/globals.css"
 import { Inter } from "next/font/google"
-import { getServerSession } from "next-auth"
-import { authOptions } from "./api/auth/auth-options"
-import { Providers } from "@/components/providers"
+import { RootProvider } from "@/components/providers/root-provider"
 import RootLayoutClient from "@/components/layout/root-layout-client"
+import { getServerUser } from "@/lib/supabase-server"
+import { getServerSession } from "next-auth"
 
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "arial", "sans-serif"],
-  adjustFontFallback: true,
-})
+const inter = Inter({ subsets: ["latin"] })
 
-export const metadata: Metadata = {
-  title: "NGDI Portal - Nigeria Geospatial Data Infrastructure",
-  description:
-    "The central platform for Nigeria's geospatial data management, discovery, and sharing.",
+export const metadata = {
+  title: "NGDI Portal",
+  description: "National Geospatial Data Infrastructure Portal",
 }
 
 export default async function RootLayout({
@@ -25,14 +17,18 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  // Get the user and session from the server
+  const [user, session] = await Promise.all([
+    getServerUser(),
+    getServerSession(),
+  ])
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers session={session}>
+        <RootProvider initialUser={user} session={session}>
           <RootLayoutClient>{children}</RootLayoutClient>
-        </Providers>
+        </RootProvider>
       </body>
     </html>
   )

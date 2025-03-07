@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client"
+import { UserRole } from "./types"
 
 export interface ProtectedRoute {
   path: string
@@ -38,7 +38,7 @@ export const protectedRoutes: ProtectedRoute[] = [
 
 export const AUTH_CONFIG = {
   session: {
-    maxAge: 24 * 60 * 60, // Reduce to 24 hours for better security
+    maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
     updateAge: 4 * 60 * 60, // Refresh every 4 hours
     strategy: "jwt" as const,
     rememberMeAge: 30 * 24 * 60 * 60, // 30 days for remember me
@@ -48,7 +48,7 @@ export const AUTH_CONFIG = {
     passwordMinLength: 12, // Increased from 8
     passwordMaxLength: 100,
     maxLoginAttempts: 5,
-    lockoutDuration: 30 * 60, // Increased to 30 minutes
+    lockoutDuration: 15 * 60, // 15 minutes in seconds
     jwtMaxAge: 24 * 60 * 60, // Reduced to 24 hours
     refreshTokenMaxAge: 7 * 24 * 60 * 60, // Reduced to 7 days
     csrfTokenMaxAge: 1 * 60 * 60, // Reduced to 1 hour
@@ -60,9 +60,8 @@ export const AUTH_CONFIG = {
       requireSpecialChars: true,
     },
     rateLimiting: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
       maxAttempts: 5,
-      blockDuration: 30 * 60 * 1000, // 30 minutes
+      windowMs: 15 * 60 * 1000, // 15 minutes
     },
   },
 
@@ -78,11 +77,9 @@ export const AUTH_CONFIG = {
 
   providers: {
     google: {
-      authorizationParams: {
-        prompt: "consent",
-        access_type: "offline",
-        response_type: "code",
-      },
+      enabled: true,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
     email: {
       from: process.env.SMTP_FROM || "noreply@ngdi.gov.ng",
@@ -92,7 +89,7 @@ export const AUTH_CONFIG = {
 
   roles: {
     default: UserRole.USER,
-    elevated: [UserRole.ADMIN, UserRole.NODE_OFFICER],
+    available: Object.values(UserRole),
   },
 
   pages: {
@@ -126,6 +123,14 @@ export const AUTH_CONFIG = {
       "/news",
       "/gallery",
     ],
+    signIn: "/auth/signin",
+    signUp: "/auth/signup",
+    signOut: "/auth/signout",
+    verifyEmail: "/auth/verify",
+    resetPassword: "/auth/reset-password",
+    callback: "/auth/callback",
+    error: "/auth/error",
+    default: "/",
   },
 
   cache: {
@@ -146,6 +151,12 @@ export const AUTH_CONFIG = {
       profileUpdate: true,
       error: true,
     },
+  },
+
+  supabase: {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
 } as const
 

@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+        
+
+/// Authentication account information for OAuth providers
+model Account {
+  /// Unique identifier for the account
+  id                String  @id @default(cuid())
+  /// Reference to the user who owns this account
+  userId            String
+  /// Type of the account (oauth, email, etc.)
+  type              String
+  /// OAuth provider name
+  provider          String
+  /// Account ID from the provider
+  providerAccountId String
+  /// OAuth refresh token
+  refresh_token     String?
+  /// OAuth access token
+  access_token      String?
+  /// Token expiration timestamp
+  expires_at        Int?
+  /// OAuth token type
+  token_type        String?
+  /// OAuth scope
+  scope             String?
+  /// OAuth ID token
+  id_token          String?
+  /// OAuth session state
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+/// User session information
+model Session {
+  /// Unique identifier for the session
+  id           String   @id @default(cuid())
+  /// Session token used for authentication
+  sessionToken String   @unique
+  /// Reference to the user who owns this session
+  userId       String
+  /// Session expiration timestamp
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// User account information
+model User {
+  /// Unique identifier for the user
+  id            String     @id @default(uuid())
+  /// User's full name
+  name          String?
+  /// User's email address
+  email         String     @unique
+  /// Timestamp of email verification
+  emailVerified DateTime?
+  /// User's profile image URL
+  image         String?
+  /// Hashed password for local authentication
+  password      String
+  /// User's role in the system
+  role          UserRole   @default(USER)
+  /// User's organization name
+  organization  String?
+  /// User's department within the organization
+  department    String?
+  /// User's contact phone number
+  phone         String?
+
+  accounts      Account[]
+  sessions      Session[]
+  metadata      Metadata[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+/// User roles for access control
+enum UserRole {
+  /// Regular user with basic access
+  USER
+  /// System administrator with full access
+  ADMIN
+  /// Node officer with specific privileges
+  NODE_OFFICER
+}
+
+/// Geospatial metadata information
+model Metadata {
+  /// Unique identifier for the metadata entry
+  id                      String   @id @default(uuid())
+  /// Title of the dataset
+  title                   String
+  /// Author of the dataset
+  author                  String
+  /// Organization name
+  organization            String
+  /// Start date of the dataset
+  dateFrom               String
+  /// End date of the dataset
+  dateTo                 String
+  /// Abstract/description of the dataset
+  abstract               String
+  /// Purpose of the dataset
+  purpose                String
+  /// URL to the thumbnail image
+  thumbnailUrl           String
+  /// Name of the image file
+  imageName              String
+  /// Type of framework used
+  frameworkType          String
+  /// Categories of the dataset
+  categories             String[] @default([])
+  /// Coordinate system used
+  coordinateSystem       String
+  /// Projection used
+  projection             String
+  /// Scale of the dataset
+  scale                  Int
+  /// Resolution of the dataset
+  resolution             String?
+  /// Accuracy level
+  accuracyLevel          String
+  /// Completeness percentage
+  completeness           Int?
+  /// Consistency check status
+  consistencyCheck       Boolean?
+  /// Validation status
+  validationStatus       String?
+  /// File format
+  fileFormat             String
+  /// File size in bytes
+  fileSize              Int?
+  /// Number of features
+  numFeatures           Int?
+  /// Software requirements
+  softwareReqs          String?
+  /// Update cycle
+  updateCycle           String?
+  /// Last update date
+  lastUpdate            DateTime?
+  /// Next update date
+  nextUpdate            DateTime?
+  /// Distribution format
+  distributionFormat     String
+  /// Access method
+  accessMethod           String
+  /// Download URL
+  downloadUrl           String?
+  /// API endpoint
+  apiEndpoint           String?
+  /// License type
+  licenseType           String
+  /// Usage terms
+  usageTerms             String
+  /// Attribution requirements
+  attributionRequirements String
+  /// Access restrictions
+  accessRestrictions     String[] @default([])
+  /// Contact person
+  contactPerson          String
+  /// Contact email
+  email                  String
+  /// Department
+  department            String?
+
+  /// Reference to the user who created this entry
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id])
+
+  /// Creation timestamp
+  createdAt              DateTime @default(now())
+  /// Last update timestamp
+  updatedAt              DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// Token for email verification and password reset
+model VerificationToken {
+  /// Email or identifier to verify
+  identifier String
+  /// Verification token
+  token      String   @unique
+  /// Token expiration timestamp
+  expires    DateTime
+
+  @@unique([identifier, token])
+} 

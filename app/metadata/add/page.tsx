@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { requireRole } from "@/lib/auth"
 import { MetadataForm } from "./components/metadata-form"
-import LoadingSpinner from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
 import { UserRole } from "@prisma/client"
 
 export const metadata = {

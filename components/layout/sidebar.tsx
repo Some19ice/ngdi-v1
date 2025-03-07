@@ -23,11 +23,11 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/lib/auth/auth-context"
 import { Permission, Permissions, UserRole } from "@/lib/auth/types"
 import { LucideIcon } from "lucide-react"
-import { useSession, signOut } from "next-auth/react"
 import { useState } from "react"
+import { toast } from "sonner"
 
 interface NavItem {
   title: string
@@ -41,7 +41,7 @@ interface SidebarProps {
   onCollapsedChange: (collapsed: boolean) => void
 }
 
-const getMainNavItems = (role: UserRole): NavItem[] => {
+const getMainNavItems = (role?: UserRole): NavItem[] => {
   const items: NavItem[] = [
     {
       title: "Home",
@@ -121,7 +121,7 @@ const getMainNavItems = (role: UserRole): NavItem[] => {
   return items
 }
 
-const getUserNavItems = (role: UserRole): NavItem[] => {
+const getUserNavItems = (role?: UserRole): NavItem[] => {
   const items: NavItem[] = [
     {
       title: "My Profile",
@@ -153,21 +153,20 @@ const getUserNavItems = (role: UserRole): NavItem[] => {
 export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { data: session } = useSession()
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const { user, can } = useAuth()
+  const { user, signOut } = useAuth()
+
+  const userRole = user?.user_metadata?.role as UserRole | undefined
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut({
-        redirect: false,
-        callbackUrl: "/",
-      })
+      await signOut()
       router.push("/")
       router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+      toast.error("Failed to sign out")
     } finally {
       setIsSigningOut(false)
     }
@@ -175,8 +174,8 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
 
   if (!user) return null
 
-  const mainNavItems = getMainNavItems(user.role)
-  const userNavItems = getUserNavItems(user.role)
+  const mainNavItems = getMainNavItems(userRole)
+  const userNavItems = getUserNavItems(userRole)
 
   return (
     <div
@@ -203,8 +202,6 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
           {mainNavItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
-
-            if (!item.permission || !can(item.permission)) return null
 
             return (
               <Link key={item.href} href={item.href}>
@@ -234,8 +231,6 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
           {userNavItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
-
-            if (!can(item.permission)) return null
 
             return (
               <Link key={item.href} href={item.href}>

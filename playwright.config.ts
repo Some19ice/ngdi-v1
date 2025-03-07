@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test"
 import path from "path"
 import { env } from "./env.mjs"
+import dotenv from "dotenv"
+
+dotenv.config()
 
 const PORT = process.env.PORT || 3000
 const baseURL = `http://localhost:${PORT}`
@@ -15,7 +18,7 @@ export default defineConfig({
   },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ["html"],
@@ -23,7 +26,7 @@ export default defineConfig({
     ["list"],
   ],
   use: {
-    baseURL: process.env.NEXTAUTH_URL || baseURL,
+    baseURL: process.env.APP_URL || baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -56,7 +59,7 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
-    url: process.env.NEXTAUTH_URL || baseURL,
+    url: process.env.APP_URL || baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
     stderr: "pipe",

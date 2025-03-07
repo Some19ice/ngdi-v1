@@ -26,8 +26,7 @@
       "auth/accessibility": {
         "testDir": "tests/auth.accessibility.test.ts",
         "description": "Authentication accessibility tests"
-      },
-      "actualWorkers": 1
+      }
     },
     "preserveOutput": "always",
     "reporter": [
@@ -72,8 +71,7 @@
           "auth/accessibility": {
             "testDir": "tests/auth.accessibility.test.ts",
             "description": "Authentication accessibility tests"
-          },
-          "actualWorkers": 1
+          }
         },
         "id": "chromium",
         "name": "chromium",
@@ -107,8 +105,7 @@
           "auth/accessibility": {
             "testDir": "tests/auth.accessibility.test.ts",
             "description": "Authentication accessibility tests"
-          },
-          "actualWorkers": 1
+          }
         },
         "id": "firefox",
         "name": "firefox",
@@ -142,8 +139,7 @@
           "auth/accessibility": {
             "testDir": "tests/auth.accessibility.test.ts",
             "description": "Authentication accessibility tests"
-          },
-          "actualWorkers": 1
+          }
         },
         "id": "webkit",
         "name": "webkit",
@@ -177,8 +173,7 @@
           "auth/accessibility": {
             "testDir": "tests/auth.accessibility.test.ts",
             "description": "Authentication accessibility tests"
-          },
-          "actualWorkers": 1
+          }
         },
         "id": "Mobile Chrome",
         "name": "Mobile Chrome",
@@ -212,8 +207,7 @@
           "auth/accessibility": {
             "testDir": "tests/auth.accessibility.test.ts",
             "description": "Authentication accessibility tests"
-          },
-          "actualWorkers": 1
+          }
         },
         "id": "Mobile Safari",
         "name": "Mobile Safari",
@@ -232,7 +226,7 @@
     "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
     "version": "1.50.1",
-    "workers": 1,
+    "workers": 6,
     "webServer": {
       "command": "npm run dev",
       "url": "http://localhost:3000",
@@ -248,496 +242,25 @@
       }
     }
   },
-  "suites": [
+  "suites": [],
+  "errors": [
     {
-      "title": "api/auth.api.test.ts",
-      "file": "api/auth.api.test.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [],
-      "suites": [
-        {
-          "title": "Authentication API",
-          "file": "api/auth.api.test.ts",
-          "line": 7,
-          "column": 6,
-          "specs": [
-            {
-              "title": "should handle JWT authentication",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "status": "failed",
-                      "duration": 6399,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:37:32",
-                        "matcherResult": {
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 32,
-                          "line": 37
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 35 |\u001b[39m     )\n \u001b[90m 36 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m    |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m\n \u001b[90m 39 |\u001b[39m     \u001b[90m// Get session\u001b[39m\n \u001b[90m 40 |\u001b[39m     \u001b[36mconst\u001b[39m sessionResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/auth/session`\u001b[39m)\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 32,
-                            "line": 37
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n\u001b[0m \u001b[90m 35 |\u001b[39m     )\n \u001b[90m 36 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m    |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m\n \u001b[90m 39 |\u001b[39m     \u001b[90m// Get session\u001b[39m\n \u001b[90m 40 |\u001b[39m     \u001b[36mconst\u001b[39m sessionResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/auth/session`\u001b[39m)\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:37:32\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-02-28T12:26:39.625Z",
-                      "attachments": [],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 32,
-                        "line": 37
-                      }
-                    },
-                    {
-                      "workerIndex": 1,
-                      "status": "failed",
-                      "duration": 4768,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:37:32",
-                        "matcherResult": {
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 32,
-                          "line": 37
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 35 |\u001b[39m     )\n \u001b[90m 36 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m    |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m\n \u001b[90m 39 |\u001b[39m     \u001b[90m// Get session\u001b[39m\n \u001b[90m 40 |\u001b[39m     \u001b[36mconst\u001b[39m sessionResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/auth/session`\u001b[39m)\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 32,
-                            "line": 37
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n\u001b[0m \u001b[90m 35 |\u001b[39m     )\n \u001b[90m 36 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m    |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m\n \u001b[90m 39 |\u001b[39m     \u001b[90m// Get session\u001b[39m\n \u001b[90m 40 |\u001b[39m     \u001b[36mconst\u001b[39m sessionResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/auth/session`\u001b[39m)\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:37:32\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 1,
-                      "startTime": "2025-02-28T12:26:47.183Z",
-                      "attachments": [
-                        {
-                          "name": "trace",
-                          "contentType": "application/zip",
-                          "path": "/Users/yakky/Downloads/project/test-results/api-auth.api-Authenticatio-b5919-d-handle-JWT-authentication-chromium-retry1/trace.zip"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 32,
-                        "line": 37
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9a2df24fcb121adc7367-b83bf7cf29029da84198",
-              "file": "api/auth.api.test.ts",
-              "line": 17,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 2,
-                      "status": "failed",
-                      "duration": 4410,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:63:36",
-                        "matcherResult": {
-                          "actual": 500,
-                          "expected": 401,
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                          "name": "toBe",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 36,
-                          "line": 63
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 61 |\u001b[39m     )\n \u001b[90m 62 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 63 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m401\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 64 |\u001b[39m   })\n \u001b[90m 65 |\u001b[39m\n \u001b[90m 66 |\u001b[39m   test(\u001b[32m\"should enforce rate limiting\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 36,
-                            "line": 63
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n\n\u001b[0m \u001b[90m 61 |\u001b[39m     )\n \u001b[90m 62 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 63 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m401\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 64 |\u001b[39m   })\n \u001b[90m 65 |\u001b[39m\n \u001b[90m 66 |\u001b[39m   test(\u001b[32m\"should enforce rate limiting\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:63:36\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-02-28T12:26:52.959Z",
-                      "attachments": [],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 36,
-                        "line": 63
-                      }
-                    },
-                    {
-                      "workerIndex": 3,
-                      "status": "failed",
-                      "duration": 4433,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:63:36",
-                        "matcherResult": {
-                          "actual": 500,
-                          "expected": 401,
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                          "name": "toBe",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 36,
-                          "line": 63
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 61 |\u001b[39m     )\n \u001b[90m 62 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 63 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m401\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 64 |\u001b[39m   })\n \u001b[90m 65 |\u001b[39m\n \u001b[90m 66 |\u001b[39m   test(\u001b[32m\"should enforce rate limiting\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 36,
-                            "line": 63
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m401\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n\n\u001b[0m \u001b[90m 61 |\u001b[39m     )\n \u001b[90m 62 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 63 |\u001b[39m     expect(loginResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m401\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 64 |\u001b[39m   })\n \u001b[90m 65 |\u001b[39m\n \u001b[90m 66 |\u001b[39m   test(\u001b[32m\"should enforce rate limiting\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:63:36\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 1,
-                      "startTime": "2025-02-28T12:26:58.264Z",
-                      "attachments": [
-                        {
-                          "name": "trace",
-                          "contentType": "application/zip",
-                          "path": "/Users/yakky/Downloads/project/test-results/api-auth.api-Authenticatio-cf7ce--handle-invalid-credentials-chromium-retry1/trace.zip"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 36,
-                        "line": 63
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9a2df24fcb121adc7367-d19db8247a3cf530dac7",
-              "file": "api/auth.api.test.ts",
-              "line": 47,
-              "column": 7
-            },
-            {
-              "title": "should enforce rate limiting",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 4,
-                      "status": "failed",
-                      "duration": 26323,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:95:36",
-                        "matcherResult": {
-                          "actual": 500,
-                          "expected": 429,
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                          "name": "toBe",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 36,
-                          "line": 95
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 93 |\u001b[39m     )\n \u001b[90m 94 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 95 |\u001b[39m     expect(finalResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m429\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 96 |\u001b[39m   })\n \u001b[90m 97 |\u001b[39m\n \u001b[90m 98 |\u001b[39m   test(\u001b[32m\"should handle session expiry\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 36,
-                            "line": 95
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n\n\u001b[0m \u001b[90m 93 |\u001b[39m     )\n \u001b[90m 94 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 95 |\u001b[39m     expect(finalResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m429\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 96 |\u001b[39m   })\n \u001b[90m 97 |\u001b[39m\n \u001b[90m 98 |\u001b[39m   test(\u001b[32m\"should handle session expiry\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:95:36\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-02-28T12:27:03.565Z",
-                      "attachments": [],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 36,
-                        "line": 95
-                      }
-                    },
-                    {
-                      "workerIndex": 5,
-                      "status": "failed",
-                      "duration": 26352,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:95:36",
-                        "matcherResult": {
-                          "actual": 500,
-                          "expected": 429,
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m",
-                          "name": "toBe",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 36,
-                          "line": 95
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 93 |\u001b[39m     )\n \u001b[90m 94 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 95 |\u001b[39m     expect(finalResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m429\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 96 |\u001b[39m   })\n \u001b[90m 97 |\u001b[39m\n \u001b[90m 98 |\u001b[39m   test(\u001b[32m\"should handle session expiry\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 36,
-                            "line": 95
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m429\u001b[39m\nReceived: \u001b[31m500\u001b[39m\n\n\u001b[0m \u001b[90m 93 |\u001b[39m     )\n \u001b[90m 94 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 95 |\u001b[39m     expect(finalResponse\u001b[33m.\u001b[39mstatus())\u001b[33m.\u001b[39mtoBe(\u001b[35m429\u001b[39m)\n \u001b[90m    |\u001b[39m                                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 96 |\u001b[39m   })\n \u001b[90m 97 |\u001b[39m\n \u001b[90m 98 |\u001b[39m   test(\u001b[32m\"should handle session expiry\"\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ request }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:95:36\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 1,
-                      "startTime": "2025-02-28T12:27:31.010Z",
-                      "attachments": [
-                        {
-                          "name": "trace",
-                          "contentType": "application/zip",
-                          "path": "/Users/yakky/Downloads/project/test-results/api-auth.api-Authentication-API-should-enforce-rate-limiting-chromium-retry1/trace.zip"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 36,
-                        "line": 95
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9a2df24fcb121adc7367-1a44081ecafc020581b5",
-              "file": "api/auth.api.test.ts",
-              "line": 66,
-              "column": 7
-            },
-            {
-              "title": "should handle session expiry",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 6,
-                      "status": "passed",
-                      "duration": 4748,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-02-28T12:27:58.387Z",
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "9a2df24fcb121adc7367-b3e729f3b51d58a880a8",
-              "file": "api/auth.api.test.ts",
-              "line": 98,
-              "column": 7
-            },
-            {
-              "title": "should handle role-based access control",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 6,
-                      "status": "failed",
-                      "duration": 4643,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:144:32",
-                        "matcherResult": {
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 32,
-                          "line": 144
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 142 |\u001b[39m     \u001b[90m// Access admin endpoint\u001b[39m\n \u001b[90m 143 |\u001b[39m     \u001b[36mconst\u001b[39m adminResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/admin/users`\u001b[39m)\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 144 |\u001b[39m     expect(adminResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 145 |\u001b[39m\n \u001b[90m 146 |\u001b[39m     \u001b[90m// Create regular user\u001b[39m\n \u001b[90m 147 |\u001b[39m     \u001b[36mconst\u001b[39m regularUser \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m testDataFactory\u001b[33m.\u001b[39mcreateUser({\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 32,
-                            "line": 144
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n\u001b[0m \u001b[90m 142 |\u001b[39m     \u001b[90m// Access admin endpoint\u001b[39m\n \u001b[90m 143 |\u001b[39m     \u001b[36mconst\u001b[39m adminResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/admin/users`\u001b[39m)\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 144 |\u001b[39m     expect(adminResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 145 |\u001b[39m\n \u001b[90m 146 |\u001b[39m     \u001b[90m// Create regular user\u001b[39m\n \u001b[90m 147 |\u001b[39m     \u001b[36mconst\u001b[39m regularUser \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m testDataFactory\u001b[33m.\u001b[39mcreateUser({\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:144:32\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-02-28T12:28:03.365Z",
-                      "attachments": [],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 32,
-                        "line": 144
-                      }
-                    },
-                    {
-                      "workerIndex": 7,
-                      "status": "failed",
-                      "duration": 4733,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:144:32",
-                        "matcherResult": {
-                          "message": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
-                          "pass": false
-                        },
-                        "location": {
-                          "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                          "column": 32,
-                          "line": 144
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 142 |\u001b[39m     \u001b[90m// Access admin endpoint\u001b[39m\n \u001b[90m 143 |\u001b[39m     \u001b[36mconst\u001b[39m adminResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/admin/users`\u001b[39m)\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 144 |\u001b[39m     expect(adminResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 145 |\u001b[39m\n \u001b[90m 146 |\u001b[39m     \u001b[90m// Create regular user\u001b[39m\n \u001b[90m 147 |\u001b[39m     \u001b[36mconst\u001b[39m regularUser \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m testDataFactory\u001b[33m.\u001b[39mcreateUser({\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                            "column": 32,
-                            "line": 144
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n\u001b[0m \u001b[90m 142 |\u001b[39m     \u001b[90m// Access admin endpoint\u001b[39m\n \u001b[90m 143 |\u001b[39m     \u001b[36mconst\u001b[39m adminResponse \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m request\u001b[33m.\u001b[39m\u001b[36mget\u001b[39m(\u001b[32m`${BASE_URL}/api/admin/users`\u001b[39m)\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 144 |\u001b[39m     expect(adminResponse\u001b[33m.\u001b[39mok())\u001b[33m.\u001b[39mtoBeTruthy()\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 145 |\u001b[39m\n \u001b[90m 146 |\u001b[39m     \u001b[90m// Create regular user\u001b[39m\n \u001b[90m 147 |\u001b[39m     \u001b[36mconst\u001b[39m regularUser \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m testDataFactory\u001b[33m.\u001b[39mcreateUser({\u001b[0m\n\u001b[2m    at /Users/yakky/Downloads/project/tests/api/auth.api.test.ts:144:32\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 1,
-                      "startTime": "2025-02-28T12:28:08.703Z",
-                      "attachments": [
-                        {
-                          "name": "trace",
-                          "contentType": "application/zip",
-                          "path": "/Users/yakky/Downloads/project/test-results/api-auth.api-Authenticatio-073d9-e-role-based-access-control-chromium-retry1/trace.zip"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/Users/yakky/Downloads/project/tests/api/auth.api.test.ts",
-                        "column": 32,
-                        "line": 144
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9a2df24fcb121adc7367-7ff314cab18af5085a10",
-              "file": "api/auth.api.test.ts",
-              "line": 122,
-              "column": 7
-            }
-          ]
-        }
-      ]
+      "message": "Error: Redis configuration is missing. Please set UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN environment variables.",
+      "stack": "Error: Redis configuration is missing. Please set UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN environment variables.\n    at validateRedisConfig (/Users/yakky/Downloads/project/lib/redis.ts:223:11)\n    at getRedisClient (/Users/yakky/Downloads/project/lib/redis.ts:242:26)\n    at Object.ping (/Users/yakky/Downloads/project/lib/redis.ts:255:21)\n    at globalSetup (/Users/yakky/Downloads/project/tests/global-setup.ts:9:15)",
+      "location": {
+        "file": "/Users/yakky/Downloads/project/lib/redis.ts",
+        "column": 11,
+        "line": 223
+      },
+      "snippet": "\u001b[90m   at \u001b[39m../lib/redis.ts:223\n\n\u001b[0m \u001b[90m 221 |\u001b[39m\n \u001b[90m 222 |\u001b[39m   \u001b[36mif\u001b[39m (\u001b[33m!\u001b[39murl \u001b[33m||\u001b[39m \u001b[33m!\u001b[39mtoken) {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 223 |\u001b[39m     \u001b[36mthrow\u001b[39m \u001b[36mnew\u001b[39m \u001b[33mError\u001b[39m(\n \u001b[90m     |\u001b[39m           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 224 |\u001b[39m       \u001b[32m\"Redis configuration is missing. Please set UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN environment variables.\"\u001b[39m\n \u001b[90m 225 |\u001b[39m     )\n \u001b[90m 226 |\u001b[39m   }\u001b[0m"
     }
   ],
-  "errors": [],
   "stats": {
-    "startTime": "2025-02-28T12:26:27.560Z",
-    "duration": 106306.693,
-    "expected": 1,
+    "startTime": "2025-03-05T18:10:41.595Z",
+    "duration": 17618.521999999997,
+    "expected": 0,
     "skipped": 0,
-    "unexpected": 4,
+    "unexpected": 0,
     "flaky": 0
   }
 }

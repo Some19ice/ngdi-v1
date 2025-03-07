@@ -1,0 +1,21 @@
+export declare const config: {
+    PORT: string;
+    HOST: string;
+    NODE_ENV: "development" | "production" | "test";
+    DATABASE_URL: string;
+    DIRECT_URL: string;
+    JWT_SECRET: string;
+    JWT_EXPIRES_IN: string;
+    REFRESH_TOKEN_SECRET: string;
+    REFRESH_TOKEN_EXPIRES_IN: string;
+    ALLOWED_ORIGINS: string;
+    RATE_LIMIT_WINDOW: string;
+    RATE_LIMIT_MAX: string;
+    AUTH_RATE_LIMIT_WINDOW: string;
+    AUTH_RATE_LIMIT_MAX: string;
+    SMTP_HOST: string;
+    SMTP_PORT: string;
+    SMTP_USER: string;
+    SMTP_PASSWORD: string;
+    EMAIL_FROM: string;
+};

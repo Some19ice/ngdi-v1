@@ -13,14 +13,30 @@ interface MinimalRedis {
   set(key: string, value: any): Promise<"OK">
   setex(key: string, seconds: number, value: any): Promise<"OK">
   incr(key: string): Promise<number>
-  expire(key: string, seconds: number, option?: "NX" | "nx" | "XX" | "xx" | "GT" | "gt" | "LT" | "lt"): Promise<0 | 1>
+  expire(
+    key: string,
+    seconds: number,
+    option?: "NX" | "nx" | "XX" | "xx" | "GT" | "gt" | "LT" | "lt"
+  ): Promise<0 | 1>
   del(key: string): Promise<number>
-  hset(key: string, field: string | Record<string, any>, value?: any): Promise<number>
+  hset(
+    key: string,
+    field: string | Record<string, any>,
+    value?: any
+  ): Promise<number>
   lpush(key: string, ...values: any[]): Promise<number>
   ttl(key: string): Promise<number>
   pexpire(key: string, milliseconds: number): Promise<0 | 1>
   keys(pattern: string): Promise<string[]>
   ping(): Promise<"PONG">
+  sadd(key: string, ...members: any[]): Promise<number>
+  eval(script: string, keys: string[], args: any[]): Promise<any>
+  evalsha(sha: string, keys: string[], args: any[]): Promise<any>
+  scriptLoad(script: string): Promise<string>
+  zadd(key: string, score: number, member: string): Promise<number>
+  zrange(key: string, start: number, stop: number): Promise<string[]>
+  smismember(key: string, ...members: string[]): Promise<number[]>
+  multi(): Promise<any>
 }
 
 // Mock Redis implementation for test mode
@@ -28,23 +44,23 @@ export class MockRedis implements MinimalRedis {
   private store: Map<string, any>
 
   constructor() {
-    debugLog('Initializing MockRedis')
+    debugLog("Initializing MockRedis")
     this.store = new Map()
   }
 
   async get(key: string): Promise<any> {
-    debugLog('Mock Redis get', { key })
+    debugLog("Mock Redis get", { key })
     return this.store.get(key)
   }
 
   async set(key: string, value: any): Promise<"OK"> {
-    debugLog('Mock Redis set', { key, value })
+    debugLog("Mock Redis set", { key, value })
     this.store.set(key, value)
     return "OK"
   }
 
   async setex(key: string, seconds: number, value: any): Promise<"OK"> {
-    debugLog('Mock Redis setex', { key, seconds, value })
+    debugLog("Mock Redis setex", { key, seconds, value })
     this.store.set(key, value)
     setTimeout(() => {
       this.store.delete(key)
@@ -53,14 +69,18 @@ export class MockRedis implements MinimalRedis {
   }
 
   async incr(key: string): Promise<number> {
-    debugLog('Mock Redis incr', { key })
+    debugLog("Mock Redis incr", { key })
     const value = (this.store.get(key) || 0) + 1
     this.store.set(key, value)
     return value
   }
 
-  async expire(key: string, seconds: number, option?: "NX" | "nx" | "XX" | "xx" | "GT" | "gt" | "LT" | "lt"): Promise<0 | 1> {
-    debugLog('Mock Redis expire', { key, seconds, option })
+  async expire(
+    key: string,
+    seconds: number,
+    option?: "NX" | "nx" | "XX" | "xx" | "GT" | "gt" | "LT" | "lt"
+  ): Promise<0 | 1> {
+    debugLog("Mock Redis expire", { key, seconds, option })
     if (!this.store.has(key)) return 0
     setTimeout(() => {
       this.store.delete(key)
@@ -69,14 +89,18 @@ export class MockRedis implements MinimalRedis {
   }
 
   async del(key: string): Promise<number> {
-    debugLog('Mock Redis del', { key })
+    debugLog("Mock Redis del", { key })
     return this.store.delete(key) ? 1 : 0
   }
 
-  async hset(key: string, field: string | Record<string, any>, value?: any): Promise<number> {
-    debugLog('Mock Redis hset', { key, field, value })
+  async hset(
+    key: string,
+    field: string | Record<string, any>,
+    value?: any
+  ): Promise<number> {
+    debugLog("Mock Redis hset", { key, field, value })
     const hash = this.store.get(key) || {}
-    if (typeof field === 'string') {
+    if (typeof field === "string") {
       hash[field] = value
       this.store.set(key, hash)
       return 1
@@ -88,7 +112,7 @@ export class MockRedis implements MinimalRedis {
   }
 
   async lpush(key: string, ...values: any[]): Promise<number> {
-    debugLog('Mock Redis lpush', { key, values })
+    debugLog("Mock Redis lpush", { key, values })
     const list = this.store.get(key) || []
     list.unshift(...values)
     this.store.set(key, list)
@@ -96,12 +120,12 @@ export class MockRedis implements MinimalRedis {
   }
 
   async ttl(key: string): Promise<number> {
-    debugLog('Mock Redis ttl', { key })
+    debugLog("Mock Redis ttl", { key })
     return this.store.has(key) ? 300 : -2 // Default 5 minutes TTL for testing
   }
 
   async pexpire(key: string, milliseconds: number): Promise<0 | 1> {
-    debugLog('Mock Redis pexpire', { key, milliseconds })
+    debugLog("Mock Redis pexpire", { key, milliseconds })
     if (!this.store.has(key)) return 0
     setTimeout(() => {
       this.store.delete(key)
@@ -110,14 +134,78 @@ export class MockRedis implements MinimalRedis {
   }
 
   async keys(pattern: string): Promise<string[]> {
-    debugLog('Getting keys matching pattern', { pattern })
-    const regex = new RegExp(pattern.replace('*', '.*'))
-    return Array.from(this.store.keys()).filter(key => regex.test(key))
+    debugLog("Getting keys matching pattern", { pattern })
+    const regex = new RegExp(pattern.replace("*", ".*"))
+    return Array.from(this.store.keys()).filter((key) => regex.test(key))
   }
 
   async ping(): Promise<"PONG"> {
-    debugLog('Mock Redis ping')
-    return 'PONG'
+    debugLog("Mock Redis ping")
+    return "PONG"
+  }
+
+  async sadd(key: string, ...members: any[]): Promise<number> {
+    debugLog("Mock Redis sadd", { key, members })
+    const set = new Set(this.store.get(key) || [])
+    let added = 0
+    for (const member of members) {
+      if (!set.has(member)) {
+        set.add(member)
+        added++
+      }
+    }
+    this.store.set(key, Array.from(set))
+    return added
+  }
+
+  async eval(script: string, keys: string[], args: any[]): Promise<any> {
+    debugLog("Mock Redis eval", { script, keys, args })
+    return null // Mock implementation
+  }
+
+  async evalsha(sha: string, keys: string[], args: any[]): Promise<any> {
+    debugLog("Mock Redis evalsha", { sha, keys, args })
+    return null // Mock implementation
+  }
+
+  async scriptLoad(script: string): Promise<string> {
+    debugLog("Mock Redis scriptLoad", { script })
+    return "mock-sha" // Mock implementation
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    debugLog("Mock Redis zadd", { key, score, member })
+    const sorted = this.store.get(key) || []
+    const index = sorted.findIndex((item: any) => item.member === member)
+    if (index !== -1) {
+      sorted[index].score = score
+      return 0
+    }
+    sorted.push({ score, member })
+    sorted.sort((a: any, b: any) => a.score - b.score)
+    this.store.set(key, sorted)
+    return 1
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    debugLog("Mock Redis zrange", { key, start, stop })
+    const sorted = this.store.get(key) || []
+    return sorted.slice(start, stop + 1).map((item: any) => item.member)
+  }
+
+  async smismember(key: string, ...members: string[]): Promise<number[]> {
+    debugLog("Mock Redis smismember", { key, members })
+    const set = new Set(this.store.get(key) || [])
+    return members.map((member) => (set.has(member) ? 1 : 0))
+  }
+
+  async multi(): Promise<any> {
+    debugLog("Mock Redis multi")
+    return {
+      exec: async () => [],
+      discard: async () => "OK",
+      // Add other transaction methods as needed
+    }
   }
 }
 

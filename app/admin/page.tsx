@@ -1,7 +1,7 @@
 "use client"
 
 import { UserRole } from "@/lib/auth/types"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import { ProtectedRoute } from "@/components/auth-components/protected-route"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {

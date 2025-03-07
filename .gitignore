@@ -42,3 +42,7 @@ next-env.d.ts
 
 # logs
 *.log
+
+# Nested node_modules
+/packages/*/node_modules
+/apps/*/node_modules

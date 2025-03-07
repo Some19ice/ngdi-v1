@@ -1,7 +1,30 @@
+import { type User } from "@supabase/supabase-js"
+
 export enum UserRole {
+  USER = "USER",
   ADMIN = "ADMIN",
   NODE_OFFICER = "NODE_OFFICER",
-  USER = "USER",
+}
+
+export interface UserMetadata {
+  name?: string
+  role?: UserRole
+  avatar_url?: string
+  organization?: string | null
+  department?: string | null
+  phone?: string | null
+  createdAt?: string | null
+  emailVerified?: string | null
+}
+
+export type ExtendedUser = User & {
+  user_metadata: UserMetadata
+}
+
+export interface AuthError {
+  message: string
+  code?: string
+  status?: number
 }
 
 export type Subject =

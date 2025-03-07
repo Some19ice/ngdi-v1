@@ -1,69 +1,113 @@
+# NGDI Portal
 
-Based on my review, here's a comprehensive overview of the project:
+A modern web application built with Next.js 14, TypeScript, and Hono.
 
-**Project Type and Framework:**
-- This is a Next.js 13.5.1 project using TypeScript
-- It's built with modern React (18.2.0) and includes TypeScript configuration
-- Uses Tailwind CSS for styling with additional animations and utilities
+## Project Structure
 
-**Key Features and Architecture:**
-1. **Routing Structure:**
-   - Uses Next.js App Router (indicated by the `app` directory)
-   - Has several main routes including:
-     - About
-     - Committee
-     - Contact
-     - Publications
-     - Privacy
-     - Terms
-     - Metadata
-
-2. **UI Components:**
-   - Extensive use of Radix UI components for accessible, unstyled components
-   - Custom components organized in:
-     - `components/layout/` for layout-related components
-     - `components/ui/` for reusable UI components
-   - Includes theme support with dark/light mode toggle
-
-3. **Dependencies and Tools:**
-   - Rich set of UI libraries:
-     - Radix UI for accessible components
-     - `date-fns` for date manipulation
-     - `react-hook-form` for form handling
-     - `zod` for schema validation
-     - `recharts` for charting
-     - `embla-carousel-react` for carousels
-     - `sonner` for toast notifications
-   - Development tools:
-     - ESLint for code linting
-     - PostCSS and Autoprefixer
-     - Tailwind CSS with animations
-
-4. **Development Setup:**
-   - Standard Next.js scripts:
-     - `dev` for development
-     - `build` for production builds
-     - `start` for running production server
-     - `lint` for linting
-
-**Project Structure:**
 ```
-├── .next/               # Next.js build output
-├── app/                 # Main application routes and pages
-├── components/          # Reusable React components
-│   ├── layout/         # Layout components
-│   └── ui/             # UI components
-├── hooks/              # Custom React hooks
-├── lib/                # Utility functions and shared code
-├── public/             # Static assets
-└── various config files # (next.config.js, tailwind.config.ts, etc.)
+├── app/                    # Next.js App Router pages and layouts
+├── components/            # React components
+│   ├── auth/             # Authentication components
+│   ├── error/            # Error handling components
+│   ├── layout/           # Layout components
+│   ├── map/             # Map-related components
+│   ├── metadata/        # Metadata components
+│   ├── providers/       # React context providers
+│   └── ui/              # Reusable UI components
+├── docs/                 # Project documentation
+├── hooks/                # Custom React hooks
+├── lib/                  # Shared utilities and helpers
+├── packages/             # Monorepo packages
+│   └── api/             # Hono API server
+│       ├── src/         # API source code
+│       ├── tests/       # API tests
+│       └── docker/      # Docker configuration
+├── prisma/               # Database schema and migrations
+├── public/               # Static assets
+├── scripts/              # Build and utility scripts
+├── tests/                # Frontend E2E tests
+└── types/                # TypeScript type definitions
 ```
 
-**Notable Technical Choices:**
-1. Modern stack with TypeScript and Next.js
-2. Strong focus on UI/UX with comprehensive component libraries
-3. Built-in theme support
-4. Emphasis on accessibility through Radix UI
-5. Well-structured routing using Next.js 13's app directory
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   cd packages/api && cp .env.example .env
+   ```
+
+3. Start the development servers:
+   ```bash
+   npm run dev
+   ```
+   This will start both the Next.js frontend and Hono API server.
+
+## Available Scripts
+
+### Main Commands
+- `npm run dev` - Start both frontend and API development servers
+- `npm run build` - Build both frontend and API for production
+- `npm run start` - Start both frontend and API production servers
+- `npm run test` - Run all tests (frontend and API)
+
+### Frontend Specific
+- `npm run dev:web` - Start frontend development server
+- `npm run build:web` - Build frontend for production
+- `npm run start:web` - Start frontend production server
+- `npm run test:web` - Run frontend tests
+- `npm run test:ui` - Run frontend tests with UI
+- `npm run test:coverage` - Generate frontend test coverage report
+
+### API Specific
+- `npm run dev:api` - Start API development server
+- `npm run build:api` - Build API for production
+- `npm run start:api` - Start API production server
+- `npm run test:api` - Run API tests
+
+### Database
+- `npm run db:push` - Push database schema changes
+- `npm run db:init` - Initialize database
+
+## Environment Variables
+
+- Frontend: See `.env.example` for required variables
+- API: See `packages/api/.env.example` for required variables
+
+## Testing
+
+We use different testing frameworks for frontend and API:
+- Frontend: Playwright for end-to-end testing
+- API: Jest for unit and integration testing
+
+Run all tests:
+```bash
+npm run test
+```
+
+## Docker Support
+
+The API server includes Docker support for easy deployment:
+
+```bash
+cd packages/api
+docker-compose up
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests for both frontend and API
+4. Submit a pull request
+
+## License
+
+[Add your license here]
 
 

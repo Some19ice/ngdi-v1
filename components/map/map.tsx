@@ -43,7 +43,7 @@ const baseLayers = {
   terrain: new TileLayer({
     source: new XYZ({
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}",
-      attributions: "Esri, USGS, NOAA",
+      attributions: "Esri",
     }),
     properties: { title: "Terrain" },
   }),

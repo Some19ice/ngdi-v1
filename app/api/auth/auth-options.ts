@@ -41,6 +41,7 @@ declare module "next-auth" {
       | null
     expires: string
     error?: "RefreshAccessTokenError" | "SessionError"
+    accessToken: string | null
   }
 
   interface User extends BaseUser {}
@@ -268,6 +269,7 @@ export const authOptions: NextAuthOptions = {
             deviceId: token.deviceId || null,
             accessToken: token.accessToken || null,
           },
+          accessToken: token.accessToken || null,
         }
 
         // Handle refresh token errors

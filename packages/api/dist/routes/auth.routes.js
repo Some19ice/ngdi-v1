@@ -1,0 +1,223 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.auth = void 0;
+const hono_1 = require("hono");
+const zod_validator_1 = require("@hono/zod-validator");
+const zod_1 = require("zod");
+const prisma_1 = require("../db/prisma");
+const error_handler_1 = require("../middleware/error-handler");
+const password_1 = require("../utils/password");
+const jwt_1 = require("../utils/jwt");
+const email_service_1 = require("../services/email.service");
+const auth_service_1 = require("../services/auth.service");
+const http_exception_1 = require("hono/http-exception");
+// Schema for login request validation
+const loginSchema = zod_1.z.object({
+    email: zod_1.z.string().email("Invalid email format"),
+    password: zod_1.z.string().min(6, "Password must be at least 6 characters"),
+});
+// Schema for registration request validation
+const registerSchema = zod_1.z.object({
+    email: zod_1.z.string().email("Invalid email format"),
+    password: zod_1.z.string().min(6, "Password must be at least 6 characters"),
+    name: zod_1.z.string().min(2, "Name must be at least 2 characters").optional(),
+});
+// Schema for email verification
+const verifyEmailSchema = zod_1.z.object({
+    token: zod_1.z.string(),
+});
+// Schema for password reset request
+const requestPasswordResetSchema = zod_1.z.object({
+    email: zod_1.z.string().email({ message: "Invalid email address" }),
+});
+// Schema for password reset
+const resetPasswordSchema = zod_1.z.object({
+    token: zod_1.z.string(),
+    password: zod_1.z
+        .string()
+        .min(6, { message: "Password must be at least 6 characters" }),
+});
+// Create auth router
+const auth = new hono_1.Hono();
+exports.auth = auth;
+// Apply error handler
+auth.onError(error_handler_1.errorHandler);
+// Login route
+auth.post("/login", (0, zod_validator_1.zValidator)("json", loginSchema), async (c) => {
+    try {
+        const data = await c.req.json();
+        const result = await auth_service_1.AuthService.login(data);
+        return c.json(result);
+    }
+    catch (error) {
+        if (error instanceof http_exception_1.HTTPException) {
+            throw error;
+        }
+        throw new http_exception_1.HTTPException(500, { message: "Login failed" });
+    }
+});
+// Register route
+auth.post("/register", (0, zod_validator_1.zValidator)("json", registerSchema), async (c) => {
+    try {
+        const data = await c.req.json();
+        const result = await auth_service_1.AuthService.register(data);
+        return c.json(result);
+    }
+    catch (error) {
+        if (error instanceof http_exception_1.HTTPException) {
+            throw error;
+        }
+        throw new http_exception_1.HTTPException(500, { message: "Registration failed" });
+    }
+});
+// Verify email route
+auth.get("/verify-email", (0, zod_validator_1.zValidator)("query", verifyEmailSchema), async (c) => {
+    try {
+        const { token } = await c.req.valid("query");
+        // Find verification token
+        const verificationToken = await prisma_1.prisma.verificationToken.findFirst({
+            where: {
+                token,
+                expires: {
+                    gt: new Date(),
+                },
+            },
+        });
+        if (!verificationToken) {
+            throw new error_handler_1.ApiError("Invalid token", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
+        }
+        // Update user
+        await prisma_1.prisma.user.update({
+            where: { email: verificationToken.identifier },
+            data: { emailVerified: new Date() },
+        });
+        // Delete verification token
+        await prisma_1.prisma.verificationToken.delete({
+            where: { token },
+        });
+        return c.json({
+            message: "Email verified successfully",
+        });
+    }
+    catch (error) {
+        console.error("Email verification error:", error);
+        if (error instanceof error_handler_1.ApiError) {
+            throw error;
+        }
+        throw new error_handler_1.ApiError("Email verification failed", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
+    }
+});
+// Refresh token route
+auth.post("/refresh-token", async (c) => {
+    try {
+        const refreshToken = c.req.header("Authorization")?.replace("Bearer ", "");
+        if (!refreshToken) {
+            throw new error_handler_1.ApiError("Refresh token is required", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+        }
+        // Verify refresh token
+        const decoded = await (0, jwt_1.verifyRefreshToken)(refreshToken);
+        // Generate new access token
+        const accessToken = await (0, jwt_1.generateToken)({
+            userId: decoded.userId,
+            email: decoded.email,
+            role: decoded.role,
+        });
+        return c.json({
+            success: true,
+            message: "Token refreshed",
+            data: {
+                token: accessToken,
+            },
+        }, 200);
+    }
+    catch (error) {
+        console.error("Token refresh error:", error);
+        throw new error_handler_1.ApiError("Invalid refresh token", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
+    }
+});
+// Request password reset
+auth.post("/request-password-reset", (0, zod_validator_1.zValidator)("json", requestPasswordResetSchema), async (c) => {
+    try {
+        const { email } = await c.req.valid("json");
+        // Check if user exists
+        const user = await prisma_1.prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            // Don't reveal that the user doesn't exist for security reasons
+            return c.json({
+                success: true,
+                message: "If your email is registered, you will receive a password reset link.",
+            }, 200);
+        }
+        // Generate reset token
+        const resetToken = Math.random().toString(36).substring(2, 15) +
+            Math.random().toString(36).substring(2, 15);
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
+        // Store reset token
+        await prisma_1.prisma.verificationToken.create({
+            data: {
+                identifier: email,
+                token: resetToken,
+                expires: expiresAt,
+            },
+        });
+        // Send password reset email
+        await email_service_1.emailService.sendPasswordResetEmail(email, resetToken);
+        return c.json({
+            success: true,
+            message: "If your email is registered, you will receive a password reset link.",
+        }, 200);
+    }
+    catch (error) {
+        console.error("Password reset request error:", error);
+        throw new error_handler_1.ApiError("Password reset request failed", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+    }
+});
+// Reset password
+auth.post("/reset-password", (0, zod_validator_1.zValidator)("json", resetPasswordSchema), async (c) => {
+    try {
+        const { token, password } = await c.req.valid("json");
+        // Find verification token
+        const verificationRecord = await prisma_1.prisma.verificationToken.findUnique({
+            where: { token },
+        });
+        if (!verificationRecord) {
+            throw new error_handler_1.ApiError("Invalid or expired token", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+        }
+        // Check if token is expired
+        if (new Date() > verificationRecord.expires) {
+            // Delete expired token
+            await prisma_1.prisma.verificationToken.delete({
+                where: { token },
+            });
+            throw new error_handler_1.ApiError("Token expired", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+        }
+        // Hash new password
+        const hashedPassword = await (0, password_1.hashPassword)(password);
+        // Update user's password
+        await prisma_1.prisma.user.update({
+            where: { email: verificationRecord.identifier },
+            data: { password: hashedPassword },
+        });
+        // Delete used token
+        await prisma_1.prisma.verificationToken.delete({
+            where: { token },
+        });
+        return c.json({
+            success: true,
+            message: "Password reset successful. You can now log in with your new password.",
+        }, 200);
+    }
+    catch (error) {
+        console.error("Password reset error:", error);
+        if (error instanceof error_handler_1.ApiError) {
+            throw error;
+        }
+        throw new error_handler_1.ApiError("Password reset failed", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+    }
+});
+// Logout route
+auth.post("/logout", async (c) => {
+    return c.json({ message: "Logged out successfully" });
+});
+exports.default = auth;

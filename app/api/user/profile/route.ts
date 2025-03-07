@@ -7,29 +7,44 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/auth-options"
 import { prisma } from "@/lib/prisma"
 import { safeParseJson } from "@/lib/api-utils"
+import { revalidateTag } from "next/cache"
 
+// Define a schema for profile updates
 const profileUpdateSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   organization: z
     .string()
     .min(2, "Organization must be at least 2 characters.")
-    .optional(),
-  department: z.string().optional(),
-  phone: z.string().optional(),
+    .optional()
+    .nullable(),
+  department: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
 })
 
+/**
+ * PUT /api/user/profile - Update user profile
+ */
 export async function PUT(req: Request) {
   try {
     // Get the user session
     const session = await getServerSession(authOptions)
 
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Parse the request body
     const json = await safeParseJson(req)
-    const body = profileUpdateSchema.parse(json)
+    const result = profileUpdateSchema.safeParse(json)
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error.format() },
+        { status: 400 }
+      )
+    }
+
+    const data = result.data
 
     // Update the user profile
     const updatedUser = await prisma.user.update({
@@ -37,10 +52,10 @@ export async function PUT(req: Request) {
         id: session.user.id,
       },
       data: {
-        name: body.name,
-        organization: body.organization || null,
-        department: body.department || null,
-        phone: body.phone || null,
+        name: data.name,
+        organization: data.organization,
+        department: data.department,
+        phone: data.phone,
       },
       select: {
         id: true,
@@ -54,6 +69,9 @@ export async function PUT(req: Request) {
       },
     })
 
+    // Revalidate the profile cache
+    revalidateTag("profile")
+
     // Return the updated user
     return NextResponse.json({
       user: updatedUser,
@@ -61,7 +79,7 @@ export async function PUT(req: Request) {
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 })
+      return NextResponse.json({ error: error.format() }, { status: 400 })
     }
 
     console.error("Profile update error:", error)
@@ -72,12 +90,15 @@ export async function PUT(req: Request) {
   }
 }
 
+/**
+ * GET /api/user/profile - Get user profile
+ */
 export async function GET(req: Request) {
   try {
     // Get the user session
     const session = await getServerSession(authOptions)
 
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

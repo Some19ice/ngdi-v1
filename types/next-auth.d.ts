@@ -15,6 +15,8 @@ declare module "next-auth" {
       token_type?: string
       image?: string | null
     }
+    accessToken: string
+    error?: string
   }
 
   interface User {
@@ -40,5 +42,8 @@ declare module "next-auth/jwt" {
     refresh_token?: string
     accessTokenExpires?: number
     error?: "RefreshAccessTokenError"
+    id: string
+    name?: string
+    accessToken: string
   }
 }

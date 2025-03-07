@@ -1,0 +1,120 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+
+@authToken = {{login.response.body.data.token}}
+
+### Health Check
+GET {{baseUrl}}
+
+### Auth Endpoints
+
+### Register a new user
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "zael4play@mailinator.com",
+  "password": "Password123!",
+  "name": "Test User"
+}
+
+### Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "zael4play@mailinator.com",
+  "password": "Password123!"
+}
+
+### Refresh Token
+POST {{baseUrl}}/auth/refresh-token
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "your_refresh_token_here"
+}
+
+### Forgot Password
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "zael4play@mailinator.com"
+}
+
+### Reset Password
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "reset_token_here",
+  "password": "NewPassword123!"
+}
+
+### User Endpoints
+
+### Get User Profile
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{authToken}}
+
+### Update User Profile
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "phone": "+1234567890",
+  "department": "Engineering"
+}
+
+### Admin Endpoints
+
+### Get System Stats
+GET {{baseUrl}}/admin/stats
+Authorization: Bearer {{authToken}}
+
+### Get All Users (with pagination and filters)
+GET {{baseUrl}}/admin/users?page=1&limit=10&search=test&role=USER
+Authorization: Bearer {{authToken}}
+
+### Get User by ID
+GET {{baseUrl}}/admin/users/user_id_here
+Authorization: Bearer {{authToken}}
+
+### Update User Role
+PUT {{baseUrl}}/admin/users/user_id_here/role
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "role": "NODE_OFFICER"
+}
+
+### Delete User
+DELETE {{baseUrl}}/admin/users/user_id_here
+Authorization: Bearer {{authToken}}
+
+### Metadata Endpoints
+
+### Create Metadata
+POST {{baseUrl}}/metadata
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "title": "Test Metadata",
+  "description": "This is a test metadata entry",
+  "type": "TEST",
+  "data": {
+    "key": "value"
+  }
+}
+
+### Get Metadata by ID
+GET {{baseUrl}}/metadata/metadata_id_here
+Authorization: Bearer {{authToken}} 
