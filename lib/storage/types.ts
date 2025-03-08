@@ -1,13 +1,15 @@
 export interface FileUploadResult {
-  url: string
   key: string
+  url: string
   size: number
-  mimeType: string
+  contentType: string
 }
 
 export interface StorageConfig {
   maxSizeBytes?: number
-  allowedMimeTypes?: string[]
+  metadata?: Record<string, string>
+  contentType?: string
+  cacheControl?: string
 }
 
 export interface StorageProvider {
@@ -20,4 +22,4 @@ export interface StorageProvider {
   getUrl(key: string): Promise<string>
 }
 
-export type StorageProviderType = "local" | "supabase" | "s3" | "azure" | "gcs"
+export type StorageProviderType = "api" | "s3" | "azure"
