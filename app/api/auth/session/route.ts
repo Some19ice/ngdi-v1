@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth/next"
 import { NextResponse } from "next/server"
-import { authOptions } from "../[...nextauth]/route"
+import { createClient } from "../auth-options"
 
 // Mark this route as dynamic to prevent static optimization
 export const dynamic = "force-dynamic"
@@ -12,7 +11,7 @@ interface UserSession {
     name: string | null
     email: string | null
     image: string | null
-    role: UserRole | null
+    role: string | null
     organization: string | null
     department: string | null
     phone: string | null
@@ -94,15 +93,50 @@ function getExpiryDate(expires: Date | string | null): string {
 // Custom session handler to prevent request body consumption issues
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    // For development, you can use a mock session
+    if (process.env.NODE_ENV === "development" && process.env.MOCK_AUTH === "true") {
+      return NextResponse.json({
+        user: {
+          id: "mock-user-id",
+          name: "Mock User",
+          email: "mock@example.com",
+          image: null,
+          role: "user",
+          organization: "Mock Organization",
+          department: "Mock Department",
+          phone: null
+        },
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+      }, { status: 200 })
+    }
+
+    // Try to get the session from Supabase
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     
     if (!session) {
       return NextResponse.json({ user: null, expires: null }, { status: 200 })
     }
     
+    // Get user data from Supabase
+    const { data: userData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single()
+    
     return NextResponse.json({
-      user: session.user,
-      expires: session.expires
+      user: {
+        id: session.user.id,
+        name: userData?.full_name || session.user.user_metadata?.full_name || null,
+        email: session.user.email,
+        image: userData?.avatar_url || null,
+        role: userData?.role || "user",
+        organization: userData?.organization || null,
+        department: userData?.department || null,
+        phone: userData?.phone || null
+      },
+      expires: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
     }, { status: 200 })
   } catch (error) {
     console.error("Error in session route:", error)
