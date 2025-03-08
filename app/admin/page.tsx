@@ -91,7 +91,7 @@ export default function AdminPage() {
           {/* Admin content here */}
           <div className="rounded-lg border p-6 shadow-sm">
             <h2 className="mb-4 text-xl font-semibold">
-              Welcome, {session?.user?.name}
+              Welcome, {session?.user?.email?.split("@")[0] || "Admin"}
             </h2>
             <p className="text-muted-foreground">Role: {userRole}</p>
           </div>

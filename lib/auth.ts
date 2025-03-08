@@ -139,7 +139,11 @@ export function validateReturnUrl(
       path.startsWith(route.path)
     )
 
-    if (matchedRoute && !matchedRoute.roles.includes(token.role as UserRole)) {
+    if (
+      matchedRoute &&
+      token.role &&
+      !matchedRoute.roles.includes(token.role as any)
+    ) {
       return getDefaultUrl(token.role)
     }
 

@@ -1,5 +1,5 @@
-import { UserRole } from "@prisma/client"
-import NextAuth from "next-auth"
+import { UserRole } from "@/lib/auth/types"
+import "next-auth"
 
 declare module "next-auth" {
   interface Session {
@@ -7,16 +7,9 @@ declare module "next-auth" {
       id: string
       email: string
       name: string
-      role: UserRole | undefined
-      organization?: string | null
-      department?: string | null
-      createdAt?: Date | null
-      access_token?: string
-      token_type?: string
-      image?: string | null
+      role: UserRole
+      image?: string
     }
-    accessToken: string
-    error?: string
   }
 
   interface User {
@@ -24,26 +17,16 @@ declare module "next-auth" {
     email: string
     name: string
     role: UserRole
-    organization?: string | null
-    department?: string | null
-    createdAt?: Date | null
-    image?: string | null
-    emailVerified?: Date | null
+    image?: string
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: UserRole
-    organization?: string | null
-    department?: string | null
-    createdAt?: Date | null
-    access_token?: string
-    refresh_token?: string
-    accessTokenExpires?: number
-    error?: "RefreshAccessTokenError"
     id: string
-    name?: string
-    accessToken: string
+    email: string
+    name: string
+    role: UserRole
+    image?: string
   }
 }

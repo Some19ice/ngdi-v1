@@ -74,8 +74,7 @@ export function validateLoginAttempts(
   if (failedAttempts >= AUTH_CONFIG.security.maxLoginAttempts) {
     if (lastFailedLogin) {
       const blockEnd = new Date(
-        lastFailedLogin.getTime() +
-          AUTH_CONFIG.security.rateLimiting.blockDuration
+        lastFailedLogin.getTime() + AUTH_CONFIG.security.rateLimiting.windowMs
       )
       const now = new Date()
       if (now < blockEnd) {

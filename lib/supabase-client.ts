@@ -1,6 +1,7 @@
 "use client"
 
 import { createBrowserClient } from "@supabase/ssr"
+import { handleSignOutCleanup } from "./auth/session-utils"
 
 // Custom cookie parser that properly handles base64-encoded cookies
 function parseCookieValue(value: string | undefined) {
@@ -54,9 +55,6 @@ function parseCookieValue(value: string | undefined) {
   }
 }
 
-// Create a singleton instance
-let clientInstance: ReturnType<typeof createBrowserClient> | null = null
-
 // Check if we're in a browser environment
 const isBrowser =
   typeof window !== "undefined" && typeof document !== "undefined"
@@ -78,12 +76,31 @@ function getCookie(name: string): string | null {
   }
 }
 
+// Track client instances with a simple cache
+let clientInstance: ReturnType<typeof createBrowserClient> | null = null
+let clientCreationAttempts = 0
+const MAX_CLIENT_CREATION_ATTEMPTS = 3
+
 export function createClient() {
   // Only create the client in the browser
   if (!isBrowser) {
-    console.warn(
-      "Attempted to create Supabase client in a non-browser environment"
-    )
+    // Instead of warning every time, just log once in development
+    // and silently return the dummy client in production
+    if (
+      process.env.NODE_ENV === "development" &&
+      clientCreationAttempts < MAX_CLIENT_CREATION_ATTEMPTS
+    ) {
+      console.warn(
+        "Attempted to create Supabase client in a non-browser environment"
+      )
+      clientCreationAttempts++
+
+      // After max attempts, stop logging to reduce noise
+      if (clientCreationAttempts === MAX_CLIENT_CREATION_ATTEMPTS) {
+        console.warn("Suppressing further Supabase client creation warnings")
+      }
+    }
+
     // Return a dummy client for SSR
     return {
       auth: {
@@ -93,9 +110,16 @@ export function createClient() {
         onAuthStateChange: () => ({
           data: { subscription: { unsubscribe: () => {} } },
         }),
-        signOut: () => Promise.resolve({ error: null }),
+        signOut: async () => {
+          return { error: null }
+        },
         refreshSession: () =>
           Promise.resolve({ data: { session: null }, error: null }),
+        setSession: () =>
+          Promise.resolve({ data: { session: null }, error: null }),
+        updateUser: () =>
+          Promise.resolve({ data: { user: null }, error: null }),
+        // Add any other methods that might be used in your app
       },
       from: () => ({
         select: () => ({
@@ -107,118 +131,219 @@ export function createClient() {
     } as any
   }
 
-  // Only create the client once
-  if (clientInstance) return clientInstance
+  // Return existing client if available to prevent multiple instances
+  if (clientInstance) {
+    return clientInstance
+  }
 
-  clientInstance = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        flowType: "pkce",
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-      },
-      cookies: {
-        get(name: string) {
-          try {
-            if (!isBrowser) return null
+  // Always ensure local storage is working before attempting to use Supabase
+  const ensureLocalStorage = () => {
+    try {
+      const testKey = "supabase-storage-test"
+      localStorage.setItem(testKey, "test")
+      localStorage.removeItem(testKey)
+      return true
+    } catch (e) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("LocalStorage not available:", e)
+      }
+      return false
+    }
+  }
 
-            // Get the cookie value
-            const value = getCookie(name)
-            if (!value) return null
+  // Force localStorage to be used for persistent sessions
+  const hasLocalStorage = ensureLocalStorage()
 
-            // Special handling for base64-encoded cookies
-            if (value.startsWith("base64-")) {
-              try {
-                const base64Content = value.slice(7)
-                const decoded = atob(base64Content)
+  try {
+    console.log(
+      "Creating new Supabase client instance with persistence:",
+      hasLocalStorage
+    )
 
-                // Try to parse as JSON if it looks like JSON
-                if (
-                  decoded.trim().startsWith("{") &&
-                  decoded.trim().endsWith("}")
-                ) {
-                  try {
-                    return JSON.parse(decoded)
-                  } catch (e) {
-                    // If JSON parsing fails, return the raw decoded string
-                    return decoded
+    // Create the browser client with auto refresh and persistence
+    clientInstance = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          flowType: "pkce",
+          autoRefreshToken: true,
+          persistSession: hasLocalStorage,
+          detectSessionInUrl: true,
+          storage: hasLocalStorage ? window.localStorage : undefined,
+        },
+        cookies: {
+          get(name: string) {
+            try {
+              if (!isBrowser) return null
+
+              // Get the cookie value
+              const value = getCookie(name)
+              if (!value) return null
+
+              // Special handling for base64-encoded cookies
+              if (value.startsWith("base64-")) {
+                try {
+                  const base64Content = value.slice(7)
+                  const decoded = atob(base64Content)
+
+                  // Try to parse as JSON if it looks like JSON
+                  if (
+                    decoded.trim().startsWith("{") &&
+                    decoded.trim().endsWith("}")
+                  ) {
+                    try {
+                      return JSON.parse(decoded)
+                    } catch (e) {
+                      // If JSON parsing fails, return the raw decoded string
+                      return decoded
+                    }
                   }
+                  return decoded
+                } catch (e) {
+                  console.error(`Error decoding base64 cookie ${name}:`, e)
+                  return value
                 }
-                return decoded
+              }
+
+              // Try to parse as JSON
+              try {
+                return JSON.parse(value)
               } catch (e) {
-                console.error(`Error decoding base64 cookie ${name}:`, e)
+                // If it's not JSON, return as is
                 return value
               }
+            } catch (error) {
+              console.error(`Error getting cookie ${name}:`, error)
+              return null
             }
-
-            // Try to parse as JSON
+          },
+          set(name: string, value: string, options: any) {
             try {
-              return JSON.parse(value)
-            } catch (e) {
-              // If it's not JSON, return as is
-              return value
+              if (!isBrowser) return
+
+              // Handle objects by stringifying them
+              let processedValue = value
+
+              // If value is an object, stringify it
+              if (typeof value === "object") {
+                processedValue = JSON.stringify(value)
+              }
+
+              // Handle large cookies
+              if (processedValue.length > 3072) {
+                processedValue = `base64-${btoa(processedValue)}`
+              }
+
+              // Ensure cookies persist by setting appropriate defaults
+              const defaultOptions = {
+                maxAge: 60 * 60 * 24 * 30, // 30 days by default
+                path: "/",
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production",
+              }
+
+              const finalOptions = { ...defaultOptions, ...options }
+
+              const cookieParts = [
+                `${name}=${encodeURIComponent(processedValue)}`,
+                finalOptions.maxAge && `Max-Age=${finalOptions.maxAge}`,
+                finalOptions.path && `Path=${finalOptions.path}`,
+                finalOptions.sameSite && `SameSite=${finalOptions.sameSite}`,
+                finalOptions.domain && `Domain=${finalOptions.domain}`,
+                finalOptions.secure && "Secure",
+                finalOptions.httpOnly && "HttpOnly",
+              ].filter(Boolean)
+
+              document.cookie = cookieParts.join("; ")
+            } catch (error) {
+              console.error(`Error setting cookie ${name}:`, error)
             }
-          } catch (error) {
-            console.error(`Error getting cookie ${name}:`, error)
-            return null
-          }
-        },
-        set(name: string, value: string, options: any) {
-          try {
-            if (!isBrowser) return
+          },
+          remove(name: string, options: any) {
+            try {
+              if (!isBrowser) return
 
-            // Handle objects by stringifying them
-            let processedValue = value
+              const cookieParts = [
+                `${name}=`,
+                "Max-Age=-1",
+                options.path && `Path=${options.path || "/"}`,
+                options.sameSite && `SameSite=${options.sameSite || "lax"}`,
+                options.domain && `Domain=${options.domain}`,
+                options.secure && "Secure",
+              ].filter(Boolean)
 
-            // If value is an object, stringify it
-            if (typeof value === "object") {
-              processedValue = JSON.stringify(value)
+              document.cookie = cookieParts.join("; ")
+            } catch (error) {
+              console.error(`Error removing cookie ${name}:`, error)
             }
+          },
+        },
+      }
+    )
 
-            // Handle large cookies
-            if (processedValue.length > 3072) {
-              processedValue = `base64-${btoa(processedValue)}`
+    // Try to detect an existing session and apply persistence immediately
+    if (hasLocalStorage) {
+      setTimeout(async () => {
+        try {
+          console.log("Checking for existing session")
+          const { data } = await clientInstance!.auth.getSession()
+          if (data.session) {
+            console.log("Found existing session, ensuring persistence")
+            const rememberMe = localStorage.getItem("remember_me") === "true"
+            if (rememberMe) {
+              console.log("Applying remember_me persistence")
+              await clientInstance!.auth.updateUser({
+                data: {
+                  persistent: true,
+                  remember_me: true,
+                },
+              })
+
+              // Explicitly refresh the session to ensure it's valid
+              try {
+                console.log("Refreshing session")
+                await clientInstance!.auth.refreshSession()
+                console.log("Session refreshed successfully")
+              } catch (refreshError) {
+                console.error("Error refreshing session:", refreshError)
+              }
             }
-
-            const cookieParts = [
-              `${name}=${encodeURIComponent(processedValue)}`,
-              options.maxAge && `Max-Age=${options.maxAge}`,
-              options.path && `Path=${options.path}`,
-              options.sameSite && `SameSite=${options.sameSite}`,
-              options.domain && `Domain=${options.domain}`,
-              options.secure && "Secure",
-              options.httpOnly && "HttpOnly",
-            ].filter(Boolean)
-
-            document.cookie = cookieParts.join("; ")
-          } catch (error) {
-            console.error(`Error setting cookie ${name}:`, error)
+          } else {
+            console.log("No existing session found")
           }
-        },
-        remove(name: string, options: any) {
-          try {
-            if (!isBrowser) return
-
-            const cookieParts = [
-              `${name}=`,
-              "Max-Age=-1",
-              options.path && `Path=${options.path || "/"}`,
-              options.sameSite && `SameSite=${options.sameSite || "lax"}`,
-              options.domain && `Domain=${options.domain}`,
-              options.secure && "Secure",
-            ].filter(Boolean)
-
-            document.cookie = cookieParts.join("; ")
-          } catch (error) {
-            console.error(`Error removing cookie ${name}:`, error)
-          }
-        },
-      },
+        } catch (e) {
+          console.error("Error checking initial session:", e)
+        }
+      }, 100)
     }
-  )
 
-  return clientInstance
+    return clientInstance
+  } catch (error) {
+    console.error("Error creating Supabase client:", error)
+
+    // Return dummy client if creation fails
+    return {
+      auth: {
+        getSession: () =>
+          Promise.resolve({ data: { session: null }, error: null }),
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        onAuthStateChange: () => ({
+          data: { subscription: { unsubscribe: () => {} } },
+        }),
+        signOut: async () => ({ error: null }),
+        refreshSession: () =>
+          Promise.resolve({ data: { session: null }, error: null }),
+        setSession: () =>
+          Promise.resolve({ data: { session: null }, error: null }),
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any
+  }
 }

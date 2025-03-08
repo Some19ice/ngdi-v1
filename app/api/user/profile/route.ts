@@ -1,88 +1,50 @@
 // Mark this route as dynamic to prevent static optimization attempts
 export const dynamic = "force-dynamic";
 
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/auth-options"
-import { prisma } from "@/lib/prisma"
-import { safeParseJson } from "@/lib/api-utils"
-import { revalidateTag } from "next/cache"
 
-// Define a schema for profile updates
-const profileUpdateSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  organization: z
-    .string()
-    .min(2, "Organization must be at least 2 characters.")
-    .optional()
-    .nullable(),
-  department: z.string().optional().nullable(),
-  phone: z.string().optional().nullable(),
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  organization: z.string().min(1).max(100).optional(),
+  department: z.string().min(1).max(100).optional(),
+  phone: z.string().min(1).max(20).optional(),
 })
 
 /**
- * PUT /api/user/profile - Update user profile
+ * GET /api/user/profile - Get user profile
  */
-export async function PUT(req: Request) {
+export async function GET() {
   try {
-    // Get the user session
-    const session = await getServerSession(authOptions)
+    const supabase = createRouteHandlerClient({ cookies })
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (!session?.user) {
+    if (sessionError || !session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Parse the request body
-    const json = await safeParseJson(req)
-    const result = profileUpdateSchema.safeParse(json)
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single()
 
-    if (!result.success) {
+    if (profileError) {
+      console.error("Error fetching profile:", profileError)
       return NextResponse.json(
-        { error: result.error.format() },
-        { status: 400 }
+        { error: "Failed to fetch profile" },
+        { status: 500 }
       )
     }
 
-    const data = result.data
-
-    // Update the user profile
-    const updatedUser = await prisma.user.update({
-      where: {
-        id: session.user.id,
-      },
-      data: {
-        name: data.name,
-        organization: data.organization,
-        department: data.department,
-        phone: data.phone,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        organization: true,
-        department: true,
-        phone: true,
-        role: true,
-      },
-    })
-
-    // Revalidate the profile cache
-    revalidateTag("profile")
-
-    // Return the updated user
-    return NextResponse.json({
-      user: updatedUser,
-      message: "Profile updated successfully",
-    })
+    return NextResponse.json(profile)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.format() }, { status: 400 })
-    }
-
-    console.error("Profile update error:", error)
+    console.error("Error in profile route:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -91,43 +53,56 @@ export async function PUT(req: Request) {
 }
 
 /**
- * GET /api/user/profile - Get user profile
+ * PUT /api/user/profile - Update user profile
  */
-export async function GET(req: Request) {
+export async function PUT(request: Request) {
   try {
-    // Get the user session
-    const session = await getServerSession(authOptions)
+    const supabase = createRouteHandlerClient({ cookies })
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (!session?.user) {
+    if (sessionError || !session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Fetch the user profile
-    const user = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        organization: true,
-        department: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-      },
-    })
+    const body = await request.json()
+    const validatedData = updateProfileSchema.parse(body)
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update(validatedData)
+      .eq("id", session.user.id)
+
+    if (updateError) {
+      console.error("Error updating profile:", updateError)
+      return NextResponse.json(
+        { error: "Failed to update profile" },
+        { status: 500 }
+      )
     }
 
-    // Return the user profile
-    return NextResponse.json({ user })
+    // Update user metadata in auth
+    const { error: userUpdateError } = await supabase.auth.updateUser({
+      data: validatedData,
+    })
+
+    if (userUpdateError) {
+      console.error("Error updating user metadata:", userUpdateError)
+      // Don't return error since profile was updated successfully
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Profile fetch error:", error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request data", details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    console.error("Error in profile route:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -23,11 +23,22 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useAuth } from "@/lib/auth/auth-context"
 import { Permission, Permissions, UserRole } from "@/lib/auth/types"
 import { LucideIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { signOut, useSession } from "next-auth/react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface NavItem {
   title: string
@@ -154,28 +165,32 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const { user, signOut } = useAuth()
-
-  const userRole = user?.user_metadata?.role as UserRole | undefined
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const { data: session, status } = useSession()
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut()
-      router.push("/")
-      router.refresh()
+      await signOut({ redirect: true, callbackUrl: "/" })
     } catch (error) {
       console.error("Error signing out:", error)
-      toast.error("Failed to sign out")
+      toast.error("Failed to sign out. Please try again.")
     } finally {
       setIsSigningOut(false)
+      setShowSignOutConfirm(false)
     }
   }
 
-  if (!user) return null
+  if (status === "loading") {
+    return null
+  }
 
-  const mainNavItems = getMainNavItems(userRole)
-  const userNavItems = getUserNavItems(userRole)
+  if (!session?.user) {
+    return null
+  }
+
+  const mainNavItems = getMainNavItems(session.user.role)
+  const userNavItems = getUserNavItems(session.user.role)
 
   return (
     <div
@@ -215,19 +230,16 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                       "hover:bg-ngdi-green-50 hover:text-ngdi-green-500",
                     isCollapsed && "px-2"
                   )}
-                  title={isCollapsed ? item.title : undefined}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {!isCollapsed && item.title}
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!isCollapsed && <span>{item.title}</span>}
                 </Button>
               </Link>
             )
           })}
         </div>
 
-        <div className="my-4 h-px bg-border" />
-
-        <div className="flex flex-col gap-2">
+        <div className="mt-auto flex flex-col gap-2">
           {userNavItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -239,51 +251,81 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                   className={cn(
                     "w-full justify-start gap-2",
                     isActive &&
-                      "bg-ngdi-yellow-500 text-white hover:bg-ngdi-yellow-600",
+                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600",
                     !isActive &&
-                      "hover:bg-ngdi-yellow-50 hover:text-ngdi-yellow-500",
+                      "hover:bg-ngdi-green-50 hover:text-ngdi-green-500",
                     isCollapsed && "px-2"
                   )}
-                  title={isCollapsed ? item.title : undefined}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {!isCollapsed && item.title}
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!isCollapsed && <span>{item.title}</span>}
                 </Button>
               </Link>
             )
           })}
+
+          <AlertDialog
+            open={showSignOutConfirm}
+            onOpenChange={setShowSignOutConfirm}
+          >
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2 hover:bg-destructive/10 hover:text-destructive",
+                  isCollapsed && "px-2"
+                )}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setShowSignOutConfirm(true)
+                }}
+              >
+                {isSigningOut ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LogOut className="h-5 w-5" />
+                )}
+                {!isCollapsed && <span>Sign out</span>}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will sign you out of your account.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleSignOut}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isSigningOut ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="mr-2 h-4 w-4" />
+                  )}
+                  <span>Sign out</span>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <Button
             variant="ghost"
-            className={cn(
-              "w-full justify-start gap-2 hover:bg-destructive/10 hover:text-destructive",
-              isCollapsed && "px-2"
-            )}
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            title={isCollapsed ? "Sign out" : undefined}
+            size="icon"
+            className="ml-auto hidden w-9 lg:flex"
+            onClick={() => onCollapsedChange(!isCollapsed)}
           >
-            {isSigningOut ? (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
             ) : (
-              <LogOut className="h-4 w-4 shrink-0" />
+              <ChevronLeft className="h-4 w-4" />
             )}
-            {!isCollapsed && (isSigningOut ? "Signing out..." : "Sign out")}
           </Button>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="mt-4 self-end"
-        onClick={() => onCollapsedChange(!isCollapsed)}
-        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-4 w-4" />
-        ) : (
-          <ChevronLeft className="h-4 w-4" />
-        )}
-      </Button>
     </div>
   )
 }

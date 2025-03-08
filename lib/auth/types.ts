@@ -1,9 +1,9 @@
-import { type User } from "@supabase/supabase-js"
+import { type User, type Session } from "@supabase/supabase-js"
 
 export enum UserRole {
   USER = "USER",
-  ADMIN = "ADMIN",
   NODE_OFFICER = "NODE_OFFICER",
+  ADMIN = "ADMIN",
 }
 
 export interface UserMetadata {
@@ -45,38 +45,28 @@ export type Action =
   | "view"
   | "assign"
 
-export interface Permission {
-  action: Action
-  subject: Subject
-  conditions?: {
-    organizationId?: string
-    userId?: string
-    isOwner?: boolean
-  }
+export enum Permission {
+  READ_METADATA = "READ_METADATA",
+  CREATE_METADATA = "CREATE_METADATA",
+  UPDATE_METADATA = "UPDATE_METADATA",
+  DELETE_METADATA = "DELETE_METADATA",
+  READ_USER = "READ_USER",
+  UPDATE_USER = "UPDATE_USER",
+  DELETE_USER = "DELETE_USER",
+  VIEW_ANALYTICS = "VIEW_ANALYTICS",
+  MANAGE_ORGANIZATION = "MANAGE_ORGANIZATION",
 }
 
 export const Permissions = {
-  // Metadata permissions
-  CREATE_METADATA: { action: "create", subject: "metadata" } as const,
-  READ_METADATA: { action: "read", subject: "metadata" } as const,
-  UPDATE_METADATA: { action: "update", subject: "metadata" } as const,
-  DELETE_METADATA: { action: "delete", subject: "metadata" } as const,
-  VALIDATE_METADATA: { action: "validate", subject: "metadata" } as const,
-
-  // User management permissions
-  CREATE_USER: { action: "create", subject: "user" } as const,
-  READ_USER: { action: "read", subject: "user" } as const,
-  UPDATE_USER: { action: "update", subject: "user" } as const,
-  DELETE_USER: { action: "delete", subject: "user" } as const,
-  ASSIGN_ROLE: { action: "assign", subject: "role" } as const,
-
-  // Organization permissions
-  MANAGE_ORGANIZATION: { action: "manage", subject: "organization" } as const,
-  READ_ORGANIZATION: { action: "read", subject: "organization" } as const,
-
-  // System permissions
-  VIEW_ANALYTICS: { action: "view", subject: "analytics" } as const,
-  MANAGE_SETTINGS: { action: "manage", subject: "settings" } as const,
+  READ_METADATA: Permission.READ_METADATA,
+  CREATE_METADATA: Permission.CREATE_METADATA,
+  UPDATE_METADATA: Permission.UPDATE_METADATA,
+  DELETE_METADATA: Permission.DELETE_METADATA,
+  READ_USER: Permission.READ_USER,
+  UPDATE_USER: Permission.UPDATE_USER,
+  DELETE_USER: Permission.DELETE_USER,
+  VIEW_ANALYTICS: Permission.VIEW_ANALYTICS,
+  MANAGE_ORGANIZATION: Permission.MANAGE_ORGANIZATION,
 } as const
 
 export const RolePermissions: Record<UserRole, Permission[]> = {
@@ -86,16 +76,11 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permissions.READ_METADATA,
     Permissions.UPDATE_METADATA,
     Permissions.DELETE_METADATA,
-    Permissions.VALIDATE_METADATA,
-    Permissions.CREATE_USER,
     Permissions.READ_USER,
     Permissions.UPDATE_USER,
     Permissions.DELETE_USER,
-    Permissions.ASSIGN_ROLE,
-    Permissions.MANAGE_ORGANIZATION,
-    Permissions.READ_ORGANIZATION,
     Permissions.VIEW_ANALYTICS,
-    Permissions.MANAGE_SETTINGS,
+    Permissions.MANAGE_ORGANIZATION,
   ],
   [UserRole.NODE_OFFICER]: [
     // Node officers can manage metadata and view their organization
@@ -103,12 +88,10 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permissions.READ_METADATA,
     Permissions.UPDATE_METADATA,
     Permissions.READ_USER,
-    Permissions.READ_ORGANIZATION,
   ],
   [UserRole.USER]: [
     // Regular users can only read metadata
     Permissions.READ_METADATA,
-    Permissions.READ_ORGANIZATION,
   ],
 }
 
@@ -127,4 +110,33 @@ export interface BaseUserData {
 
 export interface AuthUser extends BaseUserData {
   password?: string | null
+}
+
+export interface AuthContextType {
+  session: Session | null
+  user: User | null
+  userRole: UserRole | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  signOut: () => Promise<void>
+  signOutFromDevice: (sessionId: string) => Promise<void>
+  signOutFromAllDevices: () => Promise<void>
+  getSessions: () => Promise<UserSession[]>
+  refreshSession: () => Promise<void>
+  can: (permission: Permission) => boolean
+  canAll: (permissions: Permission[]) => boolean
+  canAny: (permissions: Permission[]) => boolean
+}
+
+export interface UserSession {
+  id: string
+  user_id: string
+  created_at: string
+  last_sign_in_at: string
+  device_info?: {
+    browser: string
+    os: string
+    device: string
+  }
+  is_current?: boolean
 }

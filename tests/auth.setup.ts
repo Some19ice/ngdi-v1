@@ -1,6 +1,6 @@
 import { test as setup, expect } from "@playwright/test"
 import { getTestUser, signIn, initializeTestUser } from "./helpers/auth"
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/auth/types"
 import path from "path"
 import fs from "fs"
 import { AUTH_CONFIG } from "@/lib/auth/config"

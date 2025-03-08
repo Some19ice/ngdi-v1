@@ -15,13 +15,19 @@ export function createServerSupabaseClient() {
   return createServerClient(supabaseUrl, supabaseKey, {
     auth: {
       flowType: "pkce",
-      autoRefreshToken: false, // We'll handle refresh manually to avoid cookie issues
+      autoRefreshToken: true, // Enable auto refresh token on server side
       persistSession: true,
+      detectSessionInUrl: false, // Disable auto-detection to prevent errors
     },
     cookies: {
       get(name) {
-        const cookie = cookieStore.get(name)
-        return cookie?.value
+        try {
+          const cookie = cookieStore.get(name)
+          return cookie?.value
+        } catch (e) {
+          console.error(`Error getting cookie ${name}:`, e)
+          return null
+        }
       },
       set(name, value, options) {
         // In Next.js App Router, cookies can only be set in Server Actions or Route Handlers
@@ -99,7 +105,19 @@ export async function getServerUser() {
   try {
     const supabase = createServerSupabaseClient()
     const { data, error } = await supabase.auth.getUser()
-    if (error) throw error
+
+    if (error) {
+      // For AuthSessionMissingError, just return null quietly
+      if (
+        error.message?.includes("Auth session missing") ||
+        error.name === "AuthSessionMissingError"
+      ) {
+        return null
+      }
+      console.error("Error getting server user:", error)
+      return null
+    }
+
     return data.user
   } catch (error) {
     console.error("Error getting server user:", error)
@@ -114,7 +132,19 @@ export async function isServerAuthenticated() {
   try {
     const supabase = createServerSupabaseClient()
     const { data, error } = await supabase.auth.getUser()
-    if (error) throw error
+
+    if (error) {
+      // For AuthSessionMissingError, just return false quietly
+      if (
+        error.message?.includes("Auth session missing") ||
+        error.name === "AuthSessionMissingError"
+      ) {
+        return false
+      }
+      console.error("Error checking server authentication:", error)
+      return false
+    }
+
     return !!data.user
   } catch (error) {
     console.error("Error checking server authentication:", error)
@@ -129,7 +159,20 @@ export async function getServerUserRole() {
   try {
     const supabase = createServerSupabaseClient()
     const { data, error: userError } = await supabase.auth.getUser()
-    if (userError || !data.user) return null
+
+    if (userError) {
+      // For AuthSessionMissingError, just return null quietly
+      if (
+        userError.message?.includes("Auth session missing") ||
+        userError.name === "AuthSessionMissingError"
+      ) {
+        return null
+      }
+      console.error("Error getting user for role check:", userError)
+      return null
+    }
+
+    if (!data.user) return null
 
     const { data: userData, error } = await supabase
       .from("users")
@@ -137,10 +180,87 @@ export async function getServerUserRole() {
       .eq("id", data.user.id)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error("Error fetching user role:", error)
+      return null
+    }
+
     return userData?.role || null
   } catch (error) {
     console.error("Error getting server user role:", error)
     return null
+  }
+}
+
+/**
+ * Server action to sign out by clearing all auth-related cookies
+ * @param scope The scope of the sign-out operation ('local' or 'global')
+ */
+export async function serverSignOut(scope: "local" | "global" = "local") {
+  "use server"
+  try {
+    const cookieStore = cookies()
+
+    // Be more comprehensive about which cookies to clear
+    // Target all Supabase and auth-related cookies
+    const cookiesToRemove = [
+      "sb-access-token",
+      "sb-refresh-token",
+      "next-auth.session-token",
+      "next-auth.callback-url",
+      "next-auth.csrf-token",
+      ...Array.from(cookieStore.getAll())
+        .filter(
+          (cookie) =>
+            cookie.name.includes("sb-") ||
+            cookie.name.includes("supabase") ||
+            cookie.name.includes("auth") ||
+            cookie.name.includes("session") ||
+            cookie.name.includes("token")
+        )
+        .map((cookie) => cookie.name),
+    ]
+
+    // Remove each cookie
+    for (const cookieName of cookiesToRemove) {
+      try {
+        // Set the cookie with an expired date and clear its value
+        cookieStore.set(cookieName, "", {
+          maxAge: 0,
+          expires: new Date(0), // Set to epoch time for immediate expiration
+          path: "/",
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        })
+
+        // Also try setting it without httpOnly for client-accessible cookies
+        cookieStore.set(cookieName, "", {
+          maxAge: 0,
+          expires: new Date(0),
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        })
+      } catch (e) {
+        console.error(`Error removing cookie ${cookieName}:`, e)
+      }
+    }
+
+    // Get the Supabase client and call signOut
+    const supabase = createServerSupabaseClient()
+    try {
+      // Use the provided scope parameter
+      await supabase.auth.signOut({ scope })
+      console.log(`Server-side sign-out with scope '${scope}' completed`)
+    } catch (e) {
+      console.error(`Error in Supabase signOut with scope '${scope}':`, e)
+      // Continue even if there's an error here
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error in serverSignOut:", error)
+    return { success: false, error: String(error) }
   }
 }

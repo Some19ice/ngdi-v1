@@ -5,8 +5,14 @@ import { useRouter } from "next/navigation"
 import { type Profile } from "./types"
 import { updateUserProfile } from "@/app/api/actions/profile"
 import { useToast } from "@/components/ui/use-toast"
-import { AlertCircle } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertCircle, Moon, Sun, Monitor } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
@@ -21,6 +27,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useTheme } from "next-themes"
 
 interface ProfileSettingsFormProps {
   profile: Profile
@@ -29,8 +44,31 @@ interface ProfileSettingsFormProps {
 export function ProfileSettingsForm({ profile }: ProfileSettingsFormProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Mock login history data - in a real app, this would come from your backend
+  const [loginHistory] = useState([
+    {
+      id: 1,
+      date: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      device: "Chrome / macOS",
+      location: "San Francisco, CA",
+    },
+    {
+      id: 2,
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      device: "Safari / iOS",
+      location: "San Francisco, CA",
+    },
+    {
+      id: 3,
+      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      device: "Chrome / Windows",
+      location: "New York, NY",
+    },
+  ])
 
   const handlePreferenceChange = async (
     key: keyof Profile["preferences"],
@@ -92,6 +130,23 @@ export function ProfileSettingsForm({ profile }: ProfileSettingsFormProps) {
     })
   }
 
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    }).format(date)
+  }
+
+  const handleExportData = () => {
+    toast({
+      title: "Preparing data export",
+      description: "Your data will be emailed to you when ready.",
+    })
+  }
+
   if (error) {
     return (
       <div className="rounded-md bg-destructive/15 p-4">
@@ -149,6 +204,88 @@ export function ProfileSettingsForm({ profile }: ProfileSettingsFormProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Customize how the application looks for you
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Theme</Label>
+              <RadioGroup
+                defaultValue={theme || "system"}
+                onValueChange={setTheme}
+                className="flex space-x-1"
+              >
+                <div className="flex flex-col items-center space-y-1">
+                  <RadioGroupItem
+                    value="light"
+                    id="theme-light"
+                    className="sr-only peer"
+                  />
+                  <Label
+                    htmlFor="theme-light"
+                    className="p-2 rounded-md cursor-pointer border peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted"
+                  >
+                    <Sun className="h-5 w-5" />
+                  </Label>
+                  <span className="text-xs">Light</span>
+                </div>
+
+                <div className="flex flex-col items-center space-y-1">
+                  <RadioGroupItem
+                    value="dark"
+                    id="theme-dark"
+                    className="sr-only peer"
+                  />
+                  <Label
+                    htmlFor="theme-dark"
+                    className="p-2 rounded-md cursor-pointer border peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted"
+                  >
+                    <Moon className="h-5 w-5" />
+                  </Label>
+                  <span className="text-xs">Dark</span>
+                </div>
+
+                <div className="flex flex-col items-center space-y-1">
+                  <RadioGroupItem
+                    value="system"
+                    id="theme-system"
+                    className="sr-only peer"
+                  />
+                  <Label
+                    htmlFor="theme-system"
+                    className="p-2 rounded-md cursor-pointer border peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted"
+                  >
+                    <Monitor className="h-5 w-5" />
+                  </Label>
+                  <span className="text-xs">System</span>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="language">Language</Label>
+              <Select defaultValue="en">
+                <SelectTrigger id="language">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="ja">日本語</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Security</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -178,6 +315,61 @@ export function ProfileSettingsForm({ profile }: ProfileSettingsFormProps) {
               Change Password
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Activity</CardTitle>
+          <CardDescription>Recent logins to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {loginHistory.length > 0 ? (
+              <div className="space-y-4">
+                {loginHistory.map((login) => (
+                  <div
+                    key={login.id}
+                    className="flex justify-between items-start border-b pb-3 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-medium">{formatDate(login.date)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {login.device}
+                      </p>
+                    </div>
+                    <div className="text-sm text-right">
+                      <p>{login.location}</p>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="link"
+                  className="px-0 text-sm"
+                  onClick={() => router.push("/profile/security/activity")}
+                >
+                  View full activity log
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No recent activity found.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Data & Privacy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleExportData}
+          >
+            Export Account Data
+          </Button>
         </CardContent>
       </Card>
 

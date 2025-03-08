@@ -1,117 +1,89 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
-import { createClient } from "@/lib/supabase-client"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useToast } from "@/components/ui/use-toast"
 
 export function AuthHandler() {
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const supabase = createClient()
-
-  const handleAuthStateChange = useCallback(
-    async (event: string, session: any) => {
-      console.log("Auth state change:", {
-        event,
-        hasSession: !!session,
-        currentPath: pathname,
-      })
-
-      try {
-        switch (event) {
-          case "SIGNED_IN": {
-            // Get the return URL or default to home
-            const returnTo = searchParams?.get("from") || "/"
-            const finalRedirect = returnTo === "/auth/signin" ? "/" : returnTo
-
-            console.log("Sign in successful, redirecting to:", finalRedirect)
-            router.push(finalRedirect)
-            break
-          }
-
-          case "SIGNED_OUT": {
-            console.log("Sign out detected, redirecting to signin")
-            router.push("/auth/signin")
-            break
-          }
-
-          case "USER_UPDATED": {
-            console.log("User data updated")
-            router.refresh()
-            break
-          }
-        }
-      } catch (error) {
-        console.error("Auth state change error:", error)
-        toast.error("Authentication error occurred")
-      }
-    },
-    [router, pathname, searchParams]
-  )
+  const params = useSearchParams()
+  const { toast } = useToast()
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const handleSession = async () => {
+    const handleAuthState = async () => {
       try {
-        // Handle PKCE callback
-        if (pathname === "/auth/callback") {
-          const code = searchParams?.get("code")
-          if (code) {
-            console.log("Processing auth callback")
-            const { data, error } = await supabase.auth.exchangeCodeForSession(
-              code
-            )
+        // Check for error parameters
+        const error = params?.get("error")
+        const errorDescription = params?.get("error_description")
 
-            if (error) {
-              console.error("Auth callback error:", error)
-              toast.error("Authentication failed")
-              router.push("/auth/signin")
-              return
-            }
-
-            if (data.session) {
-              console.log("Session established successfully")
-              const returnTo = searchParams?.get("from") || "/"
-              router.push(returnTo === "/auth/signin" ? "/" : returnTo)
-              return
-            }
-          }
+        if (error) {
+          console.error("Auth error:", error, errorDescription)
+          toast({
+            title: "Authentication Error",
+            description:
+              errorDescription || "An error occurred during authentication",
+            variant: "destructive",
+          })
+          router.push("/auth/signin")
+          return
         }
 
-        // Check current session
+        // Check for successful authentication
         const {
           data: { session },
+          error: sessionError,
         } = await supabase.auth.getSession()
 
-        console.log("Current auth state:", {
-          hasSession: !!session,
-          currentPath: pathname,
-        })
+        if (sessionError) {
+          console.error("Session error:", sessionError)
+          toast({
+            title: "Session Error",
+            description: "Failed to retrieve session",
+            variant: "destructive",
+          })
+          router.push("/auth/signin")
+          return
+        }
 
-        // Redirect to home if authenticated and on auth pages
-        if (
-          session &&
-          (pathname === "/auth/signin" || pathname === "/auth/callback")
-        ) {
-          router.push("/")
+        if (session) {
+          // Get the redirect URL from query params or default to dashboard
+          const redirectTo = params?.get("redirect") || "/dashboard"
+
+          // Update user metadata if needed
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: {
+              last_sign_in: new Date().toISOString(),
+            },
+          })
+
+          if (updateError) {
+            console.error("Error updating user metadata:", updateError)
+          }
+
+          toast({
+            title: "Welcome back!",
+            description: "You have been successfully signed in.",
+          })
+
+          router.push(redirectTo)
+        } else {
+          router.push("/auth/signin")
         }
       } catch (error) {
-        console.error("Session handling error:", error)
-        toast.error("Failed to initialize session")
+        console.error("Auth handler error:", error)
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        })
+        router.push("/auth/signin")
       }
     }
 
-    handleSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(handleAuthStateChange)
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [handleAuthStateChange, pathname, searchParams, router, supabase.auth])
+    handleAuthState()
+  }, [router, params, toast, supabase.auth])
 
   return null
 }

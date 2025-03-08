@@ -1,9 +1,8 @@
 import "@/styles/globals.css"
 import { Inter } from "next/font/google"
-import { RootProvider } from "@/components/providers/root-provider"
+import { Toaster } from "@/components/ui/toaster"
+import { Providers } from "./providers"
 import RootLayoutClient from "@/components/layout/root-layout-client"
-import { getServerUser } from "@/lib/supabase-server"
-import { getServerSession } from "next-auth"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -12,23 +11,18 @@ export const metadata = {
   description: "National Geospatial Data Infrastructure Portal",
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Get the user and session from the server
-  const [user, session] = await Promise.all([
-    getServerUser(),
-    getServerSession(),
-  ])
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <RootProvider initialUser={user} session={session}>
+        <Providers>
           <RootLayoutClient>{children}</RootLayoutClient>
-        </RootProvider>
+        </Providers>
+        <Toaster />
       </body>
     </html>
   )

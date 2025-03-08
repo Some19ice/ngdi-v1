@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MapIcon, Loader2, LogOut } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/lib/auth/auth-context"
+import { signOut, useSession } from "next-auth/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,18 @@ import { useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UserRole } from "@/lib/auth/types"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { cn } from "@/lib/utils"
 
 // Public navigation items
 const publicNavItems = [
@@ -83,27 +95,14 @@ const supportMenuItems = [
   { name: "Feedback", href: "/feedback" },
 ]
 
-interface UserWithMetadata {
-  id: string
-  email?: string
-  user_metadata: {
-    name?: string
-    role?: UserRole
-    avatar_url?: string
-  }
-}
-
-function UserAvatar({ user }: { user: UserWithMetadata }) {
+function UserAvatar({ user }: { user: { name?: string; email?: string; image?: string } }) {
   return (
     <Avatar className="h-8 w-8 border border-border">
-      <AvatarImage
-        src={user.user_metadata.avatar_url || ""}
-        alt={user.user_metadata.name || ""}
-      />
+      <AvatarImage src={user.image || ""} alt={user.name || ""} />
       <AvatarFallback className="bg-primary/10">
-        {user.user_metadata.name
+        {user.name
           ?.split(" ")
-          .map((n: string) => n[0])
+          .map((n) => n[0])
           .join("")
           .toUpperCase() || "U"}
       </AvatarFallback>
@@ -124,34 +123,36 @@ function LoadingHeader() {
 }
 
 export function Header() {
-  const { user, signOut } = useAuth()
+  const { data: session, status } = useSession()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
-
-  const userWithMetadata = user as UserWithMetadata | null
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut()
-      router.push("/")
-      router.refresh()
+      await signOut({ redirect: true, callbackUrl: "/" })
     } catch (error) {
       console.error("Error signing out:", error)
-      toast.error("Failed to sign out")
+      toast.error("Failed to sign out. Please try again.")
     } finally {
       setIsSigningOut(false)
+      setShowSignOutConfirm(false)
     }
   }
 
   const getNavItems = () => {
     const items = [...publicNavItems]
-    const userRole = userWithMetadata?.user_metadata?.role
+    const userRole = session?.user?.role
     if (userRole && Object.values(UserRole).includes(userRole)) {
       items.push(...(roleBasedNavItems[userRole] || []))
     }
     return items
+  }
+
+  if (status === "loading") {
+    return <LoadingHeader />
   }
 
   return (
@@ -181,7 +182,7 @@ export function Header() {
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {userWithMetadata ? (
+            {session?.user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -189,56 +190,91 @@ export function Header() {
                     className="relative h-8 w-8 rounded-full"
                     data-testid="user-menu"
                   >
-                    <UserAvatar user={userWithMetadata} />
+                    <UserAvatar user={session.user} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {userWithMetadata.user_metadata.name ||
-                          userWithMetadata.email?.split("@")[0]}
+                        {session.user.name || session.user.email?.split("@")[0]}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {userWithMetadata.email}
+                        {session.user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    {getUserMenuItems(userWithMetadata.user_metadata.role).map(
-                      (item) => (
-                        <DropdownMenuItem key={item.href} asChild>
-                          <Link href={item.href}>{item.name}</Link>
-                        </DropdownMenuItem>
-                      )
-                    )}
+                    {getUserMenuItems(session.user.role).map((item) => (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href}>
+                          {item.name}
+                          {item.shortcut && (
+                            <DropdownMenuShortcut>
+                              {item.shortcut}
+                            </DropdownMenuShortcut>
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onSelect={(e) => {
-                      e.preventDefault()
-                      handleSignOut()
-                    }}
-                    disabled={isSigningOut}
+                  <DropdownMenuGroup>
+                    {supportMenuItems.map((item) => (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href}>{item.name}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <AlertDialog
+                    open={showSignOutConfirm}
+                    onOpenChange={setShowSignOutConfirm}
                   >
-                    {isSigningOut ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <span>Signing out...</span>
-                      </>
-                    ) : (
-                      <>
-                        <LogOut className="mr-2 h-4 w-4" />
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault()
+                          setShowSignOutConfirm(true)
+                        }}
+                      >
+                        {isSigningOut ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <LogOut className="mr-2 h-4 w-4" />
+                        )}
                         <span>Sign out</span>
-                      </>
-                    )}
-                  </DropdownMenuItem>
+                        <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will sign you out of your account.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleSignOut}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {isSigningOut ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <LogOut className="mr-2 h-4 w-4" />
+                          )}
+                          <span>Sign out</span>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="ghost" size="sm" asChild>
+              <Button asChild variant="default" size="sm">
                 <Link href="/auth/signin">Sign in</Link>
               </Button>
             )}

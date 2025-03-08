@@ -1,9 +1,6 @@
-import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/auth-options"
-import { UserRole } from "@/lib/auth/types"
-import { Session } from "next-auth"
-import { AUTH_CONFIG } from "@/lib/auth/config"
+import { NextResponse } from "next/server"
+import { authOptions } from "../[...nextauth]/route"
 
 // Mark this route as dynamic to prevent static optimization
 export const dynamic = "force-dynamic"
@@ -95,94 +92,23 @@ function getExpiryDate(expires: Date | string | null): string {
 }
 
 // Custom session handler to prevent request body consumption issues
-export async function GET(req: Request) {
-  const requestId = req.headers.get("x-request-id") || "unknown"
-
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session || !session.user) {
-      return NextResponse.json(
-        {
-          user: null,
-          expires: getExpiryDate(null),
-          error: "Unauthorized",
-        } as UserSession,
-        {
-          status: 401,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-          },
-        }
-      )
+    
+    if (!session) {
+      return NextResponse.json({ user: null, expires: null }, { status: 200 })
     }
-
-    // Check if session has expired
-    const expiryDate = new Date(session.expires)
-    if (expiryDate.getTime() < Date.now()) {
-      return NextResponse.json(
-        {
-          user: null,
-          expires: getExpiryDate(null),
-          error: "Session expired",
-        } as UserSession,
-        {
-          status: 401,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-          },
-        }
-      )
-    }
-
-    // Verify user role
-    if (!session.user.role) {
-      return NextResponse.json(
-        {
-          user: null,
-          expires: getExpiryDate(null),
-          error: "Invalid user role",
-        } as UserSession,
-        {
-          status: 403,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-          },
-        }
-      )
-    }
-
-    return NextResponse.json(
-      {
-        user: createSafeUser(session.user),
-        expires: getExpiryDate(session.expires),
-        error: null,
-      } as UserSession,
-      {
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      }
-    )
+    
+    return NextResponse.json({
+      user: session.user,
+      expires: session.expires
+    }, { status: 200 })
   } catch (error) {
-    console.error("Session error:", error)
+    console.error("Error in session route:", error)
     return NextResponse.json(
-      {
-        user: null,
-        expires: getExpiryDate(null),
-        error: "Failed to retrieve session",
-      } as UserSession,
-      {
-        status: 500,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      }
+      { error: "Internal server error" },
+      { status: 500 }
     )
   }
 }
