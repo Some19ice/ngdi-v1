@@ -5,7 +5,7 @@ import { UserRole } from "../types/auth.types"
 // Convert string to Uint8Array for jose
 const textEncoder = new TextEncoder()
 const jwtSecret = textEncoder.encode(config.jwt.secret)
-const refreshSecret = textEncoder.encode(config.jwt.secret) // Use the same secret for refresh tokens
+const refreshSecret = textEncoder.encode(config.jwt.refreshSecret) // Use the refresh secret for refresh tokens
 
 /**
  * JWT payload interface

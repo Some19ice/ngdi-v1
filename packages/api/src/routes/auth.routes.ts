@@ -54,10 +54,17 @@ auth.onError(errorHandler)
 // Login route
 auth.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
+    console.log("Login request received")
     const data = await c.req.json()
+    console.log("Login data:", { email: data.email })
+    
     const result = await AuthService.login(data)
+    console.log("Login successful")
+    
     return c.json(result)
   } catch (error) {
+    console.error("Login error:", error)
+    
     if (error instanceof HTTPException) {
       return c.json(
         {
@@ -68,6 +75,8 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
         error.status
       )
     }
+    
+    console.error("Unhandled login error:", error)
     throw new HTTPException(500, { message: "Login failed" })
   }
 })

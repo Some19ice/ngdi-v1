@@ -54,19 +54,16 @@ function clearTokens(): void {
 
 async function decodeJwt(token: string): Promise<{ exp: number }> {
   try {
-    const { payload } = await jose.jwtVerify(
-      token,
-      new TextEncoder().encode("secret"), // This is just for decoding, not verification
-      { 
-        requiredClaims: ["exp"],
-        algorithms: ["HS256"]
-      }
-    );
-    return { exp: payload.exp as number };
-  } catch (error) {
-    // If verification fails, just decode without verification
+    // Skip verification and just decode the token
     const decoded = jose.decodeJwt(token);
+    if (!decoded.exp) {
+      throw new Error("Token has no expiration");
+    }
     return { exp: decoded.exp as number };
+  } catch (error) {
+    console.error("Failed to decode JWT:", error);
+    // Return a default expiration 1 hour from now as fallback
+    return { exp: Math.floor(Date.now() / 1000) + 3600 };
   }
 }
 

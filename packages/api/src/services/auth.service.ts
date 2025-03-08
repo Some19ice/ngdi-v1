@@ -48,23 +48,33 @@ export class AuthService {
   }
 
   static async login(data: LoginRequest): Promise<AuthResponse> {
+    console.log("AuthService.login called with email:", data.email)
+    
     const user = await prisma.user.findUnique({
       where: { email: data.email },
     })
 
+    console.log("User found:", user ? "Yes" : "No")
+
     if (!user) {
+      console.log("User not found, throwing 401")
       throw new HTTPException(401, { message: "Invalid credentials" })
     }
 
+    console.log("Validating password")
     const isValidPassword = await this.validatePassword(
       data.password,
       user.password
     )
 
+    console.log("Password valid:", isValidPassword)
+
     if (!isValidPassword) {
+      console.log("Invalid password, throwing 401")
       throw new HTTPException(401, { message: "Invalid credentials" })
     }
 
+    console.log("Generating tokens")
     const accessToken = this.generateToken(user)
     const refreshToken = await generateRefreshToken({
       userId: user.id,
@@ -73,6 +83,7 @@ export class AuthService {
     })
     const { password: _, ...userWithoutPassword } = user
 
+    console.log("Login successful, returning response")
     return {
       user: {
         id: user.id,
