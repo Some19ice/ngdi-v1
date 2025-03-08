@@ -61,7 +61,7 @@ class ApiClient {
         if (
           error.response?.status === 401 &&
           !originalRequest._retry &&
-          authClient.isAuthenticated()
+          await authClient.isAuthenticated()
         ) {
           originalRequest._retry = true
 
@@ -124,59 +124,46 @@ class ApiClient {
   }
 }
 
-export interface ApiEndpoints {
-  // Auth endpoints
-  login: (data: LoginRequest) => Promise<AuthResponse>
-  register: (data: RegisterRequest) => Promise<AuthResponse>
-  logout: () => Promise<void>
-
-  // User endpoints
-  getCurrentUser: () => Promise<UserProfile>
-  updateUser: (data: UserUpdateRequest) => Promise<UserProfile>
-  getUsers: (
-    params?: PaginationParams
-  ) => Promise<PaginatedResponse<UserProfile>>
-
-  // Metadata endpoints
-  getMetadata: (
-    params?: PaginationParams
-  ) => Promise<PaginatedResponse<MetadataResponse>>
-  createMetadata: (data: MetadataRequest) => Promise<MetadataResponse>
-  updateMetadata: (
-    id: string,
-    data: MetadataRequest
-  ) => Promise<MetadataResponse>
-  deleteMetadata: (id: string) => Promise<void>
-
-  // Admin endpoints
-  deleteUser: (id: string) => Promise<void>
-  updateUserRole: (id: string, role: string) => Promise<UserProfile>
-}
-
 // Create API client instance
 const apiClient = ApiClient.getInstance()
 
-// Define API endpoints
-export const api: ApiEndpoints = {
+// Define API endpoints with proper type conversions
+export const api = {
   // Auth endpoints
-  login: (data) => authClient.login(data.email, data.password),
-  register: (data) => authClient.register(data.email, data.password, data.name),
+  login: async (data: LoginRequest): Promise<AuthResponse> => {
+    const session = await authClient.login(data.email, data.password)
+    return {
+      user: session.user as UserProfile,
+      token: session.accessToken,
+      refreshToken: session.refreshToken,
+    }
+  },
+  
+  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+    const session = await authClient.register(data.email, data.password, data.name)
+    return {
+      user: session.user as UserProfile,
+      token: session.accessToken,
+      refreshToken: session.refreshToken,
+    }
+  },
+  
   logout: () => authClient.logout(),
 
   // User endpoints
-  getCurrentUser: () => apiClient.get("/api/users/me"),
-  updateUser: (data) => apiClient.put("/api/users/me", data),
-  getUsers: (params) => apiClient.get("/api/users", params),
+  getCurrentUser: () => apiClient.get<UserProfile>("/api/users/me"),
+  updateUser: (data: UserUpdateRequest) => apiClient.put<UserProfile>("/api/users/me", data),
+  getUsers: (params?: PaginationParams) => apiClient.get<PaginatedResponse<UserProfile>>("/api/users", params),
 
   // Metadata endpoints
-  getMetadata: (params) => apiClient.get("/api/metadata", params),
-  createMetadata: (data) => apiClient.post("/api/metadata", data),
-  updateMetadata: (id, data) => apiClient.put(`/api/metadata/${id}`, data),
-  deleteMetadata: (id) => apiClient.delete(`/api/metadata/${id}`),
+  getMetadata: (params?: PaginationParams) => apiClient.get<PaginatedResponse<MetadataResponse>>("/api/metadata", params),
+  createMetadata: (data: MetadataRequest) => apiClient.post<MetadataResponse>("/api/metadata", data),
+  updateMetadata: (id: string, data: MetadataRequest) => apiClient.put<MetadataResponse>(`/api/metadata/${id}`, data),
+  deleteMetadata: (id: string) => apiClient.delete(`/api/metadata/${id}`),
 
   // Admin endpoints
-  deleteUser: (id) => apiClient.delete(`/api/users/${id}`),
-  updateUserRole: (id, role) => apiClient.put(`/api/users/${id}/role`, { role }),
-}
+  deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
+  updateUserRole: (id: string, role: string) => apiClient.put<UserProfile>(`/api/users/${id}/role`, { role }),
+} as const
 
 export default api

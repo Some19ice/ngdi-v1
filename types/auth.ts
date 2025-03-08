@@ -14,6 +14,7 @@ export interface RegisterRequest {
 export interface AuthResponse {
   user: UserProfile
   token: string
+  refreshToken: string
 }
 
 export interface ChangePasswordRequest {

@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 interface ProfilePageWrapperProps {
@@ -18,28 +18,19 @@ export default function ProfilePageWrapper({
   useEffect(() => {
     // Only redirect if we're sure the user is not authenticated
     if (status === "unauthenticated") {
-      router.push("/auth/signin?callbackUrl=/profile")
+      router.push("/auth/signin?returnUrl=/profile")
     }
   }, [status, router])
 
   // Show loading state while checking authentication
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center min-h-[300px]">
-        <LoadingSpinner />
+      <div className="flex h-[50vh] items-center justify-center">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
-  // If authenticated, show the profile content
-  if (status === "authenticated" && session?.user) {
-    return <>{children}</>
-  }
-
-  // Default loading state (should be replaced by the redirect)
-  return (
-    <div className="flex justify-center items-center min-h-[300px]">
-      <LoadingSpinner />
-    </div>
-  )
+  // If authenticated, render the children
+  return <>{children}</>
 }

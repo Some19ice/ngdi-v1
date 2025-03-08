@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
+import { useSession, useAuth } from "@/lib/auth-context"
 import { type Permission, UserRole } from "@/lib/auth/types"
 import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
 
@@ -14,7 +14,8 @@ const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 const permissionCache = new Map<string, CachedPermission>()
 
 export function useAuthWithCache() {
-  const { data: session, status, update } = useSession()
+  const { data: session, status } = useSession()
+  const { refreshSession: refresh } = useAuth()
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   // Clear cache when session changes
@@ -32,7 +33,7 @@ export function useAuthWithCache() {
         organization: session.user.organization || null,
         department: session.user.department || null,
         phone: session.user.phone || null,
-        createdAt: session.user.createdAt || null,
+        createdAt: null,
         image: session.user.image || null,
       }
     : null
@@ -68,7 +69,7 @@ export function useAuthWithCache() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: null,
         image: user.image,
       }
 
@@ -101,7 +102,7 @@ export function useAuthWithCache() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: null,
         image: user.image,
       }
 
@@ -134,7 +135,7 @@ export function useAuthWithCache() {
         organization: user.organization,
         department: user.department,
         phone: user.phone,
-        createdAt: user.createdAt?.toISOString() || null,
+        createdAt: null,
         image: user.image,
       }
 
@@ -151,9 +152,9 @@ export function useAuthWithCache() {
 
   const refreshSession = useCallback(async () => {
     permissionCache.clear()
-    await update()
+    await refresh()
     setLastUpdate(Date.now())
-  }, [update])
+  }, [refresh])
 
   return {
     user,

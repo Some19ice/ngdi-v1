@@ -4,7 +4,7 @@ import { Header } from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useState } from "react"
-import { useSession } from "next-auth/react"
+import { useSession } from "@/lib/auth-context"
 
 export default function RootLayoutClient({
   children,
