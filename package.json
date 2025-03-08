@@ -30,12 +30,6 @@
     "test:coverage": "playwright test --reporter=html",
     "test:analyze": "ts-node scripts/analyze-test-results.ts",
     "format": "prettier --write .",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status",
-    "supabase:db:reset": "supabase db reset",
-    "supabase:db:push": "supabase db push",
-    "supabase:types": "supabase gen types typescript --local > lib/database.types.ts",
     "clean": "rm -rf .next node_modules/.cache"
   },
   "dependencies": {
@@ -70,9 +64,6 @@
     "@radix-ui/react-toggle": "^1.1.0",
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.49.1",
     "@tanstack/react-query": "^5.67.1",
     "@types/react-query": "^1.2.8",
     "@upstash/ratelimit": "^1.0.0",
