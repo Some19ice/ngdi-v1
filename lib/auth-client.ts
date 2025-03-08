@@ -44,12 +44,24 @@ function getTokens(): AuthTokens | null {
 
 function setTokens(tokens: AuthTokens): void {
   if (typeof window === "undefined") return;
+  
+  // Store tokens in localStorage
   localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
+  
+  // Set the auth_token cookie for SSR
+  document.cookie = `auth_token=${tokens.accessToken}; path=/; ${
+    process.env.NODE_ENV === "production" ? "secure; " : ""
+  }samesite=lax`;
 }
 
 function clearTokens(): void {
   if (typeof window === "undefined") return;
+  
+  // Clear localStorage
   localStorage.removeItem(TOKEN_KEY);
+  
+  // Clear the auth_token cookie
+  document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 }
 
 async function decodeJwt(token: string): Promise<{ exp: number }> {

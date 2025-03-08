@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase-client"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"

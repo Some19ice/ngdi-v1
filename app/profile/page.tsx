@@ -7,7 +7,7 @@ import {
   Profile,
   formatSupabaseUserToProfile,
 } from "@/components/profile/types"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 

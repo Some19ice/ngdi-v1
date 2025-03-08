@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -44,7 +44,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
-import type { UserSession } from "@/lib/auth/auth-context"
+import type { Session } from "@/lib/auth-client"
 
 export default function ActivityPage() {
   const router = useRouter()
@@ -60,7 +60,7 @@ export default function ActivityPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [showAllSessions, setShowAllSessions] = useState(false)
-  const [sessions, setSessions] = useState<UserSession[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
   const [isLoadingSessions, setIsLoadingSessions] = useState(true)
   const [isProcessingSignOut, setIsProcessingSignOut] = useState<string | null>(
     null
@@ -85,7 +85,7 @@ export default function ActivityPage() {
 
         // Generate some mock sessions for demonstration if we only have 1 session
         if (fetchedSessions.length <= 1) {
-          const mockSessions: UserSession[] = [
+          const mockSessions: Session[] = [
             ...fetchedSessions,
             {
               id: "session-2",

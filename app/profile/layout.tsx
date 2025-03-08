@@ -3,7 +3,7 @@
 import { ReactNode } from "react"
 import { Card } from "@/components/ui/card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 

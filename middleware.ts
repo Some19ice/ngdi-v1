@@ -86,9 +86,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Get the JWT token from cookies or authorization header
-  const token = request.cookies.get("auth_token")?.value || 
-    request.headers.get("authorization")?.replace("Bearer ", "")
+  // Get the JWT token from authorization header (for API requests)
+  // or from the auth_token cookie (for server-side auth)
+  const authHeader = request.headers.get("authorization")
+  const token = authHeader?.replace("Bearer ", "") || request.cookies.get("auth_token")?.value
   
   if (!token) {
     // Redirect to login page with return URL
@@ -135,7 +136,19 @@ export async function middleware(request: NextRequest) {
     }
     
     // User is authenticated and authorized
-    return NextResponse.next()
+    const response = NextResponse.next()
+    
+    // Set the auth token cookie if it doesn't exist (for SSR)
+    if (!request.cookies.get("auth_token")) {
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+      })
+    }
+    
+    return response
   } catch (error) {
     console.error("Token verification failed:", error)
     // Invalid token, redirect to login

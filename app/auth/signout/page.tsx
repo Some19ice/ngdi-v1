@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function ForceSignoutPage() {
   const router = useRouter()

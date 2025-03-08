@@ -2,7 +2,7 @@
 
 import { UserRole } from "@/lib/auth/types"
 import { ProtectedRoute } from "@/components/auth-components/protected-route"
-import { useAuth } from "@/lib/auth/auth-context"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users,
