@@ -1,7 +1,6 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { withAuth } from "next-auth/middleware"
+import * as jose from "jose"
 
 // Original console.error to save it
 const originalConsoleError = console.error
@@ -9,11 +8,25 @@ const originalConsoleError = console.error
 // Define known auth paths for better path management
 const AUTH_PATHS = {
   SIGNIN: "/auth/signin",
-  SIGNOUT: "/api/auth/signout",
   CALLBACK: "/auth/callback",
   RESET_PASSWORD: "/auth/reset-password",
   NEW_USER: "/auth/new-user",
 }
+
+// Protected routes that require authentication
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/profile",
+  "/metadata",
+  "/admin",
+  "/settings",
+]
+
+// Admin-only routes
+const ADMIN_ROUTES = ["/admin"]
+
+// Node officer routes
+const NODE_OFFICER_ROUTES = ["/metadata/create", "/metadata/edit"]
 
 // List of cookies that should not be touched during sign-out
 // This helps prevent issues with new authentication attempts
@@ -52,99 +65,86 @@ console.error = function (...args) {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // Skip middleware for static assets and API routes
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/") ||
+    pathname.includes(".") ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next()
+  }
+  
+  // Check if the route requires authentication
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  )
+  
+  if (!isProtectedRoute) {
+    return NextResponse.next()
+  }
+  
+  // Get the JWT token from cookies or authorization header
+  const token = request.cookies.get("auth_token")?.value || 
+    request.headers.get("authorization")?.replace("Bearer ", "")
+  
+  if (!token) {
+    // Redirect to login page with return URL
+    const url = new URL(AUTH_PATHS.SIGNIN, request.url)
+    url.searchParams.set("returnUrl", pathname)
+    return NextResponse.redirect(url)
+  }
+  
   try {
-    // Create a Supabase client configured to use cookies
-    const supabase = createMiddlewareClient({
-      req: request,
-      res: NextResponse.next(),
-    })
-
-    // Refresh session if expired - required for Server Components
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession()
-
-    if (error) {
-      console.error("Middleware - Error getting session:", error)
+    // Verify and decode the token
+    const decoded = jose.decodeJwt(token)
+    
+    // Check if token is expired
+    const currentTime = Math.floor(Date.now() / 1000)
+    if (decoded.exp && decoded.exp < currentTime) {
+      // Token expired, redirect to login
+      const url = new URL(AUTH_PATHS.SIGNIN, request.url)
+      url.searchParams.set("returnUrl", pathname)
+      return NextResponse.redirect(url)
     }
-
-    // If we have a session but it's expired, try to refresh it
+    
+    // Check role-based access
+    const userRole = decoded.role as string
+    
+    // Check admin routes
     if (
-      session?.expires_at &&
-      session.expires_at <= Math.floor(Date.now() / 1000)
+      ADMIN_ROUTES.some(route => 
+        pathname === route || pathname.startsWith(`${route}/`)
+      ) && 
+      userRole !== "admin"
     ) {
-      const {
-        data: { session: refreshedSession },
-        error: refreshError,
-      } = await supabase.auth.refreshSession()
-
-      if (refreshError) {
-        console.error("Middleware - Error refreshing session:", refreshError)
-      } else if (refreshedSession) {
-        console.log("Middleware - Session refreshed successfully")
-      }
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
-
-    // Get the pathname from the request
-    const path = request.nextUrl.pathname
-
-    // Define protected routes that require authentication
-    const protectedRoutes = [
-      "/dashboard",
-      "/profile",
-      "/settings",
-      "/api/user/",
-      "/api/protected/",
-    ]
-
-    // Check if the current path is a protected route
-    const isProtectedRoute = protectedRoutes.some((route) =>
-      path.startsWith(route)
-    )
-
-    // If it's a protected route and there's no session, redirect to login
-    if (isProtectedRoute && !session) {
-      const redirectUrl = new URL("/auth/signin", request.url)
-      redirectUrl.searchParams.set("redirect", path)
-      return NextResponse.redirect(redirectUrl)
+    
+    // Check node officer routes
+    if (
+      NODE_OFFICER_ROUTES.some(route => 
+        pathname === route || pathname.startsWith(`${route}/`)
+      ) && 
+      userRole !== "admin" && 
+      userRole !== "node_officer"
+    ) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
-
-    // Continue with the request
+    
+    // User is authenticated and authorized
     return NextResponse.next()
   } catch (error) {
-    console.error("Middleware - Unexpected error:", error)
-    return NextResponse.next()
+    console.error("Token verification failed:", error)
+    // Invalid token, redirect to login
+    const url = new URL(AUTH_PATHS.SIGNIN, request.url)
+    url.searchParams.set("returnUrl", pathname)
+    return NextResponse.redirect(url)
   }
 }
 
-export default withAuth(
-  function middleware(req) {
-    // Add any custom middleware logic here
-    return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-  }
-)
-
-// Configure which routes use this middleware
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/profile/:path*",
-    "/admin/:path*",
-    "/api/protected/:path*",
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - public files
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }
