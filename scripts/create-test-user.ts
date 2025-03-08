@@ -18,12 +18,16 @@ async function createOrUpdateTestUser() {
       // Update the user's password
       const updatedUser = await prisma.user.update({
         where: { email: "test@example.com" },
-        data: { password: hashedPassword },
+        data: { 
+          password: hashedPassword,
+          role: "USER"
+        },
       })
       
       console.log("Test user password updated successfully:", updatedUser.email)
       console.log("Email: test@example.com")
       console.log("Password: password123")
+      console.log("Role: USER")
       return
     }
 
@@ -40,6 +44,7 @@ async function createOrUpdateTestUser() {
     console.log("Test user created successfully:", user.email)
     console.log("Email: test@example.com")
     console.log("Password: password123")
+    console.log("Role: USER")
   } catch (error) {
     console.error("Error creating/updating test user:", error)
   } finally {

@@ -59,7 +59,14 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     return c.json(result)
   } catch (error) {
     if (error instanceof HTTPException) {
-      throw error
+      return c.json(
+        {
+          success: false,
+          message: error.message || "Authentication failed",
+          code: ErrorCode.AUTHENTICATION_ERROR,
+        },
+        error.status
+      )
     }
     throw new HTTPException(500, { message: "Login failed" })
   }
@@ -73,7 +80,14 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
     return c.json(result)
   } catch (error) {
     if (error instanceof HTTPException) {
-      throw error
+      return c.json(
+        {
+          success: false,
+          message: error.message || "Registration failed",
+          code: ErrorCode.AUTHENTICATION_ERROR,
+        },
+        error.status
+      )
     }
     throw new HTTPException(500, { message: "Registration failed" })
   }
