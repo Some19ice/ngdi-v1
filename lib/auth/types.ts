@@ -1,9 +1,7 @@
-import { type User, type Session } from "@supabase/supabase-js"
-
 export enum UserRole {
-  USER = "USER",
-  NODE_OFFICER = "NODE_OFFICER",
-  ADMIN = "ADMIN",
+  USER = "user",
+  NODE_OFFICER = "node_officer",
+  ADMIN = "admin",
 }
 
 export interface UserMetadata {
@@ -15,10 +13,6 @@ export interface UserMetadata {
   phone?: string | null
   createdAt?: string | null
   emailVerified?: string | null
-}
-
-export type ExtendedUser = User & {
-  user_metadata: UserMetadata
 }
 
 export interface AuthError {
@@ -97,7 +91,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
 
 export interface BaseUserData {
   id: string
-  email: string // Required field for NextAuth
+  email: string
   name: string | null
   role: UserRole
   organization: string | null
@@ -110,22 +104,6 @@ export interface BaseUserData {
 
 export interface AuthUser extends BaseUserData {
   password?: string | null
-}
-
-export interface AuthContextType {
-  session: Session | null
-  user: User | null
-  userRole: UserRole | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  signOut: () => Promise<void>
-  signOutFromDevice: (sessionId: string) => Promise<void>
-  signOutFromAllDevices: () => Promise<void>
-  getSessions: () => Promise<UserSession[]>
-  refreshSession: () => Promise<void>
-  can: (permission: Permission) => boolean
-  canAll: (permissions: Permission[]) => boolean
-  canAny: (permissions: Permission[]) => boolean
 }
 
 export interface UserSession {

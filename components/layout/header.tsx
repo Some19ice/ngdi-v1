@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MapIcon, Loader2, LogOut } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { signOut, useSession } from "next-auth/react"
+import { useSession, useAuth } from "@/lib/auth-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,7 +62,7 @@ const roleBasedNavItems: Record<
 const elevatedRoles: UserRole[] = [UserRole.ADMIN, UserRole.NODE_OFFICER]
 
 // User menu items based on role
-const getUserMenuItems = (role: UserRole | undefined) => {
+const getUserMenuItems = (role: string | undefined) => {
   const baseItems = [
     {
       name: "Profile",
@@ -76,8 +76,8 @@ const getUserMenuItems = (role: UserRole | undefined) => {
     },
   ]
 
-  // Add role-specific menu items only if role is defined and is elevated
-  if (role && elevatedRoles.includes(role)) {
+  // Add role-specific menu items based on role string
+  if (role === "admin" || role === "node_officer") {
     baseItems.push({
       name: "My Metadata",
       href: "/metadata",
@@ -95,7 +95,7 @@ const supportMenuItems = [
   { name: "Feedback", href: "/feedback" },
 ]
 
-function UserAvatar({ user }: { user: { name?: string; email?: string; image?: string } }) {
+function UserAvatar({ user }: { user: { name?: string | null; email?: string | null; image?: string | null } }) {
   return (
     <Avatar className="h-8 w-8 border border-border">
       <AvatarImage src={user.image || ""} alt={user.name || ""} />
@@ -124,6 +124,7 @@ function LoadingHeader() {
 
 export function Header() {
   const { data: session, status } = useSession()
+  const { logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -132,7 +133,8 @@ export function Header() {
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut({ redirect: true, callbackUrl: "/" })
+      await logout()
+      router.push("/")
     } catch (error) {
       console.error("Error signing out:", error)
       toast.error("Failed to sign out. Please try again.")
@@ -145,9 +147,15 @@ export function Header() {
   const getNavItems = () => {
     const items = [...publicNavItems]
     const userRole = session?.user?.role
-    if (userRole && Object.values(UserRole).includes(userRole)) {
-      items.push(...(roleBasedNavItems[userRole] || []))
+    
+    if (userRole === "admin") {
+      items.push(...(roleBasedNavItems[UserRole.ADMIN] || []))
+    } else if (userRole === "node_officer") {
+      items.push(...(roleBasedNavItems[UserRole.NODE_OFFICER] || []))
+    } else if (userRole === "user") {
+      items.push(...(roleBasedNavItems[UserRole.USER] || []))
     }
+    
     return items
   }
 

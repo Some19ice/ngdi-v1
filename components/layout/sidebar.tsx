@@ -27,7 +27,7 @@ import { Permission, Permissions, UserRole } from "@/lib/auth/types"
 import { LucideIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { signOut, useSession } from "next-auth/react"
+import { useSession, useAuth } from "@/lib/auth-context"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +52,7 @@ interface SidebarProps {
   onCollapsedChange: (collapsed: boolean) => void
 }
 
-const getMainNavItems = (role?: UserRole): NavItem[] => {
+const getMainNavItems = (role?: string): NavItem[] => {
   const items: NavItem[] = [
     {
       title: "Home",
@@ -132,7 +132,7 @@ const getMainNavItems = (role?: UserRole): NavItem[] => {
   return items
 }
 
-const getUserNavItems = (role?: UserRole): NavItem[] => {
+const getUserNavItems = (role?: string): NavItem[] => {
   const items: NavItem[] = [
     {
       title: "My Profile",
@@ -162,16 +162,18 @@ const getUserNavItems = (role?: UserRole): NavItem[] => {
 }
 
 export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
+  const { data: session, status } = useSession()
+  const { logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
-  const { data: session, status } = useSession()
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      await signOut({ redirect: true, callbackUrl: "/" })
+      await logout()
+      router.push("/")
     } catch (error) {
       console.error("Error signing out:", error)
       toast.error("Failed to sign out. Please try again.")
