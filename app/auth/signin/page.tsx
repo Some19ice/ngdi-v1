@@ -55,9 +55,10 @@ export default function SignInPage() {
     try {
       await login(data.email, data.password)
       router.push(returnUrl)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign in error:", error)
-      setError("Invalid email or password. Please try again.")
+      // Use the error message from the error object if available
+      setError(error.message || "Invalid email or password. Please try again.")
     } finally {
       setIsLoading(false)
     }

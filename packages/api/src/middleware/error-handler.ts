@@ -1,6 +1,7 @@
 import { Context, Next } from "hono"
 import { ZodError } from "zod"
 import { ContentfulStatusCode } from "hono/utils/http-status"
+import { HTTPException } from "hono/http-exception"
 
 /**
  * Error codes for API errors
@@ -107,6 +108,19 @@ export async function errorMiddleware(c: Context, next: Next) {
     await next()
   } catch (err: any) {
     console.error("API Error:", err)
+    
+    // Handle HTTPException specifically
+    if (err instanceof HTTPException) {
+      return c.json(
+        {
+          success: false,
+          message: err.message || "An error occurred",
+          code: err.status === 401 ? ErrorCode.AUTHENTICATION_ERROR : ErrorCode.INTERNAL_SERVER_ERROR,
+        },
+        err.status
+      )
+    }
+    
     return errorHandler(err)
   }
 }

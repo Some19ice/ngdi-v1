@@ -3,11 +3,24 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSession, useAuth } from "@/lib/auth-context"
 import { type Permission, UserRole } from "@/lib/auth/types"
-import { can, canAll, canAny, type User } from "@/lib/auth/rbac"
+import { can, canAll, canAny } from "@/lib/auth/rbac"
 
 interface CachedPermission {
   result: boolean
   timestamp: number
+}
+
+// Extended user type for RBAC
+interface RbacUser {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  organization?: string | null
+  department?: string | null
+  phone?: string | null
+  createdAt?: string | null
+  image?: string | null
 }
 
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
@@ -24,18 +37,20 @@ export function useAuthWithCache() {
     setLastUpdate(Date.now())
   }, [session])
 
+  // Convert session user to RBAC user
   const user = session?.user?.role
     ? {
         id: session.user.id,
         email: session.user.email || "",
         name: session.user.name || "",
         role: session.user.role as UserRole,
-        organization: session.user.organization || null,
-        department: session.user.department || null,
-        phone: session.user.phone || null,
+        // These fields might not exist in the session user
+        organization: (session.user as any).organization || null,
+        department: (session.user as any).department || null,
+        phone: (session.user as any).phone || null,
         createdAt: null,
         image: session.user.image || null,
-      }
+      } as RbacUser
     : null
 
   const getCacheKey = (permission: Permission | Permission[]) => {
@@ -60,20 +75,7 @@ export function useAuthWithCache() {
         return permissionCache.get(cacheKey)!.result
       }
 
-      // Create a User object that matches the RBAC User interface for permission checks
-      const rbacUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        organization: user.organization,
-        department: user.department,
-        phone: user.phone,
-        createdAt: null,
-        image: user.image,
-      }
-
-      const result = can(rbacUser, permission)
+      const result = can(user, permission)
       permissionCache.set(cacheKey, {
         result,
         timestamp: Date.now(),
@@ -93,20 +95,7 @@ export function useAuthWithCache() {
         return permissionCache.get(cacheKey)!.result
       }
 
-      // Create a User object that matches the RBAC User interface for permission checks
-      const rbacUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        organization: user.organization,
-        department: user.department,
-        phone: user.phone,
-        createdAt: null,
-        image: user.image,
-      }
-
-      const result = canAll(rbacUser, permissions)
+      const result = canAll(user, permissions)
       permissionCache.set(cacheKey, {
         result,
         timestamp: Date.now(),
@@ -126,20 +115,7 @@ export function useAuthWithCache() {
         return permissionCache.get(cacheKey)!.result
       }
 
-      // Create a User object that matches the RBAC User interface for permission checks
-      const rbacUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        organization: user.organization,
-        department: user.department,
-        phone: user.phone,
-        createdAt: null,
-        image: user.image,
-      }
-
-      const result = canAny(rbacUser, permissions)
+      const result = canAny(user, permissions)
       permissionCache.set(cacheKey, {
         result,
         timestamp: Date.now(),

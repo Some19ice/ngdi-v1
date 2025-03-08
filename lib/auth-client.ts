@@ -106,9 +106,17 @@ export const authClient = {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
-      throw error;
+      
+      // Extract the error message from the response if available
+      const errorMessage = error.response?.data?.message || "Authentication failed. Please check your credentials.";
+      
+      // Create a more informative error
+      const enhancedError = new Error(errorMessage);
+      enhancedError.name = "AuthenticationError";
+      
+      throw enhancedError;
     }
   },
   
@@ -137,9 +145,17 @@ export const authClient = {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration failed:", error);
-      throw error;
+      
+      // Extract the error message from the response if available
+      const errorMessage = error.response?.data?.message || "Registration failed. Please try again.";
+      
+      // Create a more informative error
+      const enhancedError = new Error(errorMessage);
+      enhancedError.name = "RegistrationError";
+      
+      throw enhancedError;
     }
   },
   

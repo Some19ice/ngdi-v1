@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "@/lib/auth-context"
+import { useSession, useAuth } from "@/lib/auth-context"
+import api from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -41,7 +42,8 @@ type OnboardingValues = z.infer<typeof onboardingSchema>
 
 export default function NewUserPage() {
   const router = useRouter()
-  const { data: session, update } = useSession()
+  const { data: session } = useSession()
+  const { refreshSession } = useAuth()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -56,25 +58,29 @@ export default function NewUserPage() {
   })
 
   async function onSubmit(data: OnboardingValues) {
+    setIsSubmitting(true)
+
     try {
-      setIsSubmitting(true)
-      const response = await fetch("/api/user/onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      // Update user profile
+      await api.updateUser({
+        name: data.name,
+        organization: data.organization,
+        department: data.department,
+        phone: data.phone,
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to update profile")
-      }
+      // Refresh the session to get updated user data
+      await refreshSession()
 
-      await update() // Update session with new data
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
       })
-      router.push("/metadata")
+
+      // Redirect to dashboard
+      router.push("/dashboard")
     } catch (error) {
+      console.error("Error updating profile:", error)
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
