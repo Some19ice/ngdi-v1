@@ -15,6 +15,7 @@ module.exports = {
   },
   experimental: {
     serverActions: true,
+    serverComponentsExternalPackages: [],
   },
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {
@@ -69,15 +70,13 @@ module.exports = {
   ],
   // Configure for serverless deployment
   pageExtensions: ["tsx", "ts", "jsx", "js"],
-  // Disable static optimization for all pages
-  unstable_runtimeJS: true,
-  // Force dynamic rendering for pages using cookies
-  // Don't use "export" for apps with dynamic server features
-  // Use "standalone" for Vercel serverless deployment
+  // Use standalone output for Vercel serverless deployment
   output: "standalone",
-  // Disable static optimization for API routes and pages
-  staticPageGenerationTimeout: 0,
-  // Ensure we have at least one server-side page
+  // Force dynamic rendering for all pages
+  trailingSlash: false,
+  // Disable static optimization
+  staticPageGenerationTimeout: 1000,
+  // Generate a consistent build ID
   generateBuildId: async () => {
     return "build-id"
   },
@@ -85,4 +84,6 @@ module.exports = {
   compiler: {
     reactRemoveProperties: process.env.NODE_ENV === "production",
   },
+  // Disable static exports for pages using dynamic features
+  distDir: ".next",
 }
