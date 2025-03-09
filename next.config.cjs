@@ -72,27 +72,22 @@ module.exports = {
   pageExtensions: ["tsx", "ts", "jsx", "js"],
   // Use standalone output for Vercel serverless deployment
   output: "standalone",
-  // Disable static optimization
-  staticPageGenerationTimeout: 1000,
-  // Generate a consistent build ID
-  generateBuildId: async () => {
-    return "build-id"
-  },
-  // Force all pages to be server-side rendered
+  // Disable static optimization for dynamic routes
+  trailingSlash: false,
+  poweredByHeader: false,
+  excludeDefaultMomentLocales: true,
+  // Disable static generation for auth pages
+  unstable_runtimeJS: true,
+  // Force dynamic rendering for all pages
+  unstable_allowDynamic: [
+    "**/node_modules/lodash/**/*.js",
+    "**/node_modules/@supabase/**/*.js",
+    "**/node_modules/axios/**/*.js",
+  ],
+  // Disable automatic static optimization
+  distDir: ".next",
+  // Disable static optimization for auth pages
   compiler: {
     reactRemoveProperties: process.env.NODE_ENV === "production",
   },
-  // Disable static exports for pages using dynamic features
-  distDir: ".next",
-  // Skip type checking during build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  // Skip ESLint during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  // Disable static optimization for auth pages
-  excludeDefaultMomentLocales: true,
-  poweredByHeader: false,
 }
