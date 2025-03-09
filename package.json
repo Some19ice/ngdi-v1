@@ -16,7 +16,7 @@
     "build:web": "prisma generate && next build",
     "build:api": "npm run build -w packages/api",
     "start": "concurrently \"npm run start:web\" \"npm run start:api\"",
-    "start:web": "NODE_ENV=production node server.js",
+    "start:web": "next start",
     "start:api": "npm run start -w packages/api",
     "lint": "next lint",
     "db:push": "prisma db push",
