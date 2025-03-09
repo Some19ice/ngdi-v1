@@ -16,5 +16,24 @@
       "memory": 1024,
       "maxDuration": 10
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ngdi-api.vercel.app/api/:path*"
+    }
+  ],
+  "builds": [
+    {
+      "src": "packages/api/dist/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["packages/api/dist/**"]
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ]
 }
