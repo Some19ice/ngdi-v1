@@ -8,6 +8,7 @@ import { ArrowLeft, Calendar, FileText, Globe, MapPin } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { cookies } from "next/headers"
+import Image from "next/image"
 
 // Function to get the current user ID from the auth token
 // This is a placeholder - implement based on your auth system
@@ -265,10 +266,12 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
             </CardHeader>
             <CardContent>
               {metadata.thumbnailUrl ? (
-                <img
+                <Image
                   src={metadata.thumbnailUrl}
                   alt={metadata.dataName}
-                  className="w-full h-auto rounded-md"
+                  width={800}
+                  height={600}
+                  className="w-full h-auto rounded-lg"
                 />
               ) : (
                 <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">

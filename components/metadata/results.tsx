@@ -16,6 +16,7 @@ import {
 import { MetadataSearchParams } from "@/types/metadata"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, FileIcon, MapPinIcon } from "lucide-react"
+import Image from "next/image"
 
 interface MetadataResultsProps {
   searchResult: any
@@ -85,10 +86,12 @@ export default function MetadataResults({
           <Card key={item.id} className="overflow-hidden flex flex-col h-full">
             <div className="aspect-video relative bg-muted">
               {item.thumbnailUrl ? (
-                <img
+                <Image
                   src={item.thumbnailUrl}
                   alt={item.dataName}
-                  className="object-cover w-full h-full"
+                  width={400}
+                  height={300}
+                  className="w-full h-40 object-cover rounded-md"
                 />
               ) : (
                 <div className="flex items-center justify-center w-full h-full bg-secondary/20">

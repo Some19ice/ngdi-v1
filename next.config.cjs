@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  output: "standalone",
+  output: "export",
   reactStrictMode: true,
   swcMinify: true,
   eslint: {
@@ -12,6 +12,7 @@ module.exports = {
   images: {
     domains: [], // Add your image domains here
     formats: ["image/avif", "image/webp"],
+    unoptimized: true,
   },
   experimental: {
     serverActions: true,
@@ -21,17 +22,17 @@ module.exports = {
   // Disable static page generation for problematic routes
   exportPathMap: async function (defaultPathMap) {
     // Remove problematic routes
-    delete defaultPathMap['/metadata']
-    delete defaultPathMap['/auth/debug']
-    delete defaultPathMap['/auth/debug/session']
-    delete defaultPathMap['/auth/diagnostic']
-    delete defaultPathMap['/auth/new-user']
-    delete defaultPathMap['/auth/reset-password']
-    delete defaultPathMap['/auth/signin']
-    delete defaultPathMap['/auth/signout']
-    delete defaultPathMap['/auth/signup']
-    delete defaultPathMap['/auth/sync-session']
-    
+    delete defaultPathMap["/metadata"]
+    delete defaultPathMap["/auth/debug"]
+    delete defaultPathMap["/auth/debug/session"]
+    delete defaultPathMap["/auth/diagnostic"]
+    delete defaultPathMap["/auth/new-user"]
+    delete defaultPathMap["/auth/reset-password"]
+    delete defaultPathMap["/auth/signin"]
+    delete defaultPathMap["/auth/signout"]
+    delete defaultPathMap["/auth/signup"]
+    delete defaultPathMap["/auth/sync-session"]
+
     return defaultPathMap
   },
   // Ignore errors during build

@@ -209,7 +209,7 @@ export default function UsersPage() {
       console.log("Calling fetchUsers from effect")
       fetchUsers()
     }
-  }, [isLoading, user, hasRole]) // Remove fetchUsers from dependencies
+  }, [isLoading, user, hasRole, fetchUsers])
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
