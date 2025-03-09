@@ -72,7 +72,7 @@ module.exports = {
   // Disable static optimization for all pages
   unstable_runtimeJS: true,
   // Force dynamic rendering for pages using cookies
-  output: "standalone",
+  output: "export",
   // Disable static optimization for API routes and pages
   staticPageGenerationTimeout: 0,
   // Ensure we have at least one server-side page

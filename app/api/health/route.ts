@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 
-export const runtime = "nodejs"
+// Force dynamic rendering
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function GET() {
   return NextResponse.json({
