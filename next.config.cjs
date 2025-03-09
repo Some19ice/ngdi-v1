@@ -72,7 +72,9 @@ module.exports = {
   // Disable static optimization for all pages
   unstable_runtimeJS: true,
   // Force dynamic rendering for pages using cookies
-  output: "export",
+  // Don't use "export" for apps with dynamic server features
+  // Use "standalone" for Vercel serverless deployment
+  output: "standalone",
   // Disable static optimization for API routes and pages
   staticPageGenerationTimeout: 0,
   // Ensure we have at least one server-side page
