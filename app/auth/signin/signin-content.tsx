@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,23 +16,15 @@ import {
 } from "@/components/ui/card"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
-import { SuspenseSearchParams } from "@/components/wrappers/suspense-search-params"
-import { SignInContent } from "./signin-content"
 
-export default function SignInPage() {
-  return (
-    <SuspenseSearchParams>
-      <SignInContent />
-    </SuspenseSearchParams>
-  )
-}
-
-export default function SignInPageOld() {
+export function SignInContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const returnUrl = searchParams?.get("from") || "/"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +33,7 @@ export default function SignInPageOld() {
     try {
       await authClient.login(email, password, rememberMe)
       toast.success("Signed in successfully")
-      router.push("/")
+      router.push(returnUrl)
       router.refresh()
     } catch (error) {
       console.error("Login failed:", error)
@@ -117,4 +109,4 @@ export default function SignInPageOld() {
       </Card>
     </div>
   )
-} 
+}

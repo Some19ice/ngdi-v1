@@ -4,10 +4,8 @@ import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { AUTH_PATHS } from "@/lib/auth/paths"
-import { SuspenseSearchParams } from "@/components/wrappers/suspense-search-params"
-import { LoginContent } from "./login-content"
 
-export default function LoginPage() {
+export function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams?.get("returnUrl") || null
@@ -24,8 +22,9 @@ export default function LoginPage() {
   }, [router, returnUrl])
 
   return (
-    <SuspenseSearchParams>
-      <LoginContent />
-    </SuspenseSearchParams>
+    <div className="flex h-screen items-center justify-center">
+      <LoadingSpinner size="lg" />
+      <p className="ml-2 text-muted-foreground">Redirecting to login...</p>
+    </div>
   )
 }
