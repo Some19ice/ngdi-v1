@@ -2,14 +2,15 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useToast } from "@/components/ui/use-toast"
+import { authClient } from "@/lib/auth-client"
+import { useAuth } from "@/lib/auth-context"
 
 export function AuthHandler() {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
-  const supabase = createClientComponentClient()
+  const { refreshSession } = useAuth()
 
   useEffect(() => {
     const handleAuthState = async () => {
@@ -31,13 +32,10 @@ export function AuthHandler() {
         }
 
         // Check for successful authentication
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession()
+        const session = await authClient.getSession()
 
-        if (sessionError) {
-          console.error("Session error:", sessionError)
+        if (!session) {
+          console.error("Session error: No session found")
           toast({
             title: "Session Error",
             description: "Failed to retrieve session",
@@ -47,30 +45,18 @@ export function AuthHandler() {
           return
         }
 
-        if (session) {
-          // Get the redirect URL from query params or default to dashboard
-          const redirectTo = params?.get("redirect") || "/dashboard"
+        // Get the redirect URL from query params or default to home
+        const redirectTo = params?.get("redirect") || "/"
 
-          // Update user metadata if needed
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              last_sign_in: new Date().toISOString(),
-            },
-          })
+        // Refresh the session in the auth context
+        await refreshSession()
 
-          if (updateError) {
-            console.error("Error updating user metadata:", updateError)
-          }
+        toast({
+          title: "Welcome back!",
+          description: "You have been successfully signed in.",
+        })
 
-          toast({
-            title: "Welcome back!",
-            description: "You have been successfully signed in.",
-          })
-
-          router.push(redirectTo)
-        } else {
-          router.push("/auth/signin")
-        }
+        router.push(redirectTo)
       } catch (error) {
         console.error("Auth handler error:", error)
         toast({
@@ -83,7 +69,7 @@ export function AuthHandler() {
     }
 
     handleAuthState()
-  }, [router, params, toast, supabase.auth])
+  }, [router, params, toast, refreshSession])
 
   return null
 }

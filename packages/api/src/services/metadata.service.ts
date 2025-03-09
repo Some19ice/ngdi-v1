@@ -33,7 +33,7 @@ interface MetadataInput {
   fileSize?: number
   numFeatures?: number
   softwareReqs?: string
-  updateCycle?: string
+  updateCycle: string
   lastUpdate?: Date
   nextUpdate?: Date
   distributionFormat: string

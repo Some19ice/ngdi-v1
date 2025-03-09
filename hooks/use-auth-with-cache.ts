@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useSession, useAuth } from "@/lib/auth-context"
-import { type Permission, UserRole } from "@/lib/auth/types"
+import { type Permission } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 import { can, canAll, canAny } from "@/lib/auth/rbac"
 
 interface CachedPermission {

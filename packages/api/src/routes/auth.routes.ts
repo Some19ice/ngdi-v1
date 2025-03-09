@@ -8,11 +8,13 @@ import {
   generateToken,
   generateRefreshToken,
   verifyRefreshToken,
+  verifyToken,
 } from "../utils/jwt"
 import { UserRole } from "../types/auth.types"
 import { emailService } from "../services/email.service"
 import { AuthService } from "../services/auth.service"
 import { HTTPException } from "hono/http-exception"
+import { auth as authMiddleware } from "../middleware/auth"
 
 // Schema for login request validation
 const loginSchema = z.object({
@@ -57,14 +59,14 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     console.log("Login request received")
     const data = await c.req.json()
     console.log("Login data:", { email: data.email })
-    
+
     const result = await AuthService.login(data)
     console.log("Login successful")
-    
+
     return c.json(result)
   } catch (error) {
     console.error("Login error:", error)
-    
+
     if (error instanceof HTTPException) {
       return c.json(
         {
@@ -75,7 +77,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
         error.status
       )
     }
-    
+
     console.error("Unhandled login error:", error)
     throw new HTTPException(500, { message: "Login failed" })
   }
@@ -318,6 +320,57 @@ auth.post(
 // Logout route
 auth.post("/logout", async (c) => {
   return c.json({ message: "Logged out successfully" })
+})
+
+// Get current user (me) endpoint
+auth.get("/me", async (c) => {
+  try {
+    const authHeader = c.req.header("Authorization")
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new ApiError(
+        "Authorization header is required",
+        401,
+        ErrorCode.AUTHENTICATION_ERROR
+      )
+    }
+
+    const token = authHeader.replace("Bearer ", "")
+
+    // Verify token
+    const decoded = await verifyToken(token)
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        image: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    if (!user) {
+      throw new ApiError("User not found", 404, ErrorCode.RESOURCE_NOT_FOUND)
+    }
+
+    return c.json(user)
+  } catch (error) {
+    console.error("Get current user error:", error)
+    if (error instanceof ApiError) {
+      throw error
+    }
+    throw new ApiError(
+      "Authentication failed",
+      401,
+      ErrorCode.AUTHENTICATION_ERROR
+    )
+  }
 })
 
 // Export the router

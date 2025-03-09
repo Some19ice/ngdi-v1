@@ -115,12 +115,17 @@ export function MetadataList() {
       <div className="flex justify-between items-center">
         <div>Total items: {data?.total || 0}</div>
         <div className="flex gap-2">
-          <Button onClick={() => setPage(page - 1)} disabled={page === 1}>
+          <Button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            variant="outline"
+          >
             Previous
           </Button>
           <Button
             onClick={() => setPage(page + 1)}
             disabled={!data || page >= data.totalPages}
+            variant="outline"
           >
             Next
           </Button>

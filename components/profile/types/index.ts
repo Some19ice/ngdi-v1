@@ -76,6 +76,18 @@ export interface ProfileSettingsProps {
 
 // Helper to format Supabase user data into Profile structure
 export function formatSupabaseUserToProfile(user: any): Profile {
+  // Normalize role to match the UserRole enum
+  let role = user.user_metadata?.role || UserRole.USER
+
+  // Ensure role is in the correct format (uppercase)
+  if (typeof role === "string") {
+    role = role.toUpperCase()
+    // Make sure it's a valid role
+    if (!Object.values(UserRole).includes(role)) {
+      role = UserRole.USER
+    }
+  }
+
   return {
     id: user.id,
     name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
@@ -85,7 +97,7 @@ export function formatSupabaseUserToProfile(user: any): Profile {
     organization: user.user_metadata?.organization || null,
     department: user.user_metadata?.department || null,
     phone: user.user_metadata?.phone || null,
-    role: (user.user_metadata?.role as UserRole) || UserRole.USER,
+    role: role,
     bio: user.user_metadata?.bio || null,
     location: user.user_metadata?.location || null,
     verified: user.user_metadata?.verified || false,

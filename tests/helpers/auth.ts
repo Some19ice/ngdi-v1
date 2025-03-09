@@ -1,6 +1,6 @@
 import { test as setup, expect, Page } from "@playwright/test"
 import { AUTH_CONFIG } from "@/lib/auth/config"
-import { UserRole } from "@/lib/auth/types"
+import { UserRole } from "../../lib/auth/constants"
 import { prisma } from "@/lib/prisma"
 import { hash } from "bcryptjs"
 import path from "path"

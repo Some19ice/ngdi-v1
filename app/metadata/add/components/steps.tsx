@@ -5,10 +5,10 @@ interface StepsProps {
 }
 
 const steps = [
-  { id: 1, name: "General Information" },
-  { id: 2, name: "Technical Details" },
-  { id: 3, name: "Access Information" },
-];
+  { id: 1, name: "General Information And Description" },
+  { id: 2, name: "Data Quality Information" },
+  { id: 3, name: "Data Distribution Information" },
+]
 
 export function Steps({ currentStep }: StepsProps) {
   return (
@@ -24,9 +24,7 @@ export function Steps({ currentStep }: StepsProps) {
             <div className="flex items-center">
               <div
                 className={`${
-                  step.id <= currentStep
-                    ? "bg-primary"
-                    : "bg-secondary"
+                  step.id <= currentStep ? "bg-primary" : "bg-secondary"
                 } h-8 w-8 rounded-full flex items-center justify-center`}
               >
                 {step.id < currentStep ? (
@@ -46,9 +44,9 @@ export function Steps({ currentStep }: StepsProps) {
               <span
                 className={`${
                   step.id <= currentStep
-                    ? "text-foreground"
+                    ? "text-foreground font-medium"
                     : "text-muted-foreground"
-                } ml-4 text-sm font-medium`}
+                } ml-4 text-sm`}
               >
                 {step.name}
               </span>
@@ -57,12 +55,12 @@ export function Steps({ currentStep }: StepsProps) {
               <div
                 className={`${
                   step.id < currentStep ? "border-primary" : "border-border"
-                } absolute left-0 top-4 -ml-px mt-0.5 h-0.5 w-full border-t`}
+                } absolute left-0 top-4 -ml-px mt-0.5 h-0.5 w-full border-t-2`}
               />
             )}
           </li>
         ))}
       </ol>
     </nav>
-  );
+  )
 }

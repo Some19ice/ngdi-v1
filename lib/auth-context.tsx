@@ -153,11 +153,14 @@ export function useIsAuthenticated(): boolean {
 
 export function useIsAdmin(): boolean {
   const { session } = useAuth();
-  return session?.user?.role === "admin";
+  const role = session?.user?.role
+  return role?.toUpperCase() === "ADMIN"
 }
 
 export function useIsNodeOfficer(): boolean {
   const { session } = useAuth();
   const role = session?.user?.role;
-  return role === "node_officer" || role === "admin";
+  return (
+    role?.toUpperCase() === "NODE_OFFICER" || role?.toUpperCase() === "ADMIN"
+  )
 } 

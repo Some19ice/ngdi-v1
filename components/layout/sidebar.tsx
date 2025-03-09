@@ -23,7 +23,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { Permission, Permissions, UserRole } from "@/lib/auth/types"
+import { Permission, Permissions } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 import { LucideIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"

@@ -23,7 +23,7 @@ const envSchema = zod_1.z.object({
     // JWT
     JWT_SECRET: zod_1.z.string(),
     JWT_EXPIRES_IN: zod_1.z.string().optional().default("1d"),
-    REFRESH_TOKEN_SECRET: zod_1.z.string(),
+    REFRESH_TOKEN_SECRET: zod_1.z.string().optional(),
     REFRESH_TOKEN_EXPIRES_IN: zod_1.z.string().optional().default("7d"),
     // CORS
     ALLOWED_ORIGINS: zod_1.z.string(),

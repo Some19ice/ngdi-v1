@@ -44,6 +44,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import Image from "next/image"
 
 export function ProfileCard({ profile, isEditable = false }: ProfileCardProps) {
   const initials = profile.name
@@ -105,10 +106,13 @@ export function ProfileCard({ profile, isEditable = false }: ProfileCardProps) {
       {/* Profile banner/cover image */}
       <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-500 relative">
         {profile.coverImage && (
-          <img
+          <Image
             src={profile.coverImage}
             alt="Profile cover"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 768px"
+            priority
           />
         )}
         {isEditable && (
@@ -163,16 +167,18 @@ export function ProfileCard({ profile, isEditable = false }: ProfileCardProps) {
               )}
             </CardTitle>
           </div>
-          <CardDescription className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1">
+            <CardDescription className="inline">
+              {profile.organization && (
+                <span className="text-muted-foreground">
+                  {profile.organization}
+                </span>
+              )}
+            </CardDescription>
             <Badge variant="outline" className="rounded-md">
               {profile.role}
             </Badge>
-            {profile.organization && (
-              <span className="text-muted-foreground">
-                • {profile.organization}
-              </span>
-            )}
-          </CardDescription>
+          </div>
         </div>
       </CardHeader>
 

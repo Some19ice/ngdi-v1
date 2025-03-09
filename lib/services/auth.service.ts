@@ -6,6 +6,7 @@ import { ApiResponse } from "@/types/api"
 interface AuthApiResponse {
   user: UserProfile
   token: string
+  refreshToken: string
 }
 
 export const authService = {

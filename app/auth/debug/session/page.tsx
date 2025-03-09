@@ -146,9 +146,6 @@ export default function SessionDebugPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: user.email,
         password,
-        options: {
-          persistSession: true,
-        },
       })
 
       if (error) {

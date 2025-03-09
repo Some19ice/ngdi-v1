@@ -5,8 +5,8 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { UserRole } from "@prisma/client"
 
 export const metadata = {
-  title: "Add Metadata",
-  description: "Add new metadata entry",
+  title: "Add NGDI Metadata",
+  description: "Add new NGDI metadata entry",
 }
 
 export default async function AddMetadataPage() {

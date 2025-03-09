@@ -26,6 +26,7 @@ import { Loader2, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import Image from "next/image"
 
 export function ProfileForm({ profile, onSubmit }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -137,10 +138,12 @@ export function ProfileForm({ profile, onSubmit }: ProfileFormProps) {
                       <div className="space-y-2">
                         {field.value && (
                           <div className="relative w-full h-32 overflow-hidden rounded-md mb-2">
-                            <img
+                            <Image
                               src={field.value}
                               alt="Cover"
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, 768px"
                             />
                             <Button
                               type="button"
@@ -399,7 +402,7 @@ export function ProfileForm({ profile, onSubmit }: ProfileFormProps) {
                       </div>
                     </FormControl>
                     <FormDescription>
-                      Add topics you're interested in or expertise areas
+                      Add topics you&apos;re interested in or expertise areas
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

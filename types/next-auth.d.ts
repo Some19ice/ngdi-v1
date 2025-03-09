@@ -1,4 +1,4 @@
-import { UserRole } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 import "next-auth"
 
 declare module "next-auth" {

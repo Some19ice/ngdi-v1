@@ -4,7 +4,17 @@ import {
   UserRole,
   type Action,
   type Subject,
+  Permissions,
 } from "./types"
+
+// Define the Permission interface for RBAC
+export interface PermissionObject {
+  action: string
+  subject: string
+  conditions?: {
+    [key: string]: any
+  }
+}
 
 export interface User {
   id: string
@@ -21,7 +31,7 @@ export interface User {
 export class PermissionError extends Error {
   constructor(
     public user: User,
-    public permission: Permission,
+    public permission: Permission | PermissionObject,
     message: string
   ) {
     super(message)
@@ -29,64 +39,106 @@ export class PermissionError extends Error {
   }
 }
 
+// Convert a Permission enum value to a PermissionObject
+function permissionToObject(permission: Permission): PermissionObject {
+  const [action, subject] = permission.toString().toLowerCase().split("_")
+  return { action, subject }
+}
+
 export function can(
   user: User,
-  permission: Permission,
+  permission: Permission | PermissionObject,
   resource?: { userId?: string; organizationId?: string }
 ): boolean {
-  try {
-    // Check if user has the base permission
-    const userPermissions = RolePermissions[user.role]
-    if (!userPermissions) {
-      console.warn(`No permissions found for role: ${user.role}`)
-      return false
+  // Admin role has all permissions
+  if (user.role === UserRole.ADMIN) {
+    return true
+  }
+
+  // Convert Permission enum to PermissionObject if needed
+  const permObj = typeof permission === "object" 
+    ? permission 
+    : permissionToObject(permission)
+
+  // Get permissions for the user's role
+  const userPermissions = getRolePermissions(user.role)
+
+  if (!userPermissions) {
+    console.warn(`No permissions found for role: ${user.role}`)
+    return false
+  }
+
+  const hasPermission = userPermissions.some(
+    (p) => {
+      const pObj = typeof p === "object" ? p : permissionToObject(p)
+      return pObj.action === permObj.action && pObj.subject === permObj.subject
+    }
+  )
+
+  if (!hasPermission) {
+    return false
+  }
+
+  // Check resource-based permissions
+  if (resource) {
+    // Owner check - users can always access their own resources
+    if (resource.userId && resource.userId === user.id) {
+      return true
     }
 
-    const hasPermission = userPermissions.some(
-      (p) => p.action === permission.action && p.subject === permission.subject
-    )
-
-    if (!hasPermission) {
-      return false
-    }
-
-    // Check resource-based conditions if they exist
-    if (permission.conditions || resource) {
-      // Admin bypass for resource checks
-      if (user.role === UserRole.ADMIN) {
+    // Organization check - users can access resources from their organization
+    if (
+      resource.organizationId &&
+      user.organization &&
+      resource.organizationId === user.organization
+    ) {
+      // For organization resources, NODE_OFFICER can access all resources in their org
+      if (user.role === UserRole.NODE_OFFICER) {
         return true
       }
 
-      // Check organization-based access
-      if (
-        (permission.conditions?.organizationId || resource?.organizationId) &&
-        user.organization
-      ) {
-        const targetOrgId =
-          permission.conditions?.organizationId || resource?.organizationId
-        if (targetOrgId !== user.organization) {
-          return false
-        }
-      }
-
-      // Check user-based access
-      if (permission.conditions?.userId || resource?.userId) {
-        const targetUserId = permission.conditions?.userId || resource?.userId
-        if (permission.conditions?.isOwner && targetUserId !== user.id) {
-          return false
-        }
-      }
+      // Regular users might have additional restrictions based on the permission
+      // This can be extended with more specific logic if needed
     }
+  }
 
-    return true
-  } catch (error) {
-    console.error("Permission check failed:", {
-      user,
-      permission,
-      resource,
-      error,
-    })
-    return false
+  return true
+}
+
+// Helper function to get permissions for a role
+function getRolePermissions(role: UserRole): (Permission | PermissionObject)[] {
+  // This could be loaded from a database or config file
+  switch (role) {
+    case UserRole.ADMIN:
+      return [
+        Permissions.READ_METADATA,
+        Permissions.CREATE_METADATA,
+        Permissions.UPDATE_METADATA,
+        Permissions.DELETE_METADATA,
+        Permissions.READ_USER,
+        Permissions.UPDATE_USER,
+        Permissions.DELETE_USER,
+        Permissions.VIEW_ANALYTICS,
+        Permissions.MANAGE_ORGANIZATION,
+        Permissions.MANAGE_SETTINGS,
+      ]
+    case UserRole.NODE_OFFICER:
+      return [
+        Permissions.READ_METADATA,
+        Permissions.CREATE_METADATA,
+        Permissions.UPDATE_METADATA,
+        Permissions.DELETE_METADATA,
+        Permissions.READ_USER,
+        Permissions.VIEW_ANALYTICS,
+      ]
+    case UserRole.USER:
+      return [
+        Permissions.READ_METADATA,
+        Permissions.CREATE_METADATA,
+        Permissions.UPDATE_METADATA,
+      ]
+    default:
+      return []
   }
 }
 
@@ -162,7 +214,7 @@ export function canAccessOrganizationResource(
 export function createPermission(
   action: Action,
   subject: Subject,
-  conditions?: Permission["conditions"]
-): Permission {
+  conditions?: PermissionObject["conditions"]
+): PermissionObject {
   return { action, subject, conditions }
 }

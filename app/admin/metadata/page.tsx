@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { UserRole, Permissions } from "@/lib/auth/types"
+import { Permissions } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -132,10 +133,11 @@ export default function MetadataPage() {
   }
 
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All Categories")
-  const [selectedStatus, setSelectedStatus] = useState("All Statuses")
-  const [selectedValidation, setSelectedValidation] =
-    useState("All Validations")
+  const [selectedCategory, setSelectedCategory] = useState(categories[0])
+  const [selectedStatus, setSelectedStatus] = useState(statuses[0])
+  const [selectedValidation, setSelectedValidation] = useState(
+    validationStatuses[0]
+  )
   const [metadata] = useState(mockMetadata)
 
   const filteredMetadata = metadata.filter((item) => {
@@ -343,7 +345,7 @@ export default function MetadataPage() {
                             Edit
                           </DropdownMenuItem>
                         )}
-                        {can(Permissions.VALIDATE_METADATA) && (
+                        {can(Permissions.UPDATE_METADATA) && (
                           <DropdownMenuItem>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Validate

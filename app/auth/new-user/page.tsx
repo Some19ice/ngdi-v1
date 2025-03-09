@@ -77,8 +77,8 @@ export default function NewUserPage() {
         description: "Your profile has been updated successfully.",
       })
 
-      // Redirect to dashboard
-      router.push("/dashboard")
+      // Redirect to home
+      router.push("/")
     } catch (error) {
       console.error("Error updating profile:", error)
       toast({

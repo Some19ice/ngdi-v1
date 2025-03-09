@@ -1,32 +1,23 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import * as jose from "jose"
+import { normalizeRole, UserRole, isValidRole } from "./lib/auth/constants"
+import { validateJwtToken } from "./lib/auth-client"
+import {
+  AUTH_PATHS,
+  PROTECTED_ROUTES,
+  ADMIN_ROUTES,
+  NODE_OFFICER_ROUTES,
+} from "./lib/auth/paths"
+
+// Import DEBUG_ROUTES from paths and extend it
+import { DEBUG_ROUTES as BASE_DEBUG_ROUTES } from "./lib/auth/paths"
+
+// Extended debug routes
+const DEBUG_ROUTES = [...BASE_DEBUG_ROUTES, "/auth/debug"]
 
 // Original console.error to save it
 const originalConsoleError = console.error
-
-// Define known auth paths for better path management
-const AUTH_PATHS = {
-  SIGNIN: "/auth/signin",
-  CALLBACK: "/auth/callback",
-  RESET_PASSWORD: "/auth/reset-password",
-  NEW_USER: "/auth/new-user",
-}
-
-// Protected routes that require authentication
-const PROTECTED_ROUTES = [
-  "/dashboard",
-  "/profile",
-  "/metadata",
-  "/admin",
-  "/settings",
-]
-
-// Admin-only routes
-const ADMIN_ROUTES = ["/admin"]
-
-// Node officer routes
-const NODE_OFFICER_ROUTES = ["/metadata/create", "/metadata/edit"]
 
 // List of cookies that should not be touched during sign-out
 // This helps prevent issues with new authentication attempts
@@ -64,98 +55,173 @@ console.error = function (...args) {
   originalConsoleError.apply(console, args)
 }
 
+// Helper function for enhanced logging
+function logAuthInfo(message: string, data: Record<string, any> = {}) {
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.DEBUG_AUTH === "true"
+  ) {
+    console.log(`[Auth] ${message}`, JSON.stringify(data, null, 2))
+  }
+}
+
+// Helper function to check if a path matches a protected route
+function isProtectedRoute(pathname: string, routes: string[]): boolean {
+  return routes.some((route) => {
+    // Exact match
+    if (pathname === route) return true
+
+    // Subpath match (ensure it's a proper subpath with a trailing slash)
+    if (pathname.startsWith(`${route}/`)) return true
+
+    return false
+  })
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
+
   // Skip middleware for static assets and API routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/") ||
+    pathname.startsWith("/auth/") ||
     pathname.includes(".") ||
     pathname === "/favicon.ico"
   ) {
     return NextResponse.next()
   }
-  
-  // Check if the route requires authentication
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
-  )
-  
-  if (!isProtectedRoute) {
+
+  // Skip middleware for debug routes
+  if (isProtectedRoute(pathname, DEBUG_ROUTES)) {
+    logAuthInfo(
+      `[MIDDLEWARE] Path ${pathname} is a debug route, skipping auth check`
+    )
     return NextResponse.next()
   }
-  
-  // Get the JWT token from authorization header (for API requests)
-  // or from the auth_token cookie (for server-side auth)
-  const authHeader = request.headers.get("authorization")
-  const token = authHeader?.replace("Bearer ", "") || request.cookies.get("auth_token")?.value
-  
-  if (!token) {
-    // Redirect to login page with return URL
-    const url = new URL(AUTH_PATHS.SIGNIN, request.url)
-    url.searchParams.set("returnUrl", pathname)
-    return NextResponse.redirect(url)
-  }
-  
-  try {
-    // Verify and decode the token
-    const decoded = jose.decodeJwt(token)
-    
-    // Check if token is expired
-    const currentTime = Math.floor(Date.now() / 1000)
-    if (decoded.exp && decoded.exp < currentTime) {
-      // Token expired, redirect to login
-      const url = new URL(AUTH_PATHS.SIGNIN, request.url)
-      url.searchParams.set("returnUrl", pathname)
-      return NextResponse.redirect(url)
+
+  logAuthInfo(`[MIDDLEWARE] Processing request for path: ${pathname}`, {
+    url: request.url,
+    method: request.method,
+    cookies: Object.fromEntries(
+      request.cookies
+        .getAll()
+        .map((c) => [c.name, c.value.substring(0, 10) + "..."])
+    ),
+    headers: Object.fromEntries(
+      Array.from(request.headers.entries()).filter(
+        ([key]) => !key.includes("authorization")
+      ) // Don't log auth headers
+    ),
+  })
+
+  // Check if the route requires authentication
+  const isAdminRoute = isProtectedRoute(pathname, ADMIN_ROUTES)
+  const isProtectedPath = isProtectedRoute(pathname, PROTECTED_ROUTES)
+
+  if (isAdminRoute || isProtectedPath) {
+    logAuthInfo(
+      `[MIDDLEWARE] Path ${pathname} is protected, checking authentication`
+    )
+
+    // Check for auth token in Authorization header or cookie
+    const authHeader = request.headers.get("authorization")
+    const authToken = authHeader
+      ? authHeader.replace("Bearer ", "")
+      : request.cookies.get("auth_token")?.value
+
+    if (!authToken) {
+      logAuthInfo(
+        `[MIDDLEWARE] No auth token found for ${pathname}, redirecting to login`
+      )
+
+      // Redirect to login with return URL
+      const redirectUrl = new URL(AUTH_PATHS.SIGNIN, request.url)
+      redirectUrl.searchParams.set("from", pathname)
+      return NextResponse.redirect(redirectUrl)
     }
-    
-    // Check role-based access
-    const userRole = decoded.role as string
-    
-    // Check admin routes
+
+    // Validate the token
+    const validationResult = await validateJwtToken(authToken)
+
+    if (!validationResult.isValid) {
+      logAuthInfo(
+        `[MIDDLEWARE] Token validation failed: ${validationResult.error}`,
+        {
+          path: pathname,
+          tokenPrefix: authToken.substring(0, 10) + "...",
+          validationError: validationResult.error,
+          validationResult,
+        }
+      )
+
+      // Clear the invalid token and redirect to login
+      const response = NextResponse.redirect(
+        new URL(
+          AUTH_PATHS.SIGNIN + `?from=${encodeURIComponent(pathname)}`,
+          request.url
+        )
+      )
+      response.cookies.delete("auth_token")
+      return response
+    }
+
+    // Check role-specific routes
+    const userRole = validationResult.role
+
+    // Log user role for debugging
+    logAuthInfo(`[MIDDLEWARE] User role for ${pathname}: ${userRole}`, {
+      userRole,
+      isAdmin: userRole === UserRole.ADMIN,
+      isAdminRoute,
+    })
+
+    // Check admin routes first
+    if (isAdminRoute) {
+      if (userRole !== UserRole.ADMIN) {
+        logAuthInfo(
+          `[MIDDLEWARE] User does not have ADMIN role for ${pathname}`
+        )
+        return NextResponse.redirect(
+          new URL(AUTH_PATHS.UNAUTHORIZED, request.url)
+        )
+      }
+      logAuthInfo(`[MIDDLEWARE] Admin access granted for ${pathname}`)
+    }
+
+    // For non-admin protected routes, check node officer access
     if (
-      ADMIN_ROUTES.some(route => 
-        pathname === route || pathname.startsWith(`${route}/`)
-      ) && 
-      userRole !== "admin"
+      !isAdminRoute &&
+      isProtectedRoute(pathname, NODE_OFFICER_ROUTES) &&
+      userRole !== UserRole.NODE_OFFICER &&
+      userRole !== UserRole.ADMIN
     ) {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
+      logAuthInfo(
+        `[MIDDLEWARE] User does not have required role for ${pathname}`
+      )
+      return NextResponse.redirect(
+        new URL(AUTH_PATHS.UNAUTHORIZED, request.url)
+      )
     }
-    
-    // Check node officer routes
-    if (
-      NODE_OFFICER_ROUTES.some(route => 
-        pathname === route || pathname.startsWith(`${route}/`)
-      ) && 
-      userRole !== "admin" && 
-      userRole !== "node_officer"
-    ) {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
-    }
-    
-    // User is authenticated and authorized
-    const response = NextResponse.next()
-    
-    // Set the auth token cookie if it doesn't exist (for SSR)
-    if (!request.cookies.get("auth_token")) {
-      response.cookies.set("auth_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-      })
-    }
-    
-    return response
-  } catch (error) {
-    console.error("Token verification failed:", error)
-    // Invalid token, redirect to login
-    const url = new URL(AUTH_PATHS.SIGNIN, request.url)
-    url.searchParams.set("returnUrl", pathname)
-    return NextResponse.redirect(url)
+
+    // User is authenticated and has the required role
+    logAuthInfo(`[MIDDLEWARE] User authenticated for ${pathname}`)
+
+    // Clone the request headers and add user info for server components
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-user-id", validationResult.userId || "")
+    requestHeaders.set("x-user-role", userRole || UserRole.USER)
+    requestHeaders.set("x-user-email", validationResult.email || "")
+
+    // Return the request with the added headers
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
   }
+
+  return NextResponse.next()
 }
 
 export const config = {

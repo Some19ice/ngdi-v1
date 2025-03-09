@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApiError = exports.ErrorCode = void 0;
 exports.errorHandler = errorHandler;
 exports.errorMiddleware = errorMiddleware;
+const http_exception_1 = require("hono/http-exception");
 /**
  * Error codes for API errors
  */
@@ -93,6 +94,14 @@ async function errorMiddleware(c, next) {
     }
     catch (err) {
         console.error("API Error:", err);
+        // Handle HTTPException specifically
+        if (err instanceof http_exception_1.HTTPException) {
+            return c.json({
+                success: false,
+                message: err.message || "An error occurred",
+                code: err.status === 401 ? ErrorCode.AUTHENTICATION_ERROR : ErrorCode.INTERNAL_SERVER_ERROR,
+            }, err.status);
+        }
         return errorHandler(err);
     }
 }

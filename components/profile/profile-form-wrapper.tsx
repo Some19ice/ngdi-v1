@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ProfileForm } from "./profile-form"
 import { type Profile, type ProfileFormValues } from "./types"
 import { updateUserProfile } from "@/app/api/actions/profile"
-import { updateSupabaseProfile } from "@/lib/supabase-profile"
+import { updateUserProfileData } from "@/lib/profile"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,14 +23,14 @@ export function ProfileFormWrapper({ profile }: ProfileFormWrapperProps) {
     try {
       setError(null)
 
-      // First try the Supabase update
-      const supabaseResult = await updateSupabaseProfile(values)
+      // Try the client-side update first
+      const result = await updateUserProfileData(values)
 
-      // If Supabase update fails or isn't available, fall back to the server action
-      if (!supabaseResult.success) {
-        const result = await updateUserProfile(values)
-        if (!result.success) {
-          throw new Error(result.error || "Failed to update profile")
+      // If client-side update fails, fall back to the server action
+      if (!result.success) {
+        const serverResult = await updateUserProfile(values)
+        if (!serverResult.success) {
+          throw new Error(serverResult.error || "Failed to update profile")
         }
       }
 
@@ -82,4 +82,4 @@ export function ProfileFormWrapper({ profile }: ProfileFormWrapperProps) {
   }
 
   return <ProfileForm profile={profile} onSubmit={handleSubmit} />
-}
+} 

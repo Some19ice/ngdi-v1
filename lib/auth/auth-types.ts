@@ -1,4 +1,4 @@
-import { UserRole } from "./types"
+import { UserRole } from "./constants"
 
 export interface BaseAuthFields {
   id: string

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,72 +21,35 @@ export default function ForceSignoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Function to manually clean everything
-  const forceCleanup = () => {
+  // Function to forcibly clean up all auth data
+  const forceCleanup = useCallback(() => {
     try {
-      // Set manual signout flag
-      localStorage.setItem("manual_signout", "true")
+      // Clear all auth-related localStorage items
+      localStorage.removeItem("auth_tokens")
+      localStorage.removeItem("auth_session")
+      localStorage.removeItem("auth_user")
+      localStorage.removeItem("auth_remember_me")
+      localStorage.removeItem("auth_manual_signout")
 
-      // Clear localStorage items
-      const authKeys = [
-        "supabase.auth.token",
-        "supabase.auth.refreshToken",
-        "supabase.auth.user",
-        "supabase.auth.expires",
-        "supabase.auth.data",
-        "next-auth.session-token",
-        "next-auth.callback-url",
-        "next-auth.csrf-token",
-      ]
-
-      authKeys.forEach((key) => {
-        try {
-          localStorage.removeItem(key)
-        } catch (e) {
-          console.error(`Error removing ${key} from localStorage:`, e)
-        }
+      // Clear all auth-related cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(
+            /=.*/,
+            `=;expires=${new Date().toUTCString()};path=/;domain=${
+              window.location.hostname
+            }`
+          )
       })
 
-      // Clear sessionStorage
-      try {
-        sessionStorage.clear()
-      } catch (e) {
-        console.error("Error clearing sessionStorage:", e)
-      }
-
-      // Clear cookies
-      const cookiesToClear = [
-        "sb-access-token",
-        "sb-refresh-token",
-        "next-auth.session-token",
-        "next-auth.callback-url",
-        "next-auth.csrf-token",
-      ]
-
-      cookiesToClear.forEach((name) => {
-        document.cookie = `${name}=; Max-Age=-1; path=/;`
-      })
-
-      // Handle Supabase project-specific cookies
-      const cookies = document.cookie.split(";")
-      for (const cookie of cookies) {
-        const [name] = cookie.trim().split("=")
-        if (
-          name &&
-          (name.includes("-auth-token") ||
-            name.includes("supabase") ||
-            name.includes("sb-"))
-        ) {
-          document.cookie = `${name}=; Max-Age=-1; path=/;`
-        }
-      }
-
+      console.log("Force cleanup completed")
       return true
-    } catch (e) {
-      console.error("Error in forceCleanup:", e)
+    } catch (error) {
+      console.error("Force cleanup error:", error)
       return false
     }
-  }
+  }, [])
 
   const handleNormalSignOut = async () => {
     try {
@@ -101,7 +64,7 @@ export default function ForceSignoutPage() {
     }
   }
 
-  const handleForceSignOut = async () => {
+  const handleForceSignOut = useCallback(async () => {
     try {
       setIsSigningOut(true)
       setError(null)
@@ -120,20 +83,15 @@ export default function ForceSignoutPage() {
       // Then forcibly clean up all auth data
       forceCleanup()
 
+      // Set success state
       setSuccess(true)
-
-      // Force reload after a delay
-      setTimeout(() => {
-        window.location.href = "/auth/signin?signedout=true"
-      }, 2000)
+      setIsSigningOut(false)
     } catch (error) {
-      console.error("Error with force sign out:", error)
-      setError(
-        "Force sign-out failed. Please try clearing your browser cookies manually."
-      )
+      console.error("Force sign out error:", error)
+      setError("Failed to sign out. Please try again.")
       setIsSigningOut(false)
     }
-  }
+  }, [forceCleanup])
 
   // Automatically run cleanup if URL has a force parameter
   useEffect(() => {
@@ -141,7 +99,7 @@ export default function ForceSignoutPage() {
     if (urlParams.get("force") === "true") {
       handleForceSignOut()
     }
-  }, [])
+  }, [handleForceSignOut])
 
   if (success) {
     return (
@@ -214,7 +172,7 @@ export default function ForceSignoutPage() {
             </Button>
             <p className="text-xs text-muted-foreground">
               Force removal of all authentication data from your browser. Use
-              this if you're having problems signing out normally.
+              this if you&apos;re having problems signing out normally.
             </p>
           </div>
         </CardContent>

@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { Shield, ArrowLeft } from "lucide-react"
+"use client"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,38 +9,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ShieldAlert } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function UnauthorizedPage() {
+  const router = useRouter()
+
   return (
-    <div className="container flex h-[calc(100vh-4rem)] items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Shield className="h-12 w-12 text-yellow-500" />
+            <ShieldAlert className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Access Denied</CardTitle>
+          <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
           <CardDescription>
-            You don&apos;t have permission to access this resource
+            You don&apos;t have permission to access this page
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">This could be because:</p>
-          <ul className="text-sm text-muted-foreground list-disc list-inside space-y-2">
-            <li>You&apos;re not logged in</li>
-            <li>Your session has expired</li>
-            <li>You don&apos;t have the required permissions</li>
-            <li>You&apos;re trying to access a restricted area</li>
-          </ul>
+        <CardContent>
+          <p className="text-center text-muted-foreground">
+            This page requires higher privileges than your current account has.
+            If you believe this is an error, please contact your administrator.
+          </p>
         </CardContent>
-        <CardFooter className="flex justify-center space-x-4">
-          <Button variant="outline" asChild className="w-full">
-            <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Link>
+        <CardFooter className="flex flex-col space-y-2">
+          <Button className="w-full" onClick={() => router.push("/")}>
+            Return to Home
           </Button>
-          <Button asChild className="w-full">
-            <Link href="/auth/signin">Sign In</Link>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => router.push("/auth/signin")}
+          >
+            Sign in with a different account
           </Button>
         </CardFooter>
       </Card>

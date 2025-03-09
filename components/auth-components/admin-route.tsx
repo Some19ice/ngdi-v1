@@ -1,5 +1,5 @@
 import { ProtectedRoute } from "./protected-route"
-import { UserRole } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   return (

@@ -87,6 +87,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
+  ngdiMetadata  NGDIMetadata[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 }
@@ -152,7 +153,7 @@ model Metadata {
   /// Software requirements
   softwareReqs          String?
   /// Update cycle
-  updateCycle           String?
+  updateCycle           String
   /// Last update date
   lastUpdate            DateTime?
   /// Next update date
@@ -192,6 +193,164 @@ model Metadata {
   @@index([userId])
 }
 
+/// NGDI Metadata information based on the metadata-schema.md specification
+model NGDIMetadata {
+  /// Unique identifier for the metadata entry
+  id                      String   @id @default(uuid())
+  
+  // Form 1: General Information
+  // Data Information
+  /// Type of data (Raster, Vector, Table)
+  dataType                String
+  /// Name of the dataset
+  dataName                String
+  /// Percentage of cloud cover for imagery
+  cloudCoverPercentage    String?
+  /// Date when the dataset was produced
+  productionDate          String
+  
+  // Fundamental Datasets (stored as JSON)
+  /// Information about fundamental dataset types
+  fundamentalDatasets     Json
+  
+  // Description
+  /// Summary of the dataset's content and purpose
+  abstract                String
+  /// Reason the dataset was created
+  purpose                 String
+  /// URL to the thumbnail image
+  thumbnailUrl            String
+  
+  // Spatial Domain
+  /// Unit system for coordinates (DD or DMS)
+  coordinateUnit          String
+  /// Southernmost latitude value
+  minLatitude             Float
+  /// Westernmost longitude value
+  minLongitude            Float
+  /// Northernmost latitude value
+  maxLatitude             Float
+  /// Easternmost longitude value
+  maxLongitude            Float
+  
+  // Location
+  /// Country covered by the dataset
+  country                 String
+  /// Geopolitical zone within Nigeria
+  geopoliticalZone        String
+  /// State or province
+  state                   String
+  /// Local Government Area
+  lga                     String
+  /// Town or city
+  townCity                String
+  
+  // Data Status
+  /// Completion status (Complete or Incomplete)
+  assessment              String
+  /// How often the dataset is updated
+  updateFrequency         String
+  
+  // Resource Constraint
+  /// Restrictions on who can access the dataset
+  accessConstraints       String
+  /// Restrictions on how the dataset can be used
+  useConstraints          String
+  /// Additional restrictions not covered by access or use constraints
+  otherConstraints        String
+  
+  // Metadata Reference
+  /// Date the metadata was created
+  metadataCreationDate    String
+  /// Date the metadata was last reviewed
+  metadataReviewDate      String
+  /// Name of the metadata contact person
+  metadataContactName     String
+  /// Address of the metadata contact
+  metadataContactAddress  String
+  /// Email of the metadata contact
+  metadataContactEmail    String
+  /// Phone number of the metadata contact
+  metadataContactPhone    String
+  
+  // Form 2: Data Quality Information
+  // General Section
+  /// Information about the logical integrity of the dataset
+  logicalConsistencyReport String?
+  /// Information about omissions or factors affecting completeness
+  completenessReport      String?
+  
+  // Attribute Accuracy
+  /// Description of the accuracy of the attributes
+  attributeAccuracyReport String?
+  
+  // Positional Accuracy (stored as JSON)
+  /// Information about horizontal and vertical positional accuracy
+  positionalAccuracy      Json?
+  
+  // Source Information (stored as JSON)
+  /// Information about the source material
+  sourceInformation       Json?
+  
+  // Data Processing Information
+  /// Description of the processing steps
+  processingDescription   String
+  /// Software used in processing
+  softwareVersion         String?
+  /// Date when processing occurred
+  processedDate           String
+  
+  // Processor Contact Information
+  /// Name of person responsible for processing
+  processorName           String
+  /// Email of process contact
+  processorEmail          String
+  /// Address of process contact
+  processorAddress        String
+  
+  // Form 3: Data Distribution Information
+  // Distributor Information
+  /// Name of the distributing organization
+  distributorName         String
+  /// Address of the distributor
+  distributorAddress      String
+  /// Email contact for the distributor
+  distributorEmail        String
+  /// Phone number for the distributor
+  distributorPhone        String
+  /// Website of the distributor
+  distributorWebLink      String?
+  /// Social media contact for the distributor
+  distributorSocialMedia  String?
+  
+  // Distribution Details
+  /// Legal statement about liability
+  distributionLiability   String
+  /// Process for custom orders
+  customOrderProcess      String
+  /// Technical requirements for using the data
+  technicalPrerequisites  String
+  
+  // Standard Order Process
+  /// Cost to obtain the dataset
+  orderFees               String
+  /// Time required to fulfill orders
+  turnaroundTime          String
+  /// How to order the dataset
+  orderingInstructions    String
+  
+  /// Reference to the user who created this entry
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id])
+  
+  /// Creation timestamp
+  createdAt               DateTime @default(now())
+  /// Last update timestamp
+  updatedAt               DateTime @updatedAt
+  
+  @@index([userId])
+}
+
 /// Token for email verification and password reset
 model VerificationToken {
   /// Email or identifier to verify
@@ -202,4 +361,38 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+/// System settings for the application
+model Settings {
+  /// Unique identifier for the settings record
+  id                      String   @id
+  /// Site name
+  siteName                String
+  /// Site description
+  siteDescription         String
+  /// Support email address
+  supportEmail            String
+  /// Maximum upload size in MB
+  maxUploadSize           Int
+  /// Default language
+  defaultLanguage         String
+  /// Maintenance mode flag
+  maintenanceMode         Boolean  @default(false)
+  /// Registration enabled flag
+  enableRegistration      Boolean  @default(true)
+  /// Email verification required flag
+  requireEmailVerification Boolean  @default(true)
+  /// Metadata validation required flag
+  metadataValidation      Boolean  @default(true)
+  /// Auto backup enabled flag
+  autoBackup              Boolean  @default(true)
+  /// Backup frequency (daily, weekly, monthly)
+  backupFrequency         String
+  /// Storage provider (local, s3, etc.)
+  storageProvider         String
+  /// API rate limit per minute
+  apiRateLimit            Int
+  /// Last update timestamp
+  updatedAt               DateTime @updatedAt
 }

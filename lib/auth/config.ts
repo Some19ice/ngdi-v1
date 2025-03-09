@@ -1,4 +1,4 @@
-import { UserRole } from "./types"
+import { UserRole } from "./constants"
 
 export interface ProtectedRoute {
   path: string

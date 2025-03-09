@@ -45,14 +45,23 @@ auth.onError(error_handler_1.errorHandler);
 // Login route
 auth.post("/login", (0, zod_validator_1.zValidator)("json", loginSchema), async (c) => {
     try {
+        console.log("Login request received");
         const data = await c.req.json();
+        console.log("Login data:", { email: data.email });
         const result = await auth_service_1.AuthService.login(data);
+        console.log("Login successful");
         return c.json(result);
     }
     catch (error) {
+        console.error("Login error:", error);
         if (error instanceof http_exception_1.HTTPException) {
-            throw error;
+            return c.json({
+                success: false,
+                message: error.message || "Authentication failed",
+                code: error_handler_1.ErrorCode.AUTHENTICATION_ERROR,
+            }, error.status);
         }
+        console.error("Unhandled login error:", error);
         throw new http_exception_1.HTTPException(500, { message: "Login failed" });
     }
 });
@@ -65,7 +74,11 @@ auth.post("/register", (0, zod_validator_1.zValidator)("json", registerSchema), 
     }
     catch (error) {
         if (error instanceof http_exception_1.HTTPException) {
-            throw error;
+            return c.json({
+                success: false,
+                message: error.message || "Registration failed",
+                code: error_handler_1.ErrorCode.AUTHENTICATION_ERROR,
+            }, error.status);
         }
         throw new http_exception_1.HTTPException(500, { message: "Registration failed" });
     }
@@ -219,5 +232,42 @@ auth.post("/reset-password", (0, zod_validator_1.zValidator)("json", resetPasswo
 // Logout route
 auth.post("/logout", async (c) => {
     return c.json({ message: "Logged out successfully" });
+});
+// Get current user (me) endpoint
+auth.get("/me", async (c) => {
+    try {
+        const authHeader = c.req.header("Authorization");
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            throw new error_handler_1.ApiError("Authorization header is required", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
+        }
+        const token = authHeader.replace("Bearer ", "");
+        // Verify token
+        const decoded = await (0, jwt_1.verifyToken)(token);
+        // Get user from database
+        const user = await prisma_1.prisma.user.findUnique({
+            where: { id: decoded.userId },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                image: true,
+                emailVerified: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        if (!user) {
+            throw new error_handler_1.ApiError("User not found", 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+        }
+        return c.json(user);
+    }
+    catch (error) {
+        console.error("Get current user error:", error);
+        if (error instanceof error_handler_1.ApiError) {
+            throw error;
+        }
+        throw new error_handler_1.ApiError("Authentication failed", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
+    }
 });
 exports.default = auth;

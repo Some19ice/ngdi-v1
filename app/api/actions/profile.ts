@@ -2,27 +2,39 @@
 
 import { z } from "zod"
 import { revalidatePath, revalidateTag } from "next/cache"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/auth-options"
+import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import {
   ProfileFormValues,
   profileFormSchema,
 } from "@/components/profile/types"
+import { verify } from "jsonwebtoken"
 
 export async function updateUserProfile(values: Partial<ProfileFormValues>) {
   try {
-    // 1. Get the user session to ensure they're authenticated
-    const session = await getServerSession(authOptions)
+    // 1. Get the user session from cookies
+    const token = cookies().get("auth_token")?.value
 
-    if (!session?.user?.id) {
+    if (!token) {
       return {
         success: false,
         error: "You must be signed in to update your profile",
       }
     }
 
-    // 2. Validate the provided data
+    // 2. Verify the token
+    let userId: string
+    try {
+      const decoded = verify(token, process.env.JWT_SECRET!) as { userId: string }
+      userId = decoded.userId
+    } catch (error) {
+      return {
+        success: false,
+        error: "Invalid authentication token",
+      }
+    }
+
+    // 3. Validate the provided data
     const validationSchema = profileFormSchema.partial().omit({ email: true }) // Email cannot be changed
 
     const result = validationSchema.safeParse(values)
@@ -34,10 +46,10 @@ export async function updateUserProfile(values: Partial<ProfileFormValues>) {
       }
     }
 
-    // 3. Extract the validated data
+    // 4. Extract the validated data
     const validatedData = result.data
 
-    // 4. Update fields that are in the user table
+    // 5. Update fields that are in the user table
     const updateData: Record<string, any> = {}
 
     if (validatedData.name !== undefined) updateData.name = validatedData.name
@@ -50,9 +62,9 @@ export async function updateUserProfile(values: Partial<ProfileFormValues>) {
     if (validatedData.phone !== undefined)
       updateData.phone = validatedData.phone
 
-    // 5. Update the user record
+    // 6. Update the user record
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: updateData,
       select: {
         id: true,
@@ -66,10 +78,6 @@ export async function updateUserProfile(values: Partial<ProfileFormValues>) {
         createdAt: true,
       },
     })
-
-    // 6. Store additional fields in a separate table if needed (not implemented yet)
-    // This would be the place to store bio, location, socialLinks, preferences
-    // For now, we'll just mock this
 
     // 7. Revalidate the profile data cache
     revalidatePath("/profile")

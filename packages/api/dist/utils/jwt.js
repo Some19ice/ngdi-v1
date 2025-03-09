@@ -9,7 +9,7 @@ const config_1 = require("../config");
 // Convert string to Uint8Array for jose
 const textEncoder = new TextEncoder();
 const jwtSecret = textEncoder.encode(config_1.config.jwt.secret);
-const refreshSecret = textEncoder.encode(config_1.config.jwt.secret); // Use the same secret for refresh tokens
+const refreshSecret = textEncoder.encode(config_1.config.jwt.refreshSecret); // Use the refresh secret for refresh tokens
 /**
  * Generate a JWT token
  */

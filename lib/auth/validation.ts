@@ -1,7 +1,8 @@
 import { z } from "zod"
 import { compare, hash } from "bcryptjs"
 import { AUTH_CONFIG } from "./config"
-import { UserRole } from "./types"
+import { UserRole } from "./constants"
+import { normalizeRole } from "./utils"
 
 // Password validation schema
 export const passwordSchema = z

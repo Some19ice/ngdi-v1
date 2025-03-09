@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { UserRole, Permissions } from "@/lib/auth/types"
+import { Permissions } from "@/lib/auth/types"
+import { UserRole } from "@/lib/auth/constants"
 import { Button } from "@/components/ui/button"
 import {
   Card,

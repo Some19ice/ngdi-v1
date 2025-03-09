@@ -1,0 +1,170 @@
+export interface DataInformation {
+  dataType: "Raster" | "Vector" | "Table" // Required
+  dataName: string // Required
+  cloudCoverPercentage?: string // Optional
+  productionDate: string // Required
+}
+
+export interface FundamentalDatasets {
+  geodeticData?: boolean
+  topographicData?: boolean
+  cadastralData?: boolean
+  administrativeBoundaries?: boolean
+  hydrographicData?: boolean
+  landUseLandCover?: boolean
+  geologicalData?: boolean
+  demographicData?: boolean
+  digitalImagery?: boolean
+  transportationData?: boolean
+  others?: boolean
+  otherDescription?: string
+}
+
+export interface Description {
+  abstract: string // Required
+  purpose: string // Required
+  thumbnail: string // Required - URL to the thumbnail image
+}
+
+export interface SpatialDomain {
+  coordinateUnit: "DD" | "DMS" // Required
+  minLatitude: number // Required
+  minLongitude: number // Required
+  maxLatitude: number // Required
+  maxLongitude: number // Required
+}
+
+export interface Location {
+  country: string // Required
+  geopoliticalZone: string // Required
+  state: string // Required
+  lga: string // Required
+  townCity: string // Required
+}
+
+export interface DataStatus {
+  assessment: "Complete" | "Incomplete" // Required
+  updateFrequency: "Monthly" | "Quarterly" | "Bi-Annually" | "Annually" // Required
+}
+
+export interface ResourceConstraint {
+  accessConstraints: string // Required
+  useConstraints: string // Required
+  otherConstraints: string // Required
+}
+
+export interface MetadataReference {
+  creationDate: string // Required
+  reviewDate: string // Required
+  contactName: string // Required
+  address: string // Required
+  email: string // Required
+  phoneNumber: string // Required
+}
+
+export interface GeneralSection {
+  logicalConsistencyReport?: string
+  completenessReport?: string
+}
+
+export interface AttributeAccuracy {
+  accuracyReport?: string
+}
+
+export interface HorizontalAccuracy {
+  accuracyReport?: string
+  percentValue?: number
+  explanation?: string
+}
+
+export interface VerticalAccuracy {
+  accuracyReport?: string
+  percentValue?: number
+  explanation?: string
+}
+
+export interface PositionalAccuracy {
+  horizontal: HorizontalAccuracy
+  vertical: VerticalAccuracy
+}
+
+export interface SourceInformation {
+  sourceScaleDenominator?: number
+  sourceMediaType?: string
+  sourceCitation?: string
+  citationTitle?: string
+  contractReference?: string
+  contractDate?: string
+}
+
+export interface DataProcessingInformation {
+  description: string // Required
+  softwareVersion?: string
+  processedDate: string // Required
+}
+
+export interface ProcessorContactInformation {
+  name: string // Required
+  email: string // Required
+  address: string // Required
+}
+
+export interface DistributorInformation {
+  name: string // Required
+  address: string // Required
+  email: string // Required
+  phoneNumber: string // Required
+  webLink?: string
+  socialMediaHandle?: string
+}
+
+export interface DistributionDetails {
+  liability: string // Required
+  customOrderProcess: string // Required
+  technicalPrerequisites: string // Required
+}
+
+export interface StandardOrderProcess {
+  fees: string // Required
+  turnaroundTime: string // Required
+  orderingInstructions: string // Required
+}
+
+export interface Form1Data {
+  dataInformation: DataInformation
+  fundamentalDatasets: FundamentalDatasets
+  description: Description
+  spatialDomain: SpatialDomain
+  location: Location
+  dataStatus: DataStatus
+  resourceConstraint: ResourceConstraint
+  metadataReference: MetadataReference
+}
+
+export interface Form2Data {
+  generalSection: GeneralSection
+  attributeAccuracy: AttributeAccuracy
+  positionalAccuracy: PositionalAccuracy
+  sourceInformation: SourceInformation
+  dataProcessingInformation: DataProcessingInformation
+  processorContactInformation: ProcessorContactInformation
+}
+
+export interface Form3Data {
+  distributorInformation: DistributorInformation
+  distributionDetails: DistributionDetails
+  standardOrderProcess: StandardOrderProcess
+}
+
+export interface NGDIMetadataFormData {
+  form1: Form1Data
+  form2: Form2Data
+  form3: Form3Data
+}
+
+export interface NGDIMetadataResponse extends NGDIMetadataFormData {
+  id: string
+  userId: string
+  createdAt: string
+  updatedAt: string
+}

@@ -1,8 +1,4 @@
-export enum UserRole {
-  USER = "user",
-  NODE_OFFICER = "node_officer",
-  ADMIN = "admin",
-}
+import { UserRole } from "./constants"
 
 export interface UserMetadata {
   name?: string
@@ -49,6 +45,7 @@ export enum Permission {
   DELETE_USER = "DELETE_USER",
   VIEW_ANALYTICS = "VIEW_ANALYTICS",
   MANAGE_ORGANIZATION = "MANAGE_ORGANIZATION",
+  MANAGE_SETTINGS = "MANAGE_SETTINGS",
 }
 
 export const Permissions = {
@@ -61,6 +58,7 @@ export const Permissions = {
   DELETE_USER: Permission.DELETE_USER,
   VIEW_ANALYTICS: Permission.VIEW_ANALYTICS,
   MANAGE_ORGANIZATION: Permission.MANAGE_ORGANIZATION,
+  MANAGE_SETTINGS: Permission.MANAGE_SETTINGS,
 } as const
 
 export const RolePermissions: Record<UserRole, Permission[]> = {
@@ -75,6 +73,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permissions.DELETE_USER,
     Permissions.VIEW_ANALYTICS,
     Permissions.MANAGE_ORGANIZATION,
+    Permissions.MANAGE_SETTINGS,
   ],
   [UserRole.NODE_OFFICER]: [
     // Node officers can manage metadata and view their organization

@@ -57,4 +57,8 @@
   use lower case for commit messages
   the commit message should also include a list of the changes made in the commit after the summary line if the changes are not self explanatory
 
+  #Extra
+
+  Before editing a file, read it first.
+
   

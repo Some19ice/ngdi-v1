@@ -2,18 +2,7 @@ import {
   type Profile,
   type ProfileFormValues,
 } from "@/components/profile/types"
-
-// Use absolute URL with origin for server components
-function getApiUrl(path: string): string {
-  // Check if we're in a browser environment
-  if (typeof window !== "undefined") {
-    return path // Use relative path in browser
-  }
-
-  // In server environment, use absolute URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-  return `${baseUrl}${path}`
-}
+import { getApiUrl } from "./config"
 
 /**
  * Fetches the user's profile data
@@ -65,7 +54,7 @@ export async function getProfile(): Promise<Profile> {
  */
 export async function updateProfile(
   values: Partial<ProfileFormValues>
-): Promise<Profile> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const apiUrl = getApiUrl("/api/user/profile")
 
@@ -89,24 +78,28 @@ export async function updateProfile(
     }
 
     const data = await res.json()
-    return data.user
+    return { success: true }
   } catch (error) {
     console.error("Profile update error:", error)
-    throw error
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update profile",
+    }
   }
 }
 
 /**
- * Uploads a profile image
+ * Uploads a profile image to the server
  * @param file The image file to upload
- * @returns Promise with the URL of the uploaded image
+ * @returns Promise with the uploaded image URL
  * @throws Error if the image cannot be uploaded
  */
 export async function uploadProfileImage(file: File): Promise<{ url: string }> {
   try {
-    const apiUrl = getApiUrl("/api/user/profile/image")
     const formData = new FormData()
     formData.append("file", file)
+
+    const apiUrl = getApiUrl("/api/user/profile/image")
 
     const res = await fetch(apiUrl, {
       method: "POST",
@@ -124,7 +117,8 @@ export async function uploadProfileImage(file: File): Promise<{ url: string }> {
       )
     }
 
-    return res.json()
+    const data = await res.json()
+    return { url: data.url }
   } catch (error) {
     console.error("Image upload error:", error)
     throw error

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { MapIcon, Loader2, LogOut } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useSession, useAuth } from "@/lib/auth-context"
+import { UserRole } from "@/lib/auth/constants"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { UserRole } from "@/lib/auth/types"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -95,7 +95,11 @@ const supportMenuItems = [
   { name: "Feedback", href: "/feedback" },
 ]
 
-function UserAvatar({ user }: { user: { name?: string | null; email?: string | null; image?: string | null } }) {
+function UserAvatar({
+  user,
+}: {
+  user: { name?: string | null; email?: string | null; image?: string | null }
+}) {
   return (
     <Avatar className="h-8 w-8 border border-border">
       <AvatarImage src={user.image || ""} alt={user.name || ""} />
@@ -146,16 +150,16 @@ export function Header() {
 
   const getNavItems = () => {
     const items = [...publicNavItems]
-    const userRole = session?.user?.role
-    
-    if (userRole === "admin") {
+    const userRole = session?.user?.role?.toUpperCase()
+
+    if (userRole === UserRole.ADMIN) {
       items.push(...(roleBasedNavItems[UserRole.ADMIN] || []))
-    } else if (userRole === "node_officer") {
+    } else if (userRole === UserRole.NODE_OFFICER) {
       items.push(...(roleBasedNavItems[UserRole.NODE_OFFICER] || []))
-    } else if (userRole === "user") {
+    } else if (userRole === UserRole.USER) {
       items.push(...(roleBasedNavItems[UserRole.USER] || []))
     }
-    
+
     return items
   }
 

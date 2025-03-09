@@ -24,16 +24,23 @@ class AuthService {
         return (0, bcryptjs_1.compare)(password, hashedPassword);
     }
     static async login(data) {
+        console.log("AuthService.login called with email:", data.email);
         const user = await prisma_1.prisma.user.findUnique({
             where: { email: data.email },
         });
+        console.log("User found:", user ? "Yes" : "No");
         if (!user) {
+            console.log("User not found, throwing 401");
             throw new http_exception_1.HTTPException(401, { message: "Invalid credentials" });
         }
+        console.log("Validating password");
         const isValidPassword = await this.validatePassword(data.password, user.password);
+        console.log("Password valid:", isValidPassword);
         if (!isValidPassword) {
+            console.log("Invalid password, throwing 401");
             throw new http_exception_1.HTTPException(401, { message: "Invalid credentials" });
         }
+        console.log("Generating tokens");
         const accessToken = this.generateToken(user);
         const refreshToken = await (0, jwt_1.generateRefreshToken)({
             userId: user.id,
@@ -41,6 +48,7 @@ class AuthService {
             role: (0, role_mapper_1.mapPrismaRoleToAppRole)(user.role),
         });
         const { password: _, ...userWithoutPassword } = user;
+        console.log("Login successful, returning response");
         return {
             user: {
                 id: user.id,

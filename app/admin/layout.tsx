@@ -1,85 +1,36 @@
-"use client"
-
-import { usePathname } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
-import { UserRole, Permissions } from "@/lib/auth/types"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card } from "@/components/ui/card"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { AUTH_PATHS } from "@/lib/auth/paths"
+import { AdminNav } from "./components/admin-nav"
 
-export default function AdminLayout({
+async function getUser() {
+  const headersList = headers()
+  return {
+    id: headersList.get("x-user-id"),
+    email: headersList.get("x-user-email"),
+    role: headersList.get("x-user-role"),
+  }
+}
+
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const pathname = usePathname()
-  const { user, can } = useAuth()
+  const user = await getUser()
 
-  if (!user || user.role !== UserRole.ADMIN) {
-    redirect("/unauthorized")
+  if (!user.id || !user.role) {
+    redirect(AUTH_PATHS.SIGNIN)
   }
 
-  const tabs = [
-    {
-      value: "/admin",
-      label: "Dashboard",
-      href: "/admin",
-    },
-    {
-      value: "/admin/users",
-      label: "Users",
-      href: "/admin/users",
-      permission: Permissions.READ_USER,
-    },
-    {
-      value: "/admin/organizations",
-      label: "Organizations",
-      href: "/admin/organizations",
-      permission: Permissions.MANAGE_ORGANIZATION,
-    },
-    {
-      value: "/admin/metadata",
-      label: "All Metadata",
-      href: "/admin/metadata",
-      permission: Permissions.READ_METADATA,
-    },
-    {
-      value: "/admin/settings",
-      label: "System Settings",
-      href: "/admin/settings",
-      permission: Permissions.MANAGE_SETTINGS,
-    },
-  ]
+  if (user.role !== "ADMIN") {
+    redirect(AUTH_PATHS.UNAUTHORIZED)
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage users, organizations, and system settings
-        </p>
-      </div>
-
-      <Card className="p-6">
-        <Tabs value={pathname || ""} className="space-y-6">
-          <TabsList className="w-full justify-start h-auto gap-2 bg-transparent p-0">
-            {tabs.map(
-              (tab) =>
-                (!tab.permission || can(tab.permission)) && (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="data-[state=active]:bg-ngdi-green-500 data-[state=active]:text-white rounded-md px-4 py-2"
-                    asChild
-                  >
-                    <a href={tab.href}>{tab.label}</a>
-                  </TabsTrigger>
-                )
-            )}
-          </TabsList>
-          {children}
-        </Tabs>
-      </Card>
+    <div className="container mx-auto py-8">
+      <AdminNav user={user} />
+      <main className="mt-8">{children}</main>
     </div>
   )
 }

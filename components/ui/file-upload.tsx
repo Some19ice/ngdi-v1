@@ -4,7 +4,7 @@ import { useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { Upload, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { getStorage } from "@/lib/storage"
+import { storage } from "@/lib/storage"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
 import { Progress } from "./progress"
@@ -40,7 +40,8 @@ export function FileUpload({
       setUploadProgress(0)
 
       try {
-        const storage = getStorage()
+        // Use the imported storage directly
+        // const storage = getStorage()
 
         // Simulate upload progress
         const progressInterval = setInterval(() => {
@@ -55,7 +56,6 @@ export function FileUpload({
 
         const result = await storage.upload(file, path, {
           maxSizeBytes: maxSize,
-          allowedMimeTypes: acceptedFileTypes,
         })
 
         clearInterval(progressInterval)
@@ -72,7 +72,7 @@ export function FileUpload({
         setUploadProgress(0)
       }
     },
-    [maxSize, acceptedFileTypes, path, onUploadComplete, onUploadError]
+    [maxSize, path, onUploadComplete, onUploadError]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
