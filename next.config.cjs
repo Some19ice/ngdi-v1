@@ -73,4 +73,10 @@ module.exports = {
   generateBuildId: async () => {
     return "build-id"
   },
+  // Disable static optimization for API routes and pages
+  unstable_runtimeJS: true,
+  // Force all pages to be server-side rendered
+  compiler: {
+    reactRemoveProperties: process.env.NODE_ENV === "production",
+  },
 }
