@@ -67,15 +67,10 @@ module.exports = {
       ],
     },
   ],
-  // Enable serverless functions
-  serverComponents: true,
-  // Disable static optimization for API routes
-  rewrites: async () => {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "/api/:path*",
-      },
-    ]
+  // Configure for serverless deployment
+  pageExtensions: ["tsx", "ts", "jsx", "js"],
+  // Ensure we have at least one server-side page
+  generateBuildId: async () => {
+    return "build-id"
   },
 }

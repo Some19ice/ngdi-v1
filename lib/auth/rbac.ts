@@ -1,11 +1,11 @@
 import {
-  type Permission,
+  Permission,
   RolePermissions,
-  UserRole,
   type Action,
   type Subject,
   Permissions,
 } from "./types"
+import { UserRole } from "./constants"
 
 // Define the Permission interface for RBAC
 export interface PermissionObject {
@@ -56,9 +56,8 @@ export function can(
   }
 
   // Convert Permission enum to PermissionObject if needed
-  const permObj = typeof permission === "object" 
-    ? permission 
-    : permissionToObject(permission)
+  const permObj =
+    typeof permission === "object" ? permission : permissionToObject(permission)
 
   // Get permissions for the user's role
   const userPermissions = getRolePermissions(user.role)
@@ -68,12 +67,10 @@ export function can(
     return false
   }
 
-  const hasPermission = userPermissions.some(
-    (p) => {
-      const pObj = typeof p === "object" ? p : permissionToObject(p)
-      return pObj.action === permObj.action && pObj.subject === permObj.subject
-    }
-  )
+  const hasPermission = userPermissions.some((p) => {
+    const pObj = typeof p === "object" ? p : permissionToObject(p)
+    return pObj.action === permObj.action && pObj.subject === permObj.subject
+  })
 
   if (!hasPermission) {
     return false
