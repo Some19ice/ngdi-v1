@@ -16,8 +16,6 @@ module.exports = {
   experimental: {
     serverActions: true,
   },
-  // Remove static export configuration
-  staticPageGenerationTimeout: 0,
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -33,6 +31,7 @@ module.exports = {
     }
     return config
   },
+  // Security headers
   headers: async () => [
     {
       source: "/:path*",
@@ -68,4 +67,15 @@ module.exports = {
       ],
     },
   ],
+  // Enable serverless functions
+  serverComponents: true,
+  // Disable static optimization for API routes
+  rewrites: async () => {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "/api/:path*",
+      },
+    ]
+  },
 }

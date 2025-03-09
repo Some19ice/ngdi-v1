@@ -6,19 +6,33 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import GeneralInfoForm from "@/app/metadata/add/components/general-info-form"
-import TechnicalDetailsForm from "@/app/metadata/add/components/technical-details-form"
-import AccessInfoForm from "@/app/metadata/add/components/access-info-form"
+import DataQualityForm from "@/app/metadata/add/components/data-quality-form"
+import DistributionInfoForm from "@/app/metadata/add/components/distribution-info-form"
 import { createMetadata } from "@/app/actions/metadata"
-import type { MetadataFormData } from "@/app/actions/metadata"
+import type {
+  Form1Data,
+  Form2Data,
+  Form3Data,
+  NGDIMetadataFormData,
+} from "@/types/ngdi-metadata"
 
 export function MetadataForm() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<Partial<MetadataFormData>>({})
+  const [formData, setFormData] = useState<Partial<NGDIMetadataFormData>>({
+    form1: {} as Form1Data,
+    form2: {} as Form2Data,
+    form3: {} as Form3Data,
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleNext = (data: any) => {
-    setFormData((prev) => ({ ...prev, ...data }))
+  const handleNext = (data: Form1Data | Form2Data) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...(currentStep === 1
+        ? { form1: data as Form1Data }
+        : { form2: data as Form2Data }),
+    }))
     setCurrentStep((prev) => prev + 1)
   }
 
@@ -26,11 +40,15 @@ export function MetadataForm() {
     setCurrentStep((prev) => prev - 1)
   }
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: Form3Data) => {
     try {
       setIsSubmitting(true)
-      const finalData = { ...formData, ...data }
-      const result = await createMetadata(finalData as MetadataFormData)
+      const finalData = {
+        ...formData,
+        form3: data,
+      } as NGDIMetadataFormData
+
+      const result = await createMetadata(finalData)
 
       if (result.success) {
         toast.success("Metadata saved successfully")
@@ -66,28 +84,28 @@ export function MetadataForm() {
                 currentStep >= step ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              {["General", "Technical", "Access"][step - 1]}
+              {["General", "Data Quality", "Distribution"][step - 1]}
             </div>
           ))}
         </div>
       </div>
 
       {currentStep === 1 && (
-        <GeneralInfoForm onNext={handleNext} initialData={formData} />
+        <GeneralInfoForm onNext={handleNext} initialData={formData.form1} />
       )}
       {currentStep === 2 && (
-        <TechnicalDetailsForm
+        <DataQualityForm
           onNext={handleNext}
           onBack={handleBack}
-          initialData={formData}
+          initialData={formData.form2}
         />
       )}
       {currentStep === 3 && (
-        <AccessInfoForm
+        <DistributionInfoForm
           onBack={handleBack}
           onSave={handleSave}
           isSubmitting={isSubmitting}
-          initialData={formData}
+          initialData={formData.form3}
         />
       )}
     </div>
