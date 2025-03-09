@@ -1,5 +1,4 @@
 import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -19,17 +18,21 @@ export default async function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-blue-900 to-blue-700 px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-32">
+      <section className="relative bg-gradient-to-b from-primary/90 to-primary px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-32">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/images/map-pattern.svg')] bg-center opacity-10"></div>
+          <div className="absolute inset-0 bg-[url('/images/map-pattern.svg')] bg-center opacity-20"></div>
         </div>
         <div className="container relative mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-8">
             <div className="flex flex-col justify-center">
+              <div className="mb-4 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm backdrop-blur-sm">
+                <span className="mr-2 inline-block h-2 w-2 rounded-full bg-secondary"></span>
+                Nigeria&apos;s Official Geospatial Platform
+              </div>
               <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
                 Nigeria Geospatial Data Infrastructure Portal
               </h1>
-              <p className="mb-8 text-lg text-blue-100 sm:text-xl">
+              <p className="mb-8 text-lg text-primary-foreground/90 sm:text-xl">
                 A centralized platform for accessing, managing, and sharing
                 geospatial data across Nigeria. Empowering decision-makers with
                 accurate spatial information.
@@ -39,7 +42,7 @@ export default async function HomePage() {
                   <Link href="/metadata">
                     <Button
                       size="lg"
-                      className="bg-white text-blue-700 hover:bg-blue-50"
+                      className="bg-white text-primary hover:bg-white/90"
                     >
                       Go to Dashboard
                     </Button>
@@ -49,7 +52,7 @@ export default async function HomePage() {
                     <Link href="/auth/signin">
                       <Button
                         size="lg"
-                        className="bg-white text-blue-700 hover:bg-blue-50"
+                        className="bg-white text-primary hover:bg-white/90"
                       >
                         Sign In
                       </Button>
@@ -69,6 +72,7 @@ export default async function HomePage() {
             </div>
             <div className="flex items-center justify-center">
               <div className="relative h-[400px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 backdrop-blur-sm"></div>
                 <Image
                   src="/images/nigeria-map.png"
                   alt="Nigeria Map Visualization"
@@ -76,20 +80,49 @@ export default async function HomePage() {
                   className="object-cover"
                   priority
                 />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-6 text-white">
+                  <p className="font-medium">
+                    Unified Geospatial Data Management
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Stats Section */}
+      <section className="bg-white px-4 py-12 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">250+</p>
+              <p className="text-sm text-muted-foreground">Datasets</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">36</p>
+              <p className="text-sm text-muted-foreground">States Covered</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">50+</p>
+              <p className="text-sm text-muted-foreground">Organizations</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">1000+</p>
+              <p className="text-sm text-muted-foreground">Users</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+      <section className="bg-muted/30 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Key Features
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-600">
+            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
               Our platform provides comprehensive tools for geospatial data
               management and analysis.
             </p>
@@ -97,8 +130,8 @@ export default async function HomePage() {
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {/* Feature 1 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -114,18 +147,18 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 Metadata Management
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Create, edit, and manage comprehensive metadata records for
                 geospatial datasets following international standards.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -141,18 +174,18 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 Advanced Search
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Find relevant geospatial data quickly with powerful search
                 capabilities including spatial, temporal, and keyword filters.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -168,18 +201,18 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 User Management
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Comprehensive user roles and permissions system to ensure secure
                 access and data integrity across organizations.
               </p>
             </div>
 
             {/* Feature 4 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -195,18 +228,18 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 Data Sharing
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Easily share geospatial data across departments and
                 organizations with configurable access controls.
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -222,18 +255,18 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 Standards Compliance
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Full compliance with international geospatial metadata standards
                 including ISO 19115 and FGDC.
               </p>
             </div>
 
             {/* Feature 6 */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -249,10 +282,10 @@ export default async function HomePage() {
                   />
                 </svg>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">
+              <h3 className="mb-2 text-xl font-bold text-foreground">
                 Analytics & Reporting
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Generate insights with built-in analytics and reporting tools to
                 track data usage and quality metrics.
               </p>
@@ -261,49 +294,138 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-blue-50 px-4 py-16 sm:px-6 lg:px-8">
+      {/* Testimonials Section */}
+      <section className="bg-card px-4 py-16 sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-6xl">
-          <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-800 p-8 shadow-xl sm:p-12">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Ready to get started?
-              </h2>
-              <p className="mb-8 text-lg text-blue-100">
-                Join government agencies, research institutions, and private
-                organizations already using the NGDI Portal.
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Trusted by Organizations Across Nigeria
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+              See what our users have to say about the NGDI Portal.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border border-border bg-background p-6 shadow-sm">
+              <div className="mb-4 flex items-center">
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10">
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-primary">
+                    FM
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold">
+                    Federal Ministry of Environment
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Government Agency
+                  </p>
+                </div>
+              </div>
+              <p className="text-muted-foreground">
+                &ldquo;The NGDI Portal has revolutionized how we manage and
+                share environmental data across departments. The standardized
+                metadata approach ensures consistency and reliability.&rdquo;
               </p>
-              <div className="flex flex-wrap justify-center gap-4">
-                {isAuthenticated ? (
-                  <Link href="/metadata">
-                    <Button
-                      size="lg"
-                      className="bg-white text-blue-700 hover:bg-blue-50"
-                    >
-                      Go to Dashboard
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    <Link href="/auth/signin">
+            </div>
+
+            <div className="rounded-lg border border-border bg-background p-6 shadow-sm">
+              <div className="mb-4 flex items-center">
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10">
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-primary">
+                    NU
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold">
+                    National Universities Commission
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Education Sector
+                  </p>
+                </div>
+              </div>
+              <p className="text-muted-foreground">
+                &ldquo;Access to standardized geospatial data has enhanced our
+                research capabilities significantly. The platform&apos;s user
+                management features make collaboration between institutions
+                seamless.&rdquo;
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border bg-background p-6 shadow-sm">
+              <div className="mb-4 flex items-center">
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10">
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-primary">
+                    NG
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Nigerian Geological Survey</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Research Institution
+                  </p>
+                </div>
+              </div>
+              <p className="text-muted-foreground">
+                &ldquo;The advanced search capabilities have dramatically
+                reduced the time it takes to find relevant geological datasets.
+                This platform is an essential tool for our daily
+                operations.&rdquo;
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-6xl">
+          <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-8 shadow-xl sm:p-12">
+            <div className="relative">
+              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-secondary/20 blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-secondary/20 blur-3xl"></div>
+              <div className="relative mx-auto max-w-3xl text-center">
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                  Ready to get started?
+                </h2>
+                <p className="mb-8 text-lg text-primary-foreground/90">
+                  Join government agencies, research institutions, and private
+                  organizations already using the NGDI Portal.
+                </p>
+                <div className="flex flex-wrap justify-center gap-4">
+                  {isAuthenticated ? (
+                    <Link href="/metadata">
                       <Button
                         size="lg"
-                        className="bg-white text-blue-700 hover:bg-blue-50"
+                        className="bg-white text-primary hover:bg-white/90"
                       >
-                        Sign In
+                        Go to Dashboard
                       </Button>
                     </Link>
-                    <Link href="/auth/signup">
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        className="border-white text-white hover:bg-white/10"
-                      >
-                        Create Account
-                      </Button>
-                    </Link>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <Link href="/auth/signin">
+                        <Button
+                          size="lg"
+                          className="bg-white text-primary hover:bg-white/90"
+                        >
+                          Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/auth/signup">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="border-white text-white hover:bg-white/10"
+                        >
+                          Create Account
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -311,75 +433,93 @@ export default async function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 px-4 py-12 text-gray-300 sm:px-6 lg:px-8">
+      <footer className="bg-card px-4 py-12 text-card-foreground sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-6xl">
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
-                NGDI Portal
-              </h3>
-              <p className="text-sm text-gray-400">
+              <h3 className="mb-4 text-lg font-semibold">NGDI Portal</h3>
+              <p className="text-sm text-muted-foreground">
                 Nigeria Geospatial Data Infrastructure Portal - A centralized
                 platform for geospatial data management.
               </p>
             </div>
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
-                Quick Links
-              </h3>
+              <h3 className="mb-4 text-lg font-semibold">Quick Links</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/about" className="hover:text-white">
+                  <Link
+                    href="/about"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     About
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-white">
+                  <Link
+                    href="/contact"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Contact
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faq" className="hover:text-white">
+                  <Link
+                    href="/faq"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     FAQ
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="hover:text-white">
+                  <Link
+                    href="/privacy"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Privacy Policy
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
-                Resources
-              </h3>
+              <h3 className="mb-4 text-lg font-semibold">Resources</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/docs" className="hover:text-white">
+                  <Link
+                    href="/docs"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Documentation
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tutorials" className="hover:text-white">
+                  <Link
+                    href="/tutorials"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Tutorials
                   </Link>
                 </li>
                 <li>
-                  <Link href="/api-docs" className="hover:text-white">
+                  <Link
+                    href="/api-docs"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     API
                   </Link>
                 </li>
                 <li>
-                  <Link href="/support" className="hover:text-white">
+                  <Link
+                    href="/support"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     Support
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">Contact</h3>
-              <ul className="space-y-2 text-sm">
+              <h3 className="mb-4 text-lg font-semibold">Contact</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>Email: info@ngdi.gov.ng</li>
                 <li>Phone: +234 (0) 123 456 7890</li>
                 <li>
@@ -388,7 +528,7 @@ export default async function HomePage() {
               </ul>
             </div>
           </div>
-          <div className="mt-12 border-t border-gray-800 pt-8 text-center text-sm">
+          <div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
             <p>
               &copy; {new Date().getFullYear()} Nigeria Geospatial Data
               Infrastructure. All rights reserved.
