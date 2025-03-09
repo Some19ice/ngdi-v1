@@ -60,11 +60,8 @@ export async function GET(request: NextRequest) {
       cookies: {
         all: allCookies.map((c) => ({
           name: c.name,
-          value: c.name.includes("token")
-            ? `${c.value.substring(0, 10)}...`
-            : c.value,
-          path: c.path,
-          expires: c.expires,
+          value:
+            c.value.length > 10 ? `${c.value.substring(0, 10)}...` : c.value,
         })),
         hasAuthToken: !!authToken,
       },

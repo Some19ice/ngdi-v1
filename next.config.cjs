@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  output: "export",
   reactStrictMode: true,
   swcMinify: true,
   eslint: {
@@ -17,31 +16,23 @@ module.exports = {
   experimental: {
     serverActions: true,
   },
-  // Disable static page generation completely
-  staticPageGenerationTimeout: 1, // Set a very low timeout to skip static generation
-  // Disable static page generation for problematic routes
-  exportPathMap: async function (defaultPathMap) {
-    // Remove problematic routes
-    delete defaultPathMap["/metadata"]
-    delete defaultPathMap["/auth/debug"]
-    delete defaultPathMap["/auth/debug/session"]
-    delete defaultPathMap["/auth/diagnostic"]
-    delete defaultPathMap["/auth/new-user"]
-    delete defaultPathMap["/auth/reset-password"]
-    delete defaultPathMap["/auth/signin"]
-    delete defaultPathMap["/auth/signout"]
-    delete defaultPathMap["/auth/signup"]
-    delete defaultPathMap["/auth/sync-session"]
-
-    return defaultPathMap
+  // Remove static export configuration
+  staticPageGenerationTimeout: 0,
+  // Configure for serverless deployment
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Don't resolve 'fs' module on the client side
+      config.resolve.fallback = {
+        fs: false,
+        net: false,
+        tls: false,
+        dns: false,
+        child_process: false,
+        path: false,
+      }
+    }
+    return config
   },
-  // Ignore errors during build
-  onDemandEntries: {
-    // Don't terminate the build on error
-    maxInactiveAge: 60 * 60 * 1000,
-    pagesBufferLength: 5,
-  },
-  optimizeFonts: true,
   headers: async () => [
     {
       source: "/:path*",
@@ -77,18 +68,4 @@ module.exports = {
       ],
     },
   ],
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Don't resolve 'fs' module on the client side
-      config.resolve.fallback = {
-        fs: false,
-        net: false,
-        tls: false,
-        dns: false,
-        child_process: false,
-        path: false,
-      }
-    }
-    return config
-  },
 }

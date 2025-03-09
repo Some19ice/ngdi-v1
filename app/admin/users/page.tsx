@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "@/hooks/use-session"
 import { UserRole } from "@/lib/auth/constants"
@@ -132,7 +132,7 @@ export default function UsersPage() {
   }, [user, isLoading, hasRole, router])
 
   // Fetch users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (isLoadingUsers) {
       console.log("Skipping fetch - already loading")
       return
@@ -191,7 +191,7 @@ export default function UsersPage() {
       console.log("Setting isLoadingUsers to false")
       setIsLoadingUsers(false)
     }
-  }
+  }, [isLoadingUsers, pagination.page, pagination.limit, search, roleFilter])
 
   // Manual fetch button handler
   const handleManualFetch = () => {
