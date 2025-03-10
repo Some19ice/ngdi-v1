@@ -71,7 +71,7 @@ export default async function HomePage() {
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <div className="relative h-[600px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
+              <div className="relative h-[400px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 backdrop-blur-sm"></div>
                 <Image
                   src="/images/stakeholders.gif"
