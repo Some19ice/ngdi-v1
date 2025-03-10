@@ -19,6 +19,8 @@
     "start:web": "next start",
     "start:api": "npm run start -w packages/api",
     "lint": "next lint",
+    "clean": "rm -rf .next node_modules/.cache",
+    "clean:vercel": "rm -rf .next node_modules/.cache .vercel/output",
     "db:push": "prisma db push",
     "db:init": "ts-node --project scripts/tsconfig.json scripts/init-db.ts",
     "test": "npm run test:web && npm run test:api",
@@ -29,8 +31,7 @@
     "test:auth": "playwright test tests/auth.test.ts",
     "test:coverage": "playwright test --reporter=html",
     "test:analyze": "ts-node scripts/analyze-test-results.ts",
-    "format": "prettier --write .",
-    "clean": "rm -rf .next node_modules/.cache"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",

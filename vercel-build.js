@@ -13,14 +13,24 @@ process.env.NODE_ENV = "production"
 // Clean up previous builds
 console.log("Cleaning up previous builds...")
 try {
-  if (fs.existsSync(".next")) {
-    execSync("rm -rf .next")
-  }
-  if (fs.existsSync("node_modules/.cache")) {
-    execSync("rm -rf node_modules/.cache")
-  }
+  // Use the npm clean script for more thorough cleaning
+  execSync("npm run clean:vercel", { stdio: "inherit" })
 } catch (error) {
   console.error("Error cleaning up:", error)
+  // Fallback to manual cleanup if the script fails
+  try {
+    if (fs.existsSync(".next")) {
+      execSync("rm -rf .next")
+    }
+    if (fs.existsSync("node_modules/.cache")) {
+      execSync("rm -rf node_modules/.cache")
+    }
+    if (fs.existsSync(".vercel/output")) {
+      execSync("rm -rf .vercel/output")
+    }
+  } catch (cleanupError) {
+    console.error("Error in fallback cleanup:", cleanupError)
+  }
 }
 
 // Generate Prisma client

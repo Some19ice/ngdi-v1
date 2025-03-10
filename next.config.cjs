@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require("path")
+
 module.exports = {
   reactStrictMode: true,
   swcMinify: true,
@@ -34,6 +36,18 @@ module.exports = {
         path: false,
       }
     }
+
+    // Improve webpack caching to prevent errors
+    config.cache = {
+      type: "filesystem",
+      buildDependencies: {
+        config: [__filename],
+      },
+      cacheDirectory: path.resolve(".next/cache/webpack"),
+      // Increase version when making changes to webpack config
+      version: "1.0.0",
+    }
+
     return config
   },
   // Security headers
