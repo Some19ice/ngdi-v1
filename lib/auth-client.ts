@@ -47,6 +47,13 @@ function getTokens(): AuthTokens | null {
 function setTokens(tokens: AuthTokens, rememberMe: boolean = false): void {
   if (typeof window === "undefined") return
 
+  console.log("Setting tokens:", {
+    accessTokenLength: tokens.accessToken.length,
+    refreshTokenLength: tokens.refreshToken.length,
+    expiresAt: new Date(tokens.expiresAt * 1000).toLocaleString(),
+    rememberMe,
+  })
+
   // Store tokens in localStorage
   localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
 
@@ -65,6 +72,11 @@ function setTokens(tokens: AuthTokens, rememberMe: boolean = false): void {
   document.cookie = `auth_token=${tokens.accessToken}; path=/; expires=${expiryDate.toUTCString()}; ${
     process.env.NODE_ENV === "production" ? "secure; " : ""
   }samesite=lax`
+
+  console.log("Auth token cookie set:", {
+    cookieValue: `auth_token=${tokens.accessToken.substring(0, 10)}...`,
+    expires: expiryDate.toUTCString(),
+  })
 }
 
 function clearTokens(): void {
@@ -231,11 +243,21 @@ export const authClient = {
     password: string,
     rememberMe: boolean = false
   ): Promise<Session> {
+    console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
+
     try {
       // Call the login API
+      console.log(`Making API request to ${API_URL}/api/auth/login`)
       const response = await axios.post(`${API_URL}/api/auth/login`, {
         email,
         password,
+      })
+
+      console.log("Login API response received:", {
+        status: response.status,
+        hasAccessToken: !!response.data.accessToken,
+        hasRefreshToken: !!response.data.refreshToken,
+        hasUser: !!response.data.user,
       })
 
       // Extract tokens from response
@@ -272,8 +294,15 @@ export const authClient = {
       })
 
       return session
-    } catch (error) {
-      console.error("Login failed:", error)
+    } catch (error: any) {
+      console.error("Login failed:", error.message || error)
+
+      if (error.response) {
+        console.error("Error response:", {
+          status: error.response.status,
+          data: error.response.data,
+        })
+      }
 
       // For development/testing, create a mock token if the API call fails
       if (

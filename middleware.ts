@@ -9,7 +9,7 @@ async function extractUserFromToken(token: string) {
   try {
     // Decode the token without verification for middleware
     const decoded = jose.decodeJwt(token)
-
+    
     return {
       id: decoded.sub || (decoded.userId as string),
       email: decoded.email as string,
@@ -17,6 +17,17 @@ async function extractUserFromToken(token: string) {
     }
   } catch (error) {
     console.error("Error extracting user from token:", error)
+    return null
+  }
+}
+
+// Safely parse JSON
+function safeJsonParse(str: string | null) {
+  if (!str) return null
+  try {
+    return JSON.parse(str)
+  } catch (e) {
+    console.error("Error parsing JSON:", e)
     return null
   }
 }
@@ -30,13 +41,43 @@ export async function middleware(request: NextRequest) {
   // Check if the path is an auth route
   const isAuthRoute = path.startsWith("/auth")
 
+  // For auth routes, allow access regardless of authentication status
+  if (isAuthRoute) {
+    console.log(`Auth route detected: ${path}, allowing access`)
+    return NextResponse.next()
+  }
+
+  // For API routes, allow access and let the API handle authentication
+  if (path.startsWith("/api")) {
+    return NextResponse.next()
+  }
+
+  // For static assets, allow access
+  if (
+    path.startsWith("/_next") ||
+    path.startsWith("/favicon.ico") ||
+    path.startsWith("/images/") ||
+    path.startsWith("/fonts/")
+  ) {
+    return NextResponse.next()
+  }
+
   // Check if the user is authenticated
   const authToken = request.cookies.get("auth_token")?.value
   const authTokensStr = request.cookies.get("auth_tokens")?.value
 
   // Get the token to use
-  const tokenToUse =
-    authToken || (authTokensStr ? JSON.parse(authTokensStr).accessToken : null)
+  let tokenToUse = authToken
+  if (!tokenToUse && authTokensStr) {
+    const parsedTokens = safeJsonParse(authTokensStr)
+    tokenToUse = parsedTokens?.accessToken
+  }
+
+  console.log(`Token status for ${path}: `, {
+    hasAuthToken: !!authToken,
+    hasAuthTokensStr: !!authTokensStr,
+    hasTokenToUse: !!tokenToUse,
+  })
 
   // Create a response object that we'll modify
   let response = NextResponse.next()
@@ -50,26 +91,6 @@ export async function middleware(request: NextRequest) {
       response.headers.set("x-user-email", user.email)
       response.headers.set("x-user-role", user.role)
     }
-  }
-
-  // For auth routes, allow access regardless of authentication status
-  if (isAuthRoute) {
-    return response
-  }
-
-  // For API routes, allow access and let the API handle authentication
-  if (path.startsWith("/api")) {
-    return response
-  }
-
-  // For static assets, allow access
-  if (
-    path.startsWith("/_next") ||
-    path.startsWith("/favicon.ico") ||
-    path.startsWith("/images/") ||
-    path.startsWith("/fonts/")
-  ) {
-    return response
   }
 
   // Check if the current path is a protected route

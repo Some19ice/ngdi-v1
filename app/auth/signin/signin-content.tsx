@@ -31,13 +31,31 @@ export function SignInContent() {
     setIsLoading(true)
 
     try {
-      await authClient.login(email, password, rememberMe)
+      console.log(`Attempting to sign in with email: ${email}`)
+      const session = await authClient.login(email, password, rememberMe)
+      console.log("Sign-in successful, session:", {
+        hasUser: !!session.user,
+        userRole: session.user?.role,
+        expires: session.expires,
+      })
+
       toast.success("Signed in successfully")
-      router.push(returnUrl)
-      router.refresh()
-    } catch (error) {
+
+      // Small delay to ensure cookies are set
+      setTimeout(() => {
+        router.push(returnUrl)
+        router.refresh()
+      }, 500)
+    } catch (error: any) {
       console.error("Login failed:", error)
-      toast.error("Failed to sign in. Please check your credentials.")
+
+      // Extract error message
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to sign in. Please check your credentials."
+
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
