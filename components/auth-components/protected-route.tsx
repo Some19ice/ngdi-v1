@@ -19,6 +19,16 @@ export function ProtectedRoute({
   const { user, isLoading, userRole, isAdmin } = useAuth()
   const router = useRouter()
 
+  console.log("ProtectedRoute rendered with:", {
+    hasUser: !!user,
+    userRole,
+    isAdmin,
+    isLoading,
+    allowedRoles,
+    pathname:
+      typeof window !== "undefined" ? window.location.pathname : "unknown",
+  })
+
   // Helper function to normalize role for comparison
   const isRoleAllowed = (
     role: string | null,

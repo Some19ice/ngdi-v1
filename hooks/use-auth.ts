@@ -69,6 +69,13 @@ const normalizeRole = (role: string | null | undefined): string | null => {
 
 export function useAuth() {
   const auth = useAuthContext()
+  
+  console.log("useAuth hook called, auth context:", {
+    status: auth.status,
+    hasSession: !!auth.session,
+    userRole: auth.session?.user?.role,
+    sessionExpiry: auth.session?.expires,
+  })
 
   // Define the can function outside to avoid self-reference issues
   const checkPermission = (permission: Permission): boolean => {

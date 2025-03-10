@@ -426,14 +426,41 @@ export const authClient = {
    * Get the current session
    */
   async getSession(): Promise<Session | null> {
+    console.log("getSession called")
+
+    // Check both token sources
     const token = this.getAccessToken()
-    if (!token) return null
+    const tokenFromCookie =
+      typeof document !== "undefined"
+        ? document.cookie.match(/auth_token=([^;]+)/)?.[1]
+        : null
 
+    console.log("Token sources:", {
+      fromGetAccessToken: !!token,
+      tokenLength: token?.length,
+      fromCookie: !!tokenFromCookie,
+      cookieTokenLength: tokenFromCookie?.length,
+    })
+
+    if (!token && !tokenFromCookie) {
+      console.log("No token found, returning null session")
+      return null
+    }
+
+    // Use whichever token is available
+    const tokenToUse = token || tokenFromCookie
+    
     try {
-      const validationResult = await validateJwtToken(token)
-      if (!validationResult.isValid) return null
+      console.log("Validating token...")
+      const validationResult = await validateJwtToken(tokenToUse!)
+      console.log("Token validation result:", validationResult)
 
-      return {
+      if (!validationResult.isValid) {
+        console.log("Token is invalid, returning null session")
+        return null
+      }
+
+      const session = {
         user: {
           id: validationResult.userId || "",
           email: validationResult.email || "",
@@ -441,9 +468,12 @@ export const authClient = {
           role: validationResult.role || UserRole.USER,
         },
         expires: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
-        accessToken: token,
+        accessToken: tokenToUse!,
         refreshToken: "",
       }
+
+      console.log("Created session with user role:", session.user.role)
+      return session
     } catch (error) {
       console.error("Error getting session:", error)
       return null
