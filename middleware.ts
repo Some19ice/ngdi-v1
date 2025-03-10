@@ -4,49 +4,6 @@ import { PROTECTED_ROUTES } from "./lib/auth/paths"
 import * as jose from "jose"
 import { UserRole } from "./lib/auth/constants"
 
-// Helper function to extract user info from token
-async function extractUserFromToken(token: string) {
-  try {
-    // Check if token is valid before attempting to decode
-    if (!token || token.trim() === "") {
-      console.log("Empty token provided to extractUserFromToken")
-      return null
-    }
-
-    // Check if token has the correct format (at least has two dots for JWT)
-    if (!token.includes(".")) {
-      console.log(
-        "Invalid token format (not a JWT):",
-        token.substring(0, 10) + "..."
-      )
-      return null
-    }
-
-    // Decode the token without verification for middleware
-    try {
-      const decoded = jose.decodeJwt(token)
-
-      // Validate that the decoded token has the required fields
-      if (!decoded || (!decoded.sub && !decoded.userId)) {
-        console.log("Token missing required fields (sub or userId)")
-        return null
-      }
-
-      return {
-        id: decoded.sub || (decoded.userId as string),
-        email: (decoded.email as string) || "unknown",
-        role: (decoded.role as string) || "USER",
-      }
-    } catch (jwtError) {
-      console.error("JWT decode error:", jwtError)
-      return null
-    }
-  } catch (error) {
-    console.error("Error extracting user from token:", error)
-    return null
-  }
-}
-
 // Safely parse JSON
 function safeJsonParse(str: string | null) {
   if (!str) return null
@@ -130,17 +87,41 @@ export async function middleware(request: NextRequest) {
   // Create a response object that we'll modify
   let response = NextResponse.next()
 
-  // If we have a token, extract user info and set headers
-  if (tokenToUse) {
-    const user = await extractUserFromToken(tokenToUse)
-    if (user) {
-      console.log(`Setting user headers for ${path}:`, user)
-      response.headers.set("x-user-id", user.id)
-      response.headers.set("x-user-email", user.email)
-      response.headers.set("x-user-role", user.role)
-    } else {
-      console.log(`Failed to extract user from token for ${path}`)
+  // If we have a token, try to decode it and set user headers
+  if (tokenToUse && tokenToUse.split(".").length === 3) {
+    try {
+      // Decode the token without verification
+      const decoded = jose.decodeJwt(tokenToUse)
+
+      // Extract user information
+      const userId =
+        typeof decoded.sub === "string"
+          ? decoded.sub
+          : typeof decoded.userId === "string"
+            ? decoded.userId
+            : ""
+
+      const email =
+        typeof decoded.email === "string" ? decoded.email : "unknown"
+      const role = typeof decoded.role === "string" ? decoded.role : "USER"
+
+      if (userId) {
+        console.log(`Setting user headers for ${path}:`, {
+          userId,
+          email,
+          role,
+        })
+        response.headers.set("x-user-id", userId)
+        response.headers.set("x-user-email", email)
+        response.headers.set("x-user-role", role)
+      } else {
+        console.log(`Token missing user ID for ${path}`)
+      }
+    } catch (error) {
+      console.error(`Error decoding token for ${path}:`, error)
     }
+  } else if (tokenToUse) {
+    console.log(`Invalid token format for ${path}`)
   }
 
   // Check if the current path is a protected route

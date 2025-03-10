@@ -170,17 +170,6 @@ export async function validateJwtToken(token: string): Promise<{
       return { isValid: false, error: "Invalid token format (not a JWT)" }
     }
 
-    // For development tokens, be extra lenient
-    if (token.startsWith("mock_token_")) {
-      console.log("Development token detected, granting ADMIN role")
-      return {
-        isValid: true,
-        userId: "mock-user-id",
-        email: "admin@example.com",
-        role: UserRole.ADMIN,
-      }
-    }
-
     // Decode the token without verification for now
     try {
       const decoded = jose.decodeJwt(token)
@@ -343,38 +332,6 @@ export const authClient = {
         })
       }
 
-      // For development/testing, create a mock token if the API call fails
-      if (
-        process.env.NODE_ENV === "development" &&
-        email === "admin@example.com"
-      ) {
-        console.log("Creating mock admin token for development")
-
-        // Create a mock token with admin role
-        const mockToken = {
-          accessToken: "mock_token_" + Date.now(),
-          refreshToken: "mock_refresh_" + Date.now(),
-          expiresAt: Math.floor(Date.now() / 1000) + 86400, // 24 hours
-        }
-
-        setTokens(mockToken, true)
-
-        // Create a mock session
-        const mockSession = {
-          user: {
-            id: "mock-user-id",
-            email: email,
-            name: "Admin User",
-            role: UserRole.ADMIN,
-          },
-          expires: new Date(mockToken.expiresAt * 1000).toISOString(),
-          accessToken: mockToken.accessToken,
-          refreshToken: mockToken.refreshToken,
-        }
-
-        return mockSession
-      }
-
       throw error
     }
   },
@@ -387,7 +344,7 @@ export const authClient = {
     console.log(
       `Attempting to register user with email: ${email}, name: ${name || "not provided"}`
     )
-    
+
     try {
       console.log(`Making API request to ${API_URL}/api/auth/register`)
       const response = await axios.post(`${API_URL}/api/auth/register`, {
@@ -434,7 +391,7 @@ export const authClient = {
       return session
     } catch (error: any) {
       console.error("Registration failed:", error)
-      
+
       if (error.response) {
         console.error("Error response:", {
           status: error.response.status,
@@ -548,7 +505,7 @@ export const authClient = {
 
     // Use whichever token is available
     const tokenToUse = token || tokenFromCookie
-    
+
     try {
       console.log("Validating token...")
       const validationResult = await validateJwtToken(tokenToUse!)

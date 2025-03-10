@@ -82,7 +82,7 @@ export default async function HomePage() {
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-6 text-white">
                   <p className="font-medium">
-                    Unified Geospatial Data Management
+                    Stakeholders in the Geospatial Data Infrastructure
                   </p>
                 </div>
               </div>
