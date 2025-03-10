@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { PROTECTED_ROUTES } from "./lib/auth/paths"
 
 export function middleware(request: NextRequest) {
   // Get the pathname of the request
@@ -10,6 +11,7 @@ export function middleware(request: NextRequest) {
 
   // Check if the user is authenticated
   const authToken = request.cookies.get("auth_token")?.value
+  const authTokensStr = request.cookies.get("auth_tokens")?.value
 
   // For auth routes, allow access regardless of authentication status
   if (isAuthRoute) {
@@ -21,12 +23,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For protected routes, check if the user is authenticated
+  // For static assets, allow access
   if (
-    !authToken &&
-    !path.startsWith("/_next") &&
-    !path.startsWith("/favicon.ico")
+    path.startsWith("/_next") ||
+    path.startsWith("/favicon.ico") ||
+    path.startsWith("/images/") ||
+    path.startsWith("/fonts/")
   ) {
+    return NextResponse.next()
+  }
+
+  // Check if the current path is a protected route
+  const isProtectedRoute = PROTECTED_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`)
+  )
+
+  // For protected routes, check if the user is authenticated
+  if (isProtectedRoute && !authToken && !authTokensStr) {
+    console.log(
+      `Redirecting from protected route ${path} to signin due to missing auth token`
+    )
     // If not authenticated and trying to access a protected route, redirect to signin
     return NextResponse.redirect(new URL("/auth/signin", request.url))
   }

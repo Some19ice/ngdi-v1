@@ -32,7 +32,39 @@ export interface GetSessionsResult {
 // Helper function to normalize role case
 const normalizeRole = (role: string | null | undefined): string | null => {
   if (!role) return null
-  return role.toUpperCase()
+
+  // Handle various formats of ADMIN role
+  if (
+    role.toUpperCase() === UserRole.ADMIN ||
+    role === "0" || // Some systems use numeric role codes
+    role === "admin" ||
+    role === "Admin"
+  ) {
+    return UserRole.ADMIN
+  }
+
+  // Handle NODE_OFFICER role
+  if (
+    role.toUpperCase() === UserRole.NODE_OFFICER ||
+    role === "1" || // Some systems use numeric role codes
+    role === "node_officer" ||
+    role === "NodeOfficer"
+  ) {
+    return UserRole.NODE_OFFICER
+  }
+
+  // Handle USER role
+  if (
+    role.toUpperCase() === UserRole.USER ||
+    role === "2" || // Some systems use numeric role codes
+    role === "user" ||
+    role === "User"
+  ) {
+    return UserRole.USER
+  }
+
+  // Default to null for unrecognized roles
+  return null
 }
 
 export function useAuth() {

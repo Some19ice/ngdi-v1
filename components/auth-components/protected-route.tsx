@@ -27,7 +27,15 @@ export function ProtectedRoute({
     if (!role || !allowedRoles) return false
 
     // Special case for admin - always allow access
-    if (role.toUpperCase() === UserRole.ADMIN) return true
+    if (
+      role.toUpperCase() === UserRole.ADMIN ||
+      role === "0" || // Some systems use numeric role codes
+      role === "admin" ||
+      role === "Admin"
+    ) {
+      console.log("Admin role detected, allowing access")
+      return true
+    }
 
     // Convert role to uppercase for case-insensitive comparison
     const normalizedRole = role.toUpperCase()

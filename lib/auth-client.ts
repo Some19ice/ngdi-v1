@@ -170,33 +170,41 @@ export async function validateJwtToken(token: string): Promise<{
     // Validate role if present
     let role: UserRole | undefined
     if (roleValue) {
-      const normalizedRole = normalizeRole(roleValue)
-
-      // Special handling for ADMIN role to ensure it's properly recognized
+      // Handle various formats of ADMIN role
       if (
-        normalizedRole === UserRole.ADMIN ||
-        roleValue.toUpperCase() === "ADMIN" ||
-        roleValue === "0" // Some systems use numeric role codes
+        roleValue.toUpperCase() === UserRole.ADMIN ||
+        roleValue === "0" || // Some systems use numeric role codes
+        roleValue === "admin" ||
+        roleValue === "Admin"
       ) {
         role = UserRole.ADMIN
-        console.log("ADMIN role assigned")
+        console.log("ADMIN role assigned from token value:", roleValue)
       }
       // Handle NODE_OFFICER role
       else if (
-        normalizedRole === UserRole.NODE_OFFICER ||
-        roleValue.toUpperCase() === "NODE_OFFICER" ||
-        roleValue === "1" // Some systems use numeric role codes
+        roleValue.toUpperCase() === UserRole.NODE_OFFICER ||
+        roleValue === "1" || // Some systems use numeric role codes
+        roleValue === "node_officer" ||
+        roleValue === "NodeOfficer"
       ) {
         role = UserRole.NODE_OFFICER
-        console.log("NODE_OFFICER role assigned")
+        console.log("NODE_OFFICER role assigned from token value:", roleValue)
       }
-      // Handle other valid roles
-      else if (normalizedRole && isValidRole(normalizedRole)) {
-        role = normalizedRole
-        console.log(`Role assigned: ${role}`)
-      } else {
-        console.log(`Invalid role in token: ${roleValue}`)
-        // Default to USER role instead of failing validation
+      // Handle USER role
+      else if (
+        roleValue.toUpperCase() === UserRole.USER ||
+        roleValue === "2" || // Some systems use numeric role codes
+        roleValue === "user" ||
+        roleValue === "User"
+      ) {
+        role = UserRole.USER
+        console.log("USER role assigned from token value:", roleValue)
+      }
+      // Handle other cases
+      else {
+        console.log(
+          `Unrecognized role in token: ${roleValue}, defaulting to USER`
+        )
         role = UserRole.USER
       }
     } else {
