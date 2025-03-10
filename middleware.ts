@@ -51,7 +51,7 @@ export async function middleware(request: NextRequest) {
   const authTokensStr = request.cookies.get("auth_tokens")?.value
 
   // Get the token to use
-  let tokenToUse = authToken
+  let tokenToUse: string | undefined = authToken
   if (!tokenToUse && authTokensStr) {
     try {
       const parsedTokens = safeJsonParse(authTokensStr)
@@ -63,11 +63,11 @@ export async function middleware(request: NextRequest) {
         (!tokenToUse.includes(".") || tokenToUse.trim() === "")
       ) {
         console.log("Invalid token format from auth_tokens cookie, ignoring")
-        tokenToUse = null
+        tokenToUse = undefined
       }
     } catch (error) {
       console.error("Error parsing auth_tokens:", error)
-      tokenToUse = null
+      tokenToUse = undefined
     }
   }
 
