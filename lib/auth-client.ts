@@ -47,9 +47,24 @@ function getTokens(): AuthTokens | null {
 function setTokens(tokens: AuthTokens, rememberMe: boolean = false): void {
   if (typeof window === "undefined") return
 
+  // Validate tokens before setting
+  if (!tokens || !tokens.accessToken) {
+    console.error("Invalid tokens object provided to setTokens:", tokens)
+    return
+  }
+
+  // Validate token format (should be a JWT with at least two dots)
+  if (!tokens.accessToken.includes(".")) {
+    console.error(
+      "Invalid accessToken format (not a JWT):",
+      tokens.accessToken.substring(0, 10) + "..."
+    )
+    return
+  }
+
   console.log("Setting tokens:", {
     accessTokenLength: tokens.accessToken.length,
-    refreshTokenLength: tokens.refreshToken.length,
+    refreshTokenLength: tokens.refreshToken?.length || 0,
     expiresAt: new Date(tokens.expiresAt * 1000).toLocaleString(),
     rememberMe,
   })
@@ -145,6 +160,16 @@ export async function validateJwtToken(token: string): Promise<{
   error?: string
 }> {
   try {
+    // Basic validation
+    if (!token || token.trim() === "") {
+      return { isValid: false, error: "Empty token provided" }
+    }
+
+    // Check token format
+    if (!token.includes(".")) {
+      return { isValid: false, error: "Invalid token format (not a JWT)" }
+    }
+
     // For development tokens, be extra lenient
     if (token.startsWith("mock_token_")) {
       console.log("Development token detected, granting ADMIN role")
@@ -157,78 +182,92 @@ export async function validateJwtToken(token: string): Promise<{
     }
 
     // Decode the token without verification for now
-    const decoded = jose.decodeJwt(token)
+    try {
+      const decoded = jose.decodeJwt(token)
 
-    // Log token contents for debugging
-    console.log("Validating token:", {
-      sub: decoded.sub,
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      exp: decoded.exp ? new Date(decoded.exp * 1000).toLocaleString() : "none",
-    })
+      // Log token contents for debugging
+      console.log("Validating token:", {
+        sub: decoded.sub,
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        exp: decoded.exp
+          ? new Date(decoded.exp * 1000).toLocaleString()
+          : "none",
+      })
 
-    // Check for expiration
-    const currentTime = Math.floor(Date.now() / 1000)
-    if (decoded.exp && decoded.exp < currentTime) {
-      return { isValid: false, error: "Token expired" }
-    }
-
-    // Extract user information - be more lenient with required fields
-    const userId = decoded.sub || (decoded.userId as string)
-    const email = decoded.email as string
-    const roleValue = decoded.role as string
-
-    // Validate role if present
-    let role: UserRole | undefined
-    if (roleValue) {
-      // Handle various formats of ADMIN role
-      if (
-        roleValue.toUpperCase() === UserRole.ADMIN ||
-        roleValue === "0" || // Some systems use numeric role codes
-        roleValue === "admin" ||
-        roleValue === "Admin"
-      ) {
-        role = UserRole.ADMIN
-        console.log("ADMIN role assigned from token value:", roleValue)
+      // Check for expiration
+      const currentTime = Math.floor(Date.now() / 1000)
+      if (decoded.exp && decoded.exp < currentTime) {
+        return { isValid: false, error: "Token expired" }
       }
-      // Handle NODE_OFFICER role
-      else if (
-        roleValue.toUpperCase() === UserRole.NODE_OFFICER ||
-        roleValue === "1" || // Some systems use numeric role codes
-        roleValue === "node_officer" ||
-        roleValue === "NodeOfficer"
-      ) {
-        role = UserRole.NODE_OFFICER
-        console.log("NODE_OFFICER role assigned from token value:", roleValue)
+
+      // Extract user information - be more lenient with required fields
+      const userId = decoded.sub || (decoded.userId as string)
+      if (!userId) {
+        return { isValid: false, error: "Token missing user ID" }
       }
-      // Handle USER role
-      else if (
-        roleValue.toUpperCase() === UserRole.USER ||
-        roleValue === "2" || // Some systems use numeric role codes
-        roleValue === "user" ||
-        roleValue === "User"
-      ) {
+
+      const email = (decoded.email as string) || "unknown"
+      const roleValue = decoded.role as string
+
+      // Validate role if present
+      let role: UserRole | undefined
+      if (roleValue) {
+        // Handle various formats of ADMIN role
+        if (
+          roleValue.toUpperCase() === UserRole.ADMIN ||
+          roleValue === "0" || // Some systems use numeric role codes
+          roleValue === "admin" ||
+          roleValue === "Admin"
+        ) {
+          role = UserRole.ADMIN
+          console.log("ADMIN role assigned from token value:", roleValue)
+        }
+        // Handle NODE_OFFICER role
+        else if (
+          roleValue.toUpperCase() === UserRole.NODE_OFFICER ||
+          roleValue === "1" || // Some systems use numeric role codes
+          roleValue === "node_officer" ||
+          roleValue === "NodeOfficer"
+        ) {
+          role = UserRole.NODE_OFFICER
+          console.log("NODE_OFFICER role assigned from token value:", roleValue)
+        }
+        // Handle USER role
+        else if (
+          roleValue.toUpperCase() === UserRole.USER ||
+          roleValue === "2" || // Some systems use numeric role codes
+          roleValue === "user" ||
+          roleValue === "User"
+        ) {
+          role = UserRole.USER
+          console.log("USER role assigned from token value:", roleValue)
+        }
+        // Handle other cases
+        else {
+          console.log(
+            `Unrecognized role in token: ${roleValue}, defaulting to USER`
+          )
+          role = UserRole.USER
+        }
+      } else {
+        console.log("No role found in token, defaulting to USER")
         role = UserRole.USER
-        console.log("USER role assigned from token value:", roleValue)
       }
-      // Handle other cases
-      else {
-        console.log(
-          `Unrecognized role in token: ${roleValue}, defaulting to USER`
-        )
-        role = UserRole.USER
-      }
-    } else {
-      console.log("No role found in token, defaulting to USER")
-      role = UserRole.USER
-    }
 
-    return {
-      isValid: true,
-      userId,
-      email,
-      role,
+      return {
+        isValid: true,
+        userId,
+        email,
+        role,
+      }
+    } catch (jwtError: any) {
+      console.error("JWT decode error:", jwtError)
+      return {
+        isValid: false,
+        error: "Invalid JWT format: " + jwtError.message,
+      }
     }
   } catch (error) {
     console.error("Token validation error:", error)

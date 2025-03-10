@@ -7,13 +7,39 @@ import { UserRole } from "./lib/auth/constants"
 // Helper function to extract user info from token
 async function extractUserFromToken(token: string) {
   try {
+    // Check if token is valid before attempting to decode
+    if (!token || token.trim() === "") {
+      console.log("Empty token provided to extractUserFromToken")
+      return null
+    }
+
+    // Check if token has the correct format (at least has two dots for JWT)
+    if (!token.includes(".")) {
+      console.log(
+        "Invalid token format (not a JWT):",
+        token.substring(0, 10) + "..."
+      )
+      return null
+    }
+
     // Decode the token without verification for middleware
-    const decoded = jose.decodeJwt(token)
-    
-    return {
-      id: decoded.sub || (decoded.userId as string),
-      email: decoded.email as string,
-      role: decoded.role as string,
+    try {
+      const decoded = jose.decodeJwt(token)
+
+      // Validate that the decoded token has the required fields
+      if (!decoded || (!decoded.sub && !decoded.userId)) {
+        console.log("Token missing required fields (sub or userId)")
+        return null
+      }
+
+      return {
+        id: decoded.sub || (decoded.userId as string),
+        email: (decoded.email as string) || "unknown",
+        role: (decoded.role as string) || "USER",
+      }
+    } catch (jwtError) {
+      console.error("JWT decode error:", jwtError)
+      return null
     }
   } catch (error) {
     console.error("Error extracting user from token:", error)
@@ -57,7 +83,8 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/_next") ||
     path.startsWith("/favicon.ico") ||
     path.startsWith("/images/") ||
-    path.startsWith("/fonts/")
+    path.startsWith("/fonts/") ||
+    path.startsWith("/assets/")
   ) {
     return NextResponse.next()
   }
@@ -69,14 +96,35 @@ export async function middleware(request: NextRequest) {
   // Get the token to use
   let tokenToUse = authToken
   if (!tokenToUse && authTokensStr) {
-    const parsedTokens = safeJsonParse(authTokensStr)
-    tokenToUse = parsedTokens?.accessToken
+    try {
+      const parsedTokens = safeJsonParse(authTokensStr)
+      tokenToUse = parsedTokens?.accessToken
+
+      // Validate token format
+      if (
+        tokenToUse &&
+        (!tokenToUse.includes(".") || tokenToUse.trim() === "")
+      ) {
+        console.log("Invalid token format from auth_tokens cookie, ignoring")
+        tokenToUse = null
+      }
+    } catch (error) {
+      console.error("Error parsing auth_tokens:", error)
+      tokenToUse = null
+    }
   }
 
+  // Log token status with more details
   console.log(`Token status for ${path}: `, {
     hasAuthToken: !!authToken,
+    authTokenLength: authToken ? authToken.length : 0,
     hasAuthTokensStr: !!authTokensStr,
     hasTokenToUse: !!tokenToUse,
+    tokenFormat: tokenToUse
+      ? tokenToUse.includes(".")
+        ? "JWT"
+        : "Invalid"
+      : "None",
   })
 
   // Create a response object that we'll modify
@@ -90,6 +138,8 @@ export async function middleware(request: NextRequest) {
       response.headers.set("x-user-id", user.id)
       response.headers.set("x-user-email", user.email)
       response.headers.set("x-user-role", user.role)
+    } else {
+      console.log(`Failed to extract user from token for ${path}`)
     }
   }
 
