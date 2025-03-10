@@ -64,11 +64,31 @@ export default function SignUpPage() {
     setError(null)
 
     try {
+      console.log(`Attempting to register user: ${data.email}`)
       await register(data.email, data.password, data.name)
-      router.push(returnUrl)
+
+      console.log("Registration successful, redirecting to:", returnUrl)
+
+      // Small delay to ensure cookies are set
+      setTimeout(() => {
+        router.push(returnUrl)
+        router.refresh()
+      }, 500)
     } catch (error: any) {
       console.error("Sign up error:", error)
-      setError(error?.response?.data?.message || "Registration failed. Please try again.")
+
+      // Extract a more user-friendly error message
+      let errorMessage = "Registration failed. Please try again."
+
+      if (error.message) {
+        errorMessage = error.message
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.name === "RegistrationError") {
+        errorMessage = error.toString()
+      }
+
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

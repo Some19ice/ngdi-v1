@@ -345,32 +345,63 @@ export const authClient = {
     password: string,
     name?: string
   ): Promise<Session> {
+    console.log(
+      `Attempting to register user with email: ${email}, name: ${name || "not provided"}`
+    )
+    
     try {
+      console.log(`Making API request to ${API_URL}/api/auth/register`)
       const response = await axios.post(`${API_URL}/api/auth/register`, {
         email,
         password,
         name,
       })
 
+      console.log("Registration API response received:", {
+        status: response.status,
+        hasAccessToken: !!response.data.accessToken,
+        hasRefreshToken: !!response.data.refreshToken,
+        hasUser: !!response.data.user,
+      })
+
       const { accessToken, refreshToken, user } = response.data
 
       // Decode token to get expiry
       const decoded = await decodeJwt(accessToken)
+      const expiresAt = decoded.exp
 
-      setTokens({
+      // Store tokens with rememberMe set to true for new registrations
+      const tokens = {
         accessToken,
         refreshToken,
-        expiresAt: decoded.exp,
-      })
+        expiresAt,
+      }
+      setTokens(tokens, true)
 
-      return {
+      // Create and return session
+      const session = {
         user,
-        expires: new Date(decoded.exp * 1000).toISOString(),
+        expires: new Date(expiresAt * 1000).toISOString(),
         accessToken,
         refreshToken,
       }
+
+      console.log("Registration successful, session created:", {
+        userEmail: user.email,
+        userRole: user.role,
+        expires: new Date(expiresAt * 1000).toLocaleString(),
+      })
+
+      return session
     } catch (error: any) {
       console.error("Registration failed:", error)
+      
+      if (error.response) {
+        console.error("Error response:", {
+          status: error.response.status,
+          data: error.response.data,
+        })
+      }
 
       // Extract the error message from the response if available
       const errorMessage =
