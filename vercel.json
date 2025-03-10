@@ -25,7 +25,6 @@
       "destination": "https://ngdi-api.vercel.app/api/:path*"
     }
   ],
-  "ignoreCommand": "echo 'Ignoring build errors for auth pages'",
   "headers": [
     {
       "source": "/auth/(.*)",
