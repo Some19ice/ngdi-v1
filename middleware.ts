@@ -46,12 +46,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check if the user is authenticated
+  // Check if the user is authenticated - try multiple cookie formats
   const authToken = request.cookies.get("auth_token")?.value
   const authTokensStr = request.cookies.get("auth_tokens")?.value
 
+  // Also check for cookies with different casing (some browsers might normalize)
+  const authTokenAlt =
+    request.cookies.get("Auth_Token")?.value ||
+    request.cookies.get("AUTH_TOKEN")?.value
+
   // Get the token to use
-  let tokenToUse: string | undefined = authToken
+  let tokenToUse: string | undefined = authToken || authTokenAlt
+
+  // Log all cookies for debugging
+  console.log(
+    "All cookies:",
+    [...request.cookies.getAll()].map((c) => c.name)
+  )
+
   if (!tokenToUse && authTokensStr) {
     try {
       const parsedTokens = safeJsonParse(authTokensStr)

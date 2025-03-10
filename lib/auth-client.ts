@@ -84,12 +84,19 @@ function setTokens(tokens: AuthTokens, rememberMe: boolean = false): void {
   localStorage.setItem(TOKEN_EXPIRY_KEY, expiryDate.toISOString())
 
   // Set the auth_token cookie for SSR
-  document.cookie = `auth_token=${tokens.accessToken}; path=/; expires=${expiryDate.toUTCString()}; ${
+  const cookieOptions = `path=/; expires=${expiryDate.toUTCString()}; ${
     process.env.NODE_ENV === "production" ? "secure; " : ""
   }samesite=lax`
 
-  console.log("Auth token cookie set:", {
-    cookieValue: `auth_token=${tokens.accessToken.substring(0, 10)}...`,
+  // Set the auth_token cookie
+  document.cookie = `auth_token=${tokens.accessToken}; ${cookieOptions}`
+
+  // Also set auth_tokens cookie with the full tokens object
+  document.cookie = `auth_tokens=${JSON.stringify(tokens)}; ${cookieOptions}`
+
+  console.log("Auth cookies set:", {
+    authToken: `auth_token=${tokens.accessToken.substring(0, 10)}...`,
+    authTokens: "auth_tokens=[object]",
     expires: expiryDate.toUTCString(),
   })
 }
@@ -99,9 +106,14 @@ function clearTokens(): void {
 
   // Clear localStorage
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_EXPIRY_KEY)
 
-  // Clear the auth_token cookie
+  // Clear the auth cookies
   document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+  document.cookie =
+    "auth_tokens=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+  
+  console.log("Auth tokens and cookies cleared")
 }
 
 async function decodeJwt(token: string): Promise<{ exp: number }> {
