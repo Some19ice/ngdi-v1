@@ -1,27 +1,25 @@
-import { type Metadata } from "next"
-import { type ReactNode } from "react"
-import { AuthHandler } from "@/components/auth-components/auth-handler"
+import { AuthPageWrapper } from "@/components/wrappers/auth-page-wrapper"
+import { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Authentication",
-  description: "Authentication pages for the application",
+  description: "Authentication pages for the NGDI Portal",
 }
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
+// Import the config to ensure it's applied to all auth pages
+import "./config"
+
+// Force dynamic rendering for all auth pages
+export const dynamic = "force-dynamic"
+
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-      <AuthHandler />
-      <div className="w-full max-w-md space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your credentials to continue
-          </p>
-        </div>
-        {children}
-      </div>
+    <div className="min-h-screen bg-background">
+      <AuthPageWrapper>{children}</AuthPageWrapper>
     </div>
   )
 }

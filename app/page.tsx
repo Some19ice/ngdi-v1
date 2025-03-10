@@ -39,7 +39,7 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap gap-4">
                 {isAuthenticated ? (
-                  <Link href="/metadata">
+                  <Link href="/">
                     <Button
                       size="lg"
                       className="bg-white text-primary hover:bg-white/90"
@@ -74,7 +74,7 @@ export default async function HomePage() {
               <div className="relative h-[400px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 backdrop-blur-sm"></div>
                 <Image
-                  src="/images/nigeria-map.png"
+                  src="/images/stakeholders.gif"
                   alt="Nigeria Map Visualization"
                   fill
                   className="object-cover"

@@ -13,6 +13,8 @@ export const metadata = {
   description: "Debug server-side authentication",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function ServerAuthDebugPage() {
   // Get the auth token from cookies
   const authToken = cookies().get("auth_token")?.value

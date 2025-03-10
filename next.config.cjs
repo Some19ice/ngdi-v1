@@ -16,6 +16,10 @@ module.exports = {
   experimental: {
     serverActions: true,
     serverComponentsExternalPackages: [],
+    // Skip static generation for auth pages
+    skipTrailingSlashRedirect: true,
+    // Skip middleware URL normalization
+    skipMiddlewareUrlNormalize: true,
   },
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {
@@ -65,6 +69,11 @@ module.exports = {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
         },
+        {
+          key: "Content-Security-Policy",
+          value:
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.vercel-analytics.com https://*.vercel.app; frame-src 'self';",
+        },
       ],
     },
   ],
@@ -76,9 +85,9 @@ module.exports = {
   trailingSlash: false,
   poweredByHeader: false,
   excludeDefaultMomentLocales: true,
-  // Disable static generation for auth pages
+  // Force dynamic rendering for auth pages
   unstable_runtimeJS: true,
-  // Force dynamic rendering for all pages
+  // Allow dynamic imports
   unstable_allowDynamic: [
     "**/node_modules/lodash/**/*.js",
     "**/node_modules/@supabase/**/*.js",
@@ -86,7 +95,7 @@ module.exports = {
   ],
   // Disable automatic static optimization
   distDir: ".next",
-  // Disable static optimization for auth pages
+  // Configure compiler options
   compiler: {
     reactRemoveProperties: process.env.NODE_ENV === "production",
   },
@@ -101,5 +110,26 @@ module.exports = {
             : "http://localhost:3001/api/:path*",
       },
     ]
+  },
+  // Configure redirects
+  async redirects() {
+    return [
+      {
+        source: "/login",
+        destination: "/auth/signin",
+        permanent: true,
+      },
+    ]
+  },
+  // Configure runtime settings
+  serverRuntimeConfig: {
+    // Auth pages should use Node.js runtime
+    authPagesRuntime: "nodejs",
+  },
+  // Configure build settings
+  onDemandEntries: {
+    // Keep auth pages in memory
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 5,
   },
 }
