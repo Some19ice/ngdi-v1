@@ -194,9 +194,15 @@ export const authClient = {
     console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
 
     try {
-      // Call the login API through our Next.js proxy
-      console.log(`Making API request to /api/auth/login`)
-      const response = await axios.post(`/api/auth/login`, {
+      // For debugging: Use the test endpoint if a special email is provided
+      const useTestEndpoint =
+        email.includes("test@") || email.includes("debug@")
+      const endpoint = useTestEndpoint
+        ? "/api/auth/login-test"
+        : "/api/auth/login"
+
+      console.log(`Making API request to ${endpoint}`)
+      const response = await axios.post(endpoint, {
         email,
         password,
       })
