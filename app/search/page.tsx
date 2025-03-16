@@ -40,6 +40,7 @@ import { CalendarIcon, FileIcon, MapPinIcon, TagIcon } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { MetadataItem } from "@/types/metadata"
+import { getCookie } from "@/lib/utils"
 
 const searchFormSchema = z.object({
   keyword: z.string().optional(),
@@ -75,6 +76,7 @@ function SearchForm() {
   const [totalResults, setTotalResults] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [authToken, setAuthToken] = useState<string>("")
 
   const form = useForm<SearchFormValues>({
     resolver: zodResolver(searchFormSchema),
@@ -86,8 +88,18 @@ function SearchForm() {
     },
   })
 
+  // Get auth token on component mount
+  useEffect(() => {
+    const token = getCookie("auth_token")
+    if (token) {
+      setAuthToken(token)
+    }
+  }, [])
+
   // Load initial results based on URL parameters
   useEffect(() => {
+    if (!authToken) return // Wait for auth token to be available
+
     const page = parseInt(searchParams?.get("page") || "1", 10)
     setCurrentPage(page)
 
@@ -108,9 +120,11 @@ function SearchForm() {
     }
 
     fetchSearchResults(initialSearch, page)
-  }, [searchParams])
+  }, [searchParams, authToken])
 
   async function fetchSearchResults(data: SearchFormValues, page: number = 1) {
+    if (!authToken) return // Don't fetch without auth token
+
     setIsLoading(true)
 
     try {
@@ -130,9 +144,20 @@ function SearchForm() {
         searchParams.set("dateTo", data.dateRange.to.toISOString())
       }
 
-      // Fetch data from API
+      console.log("Fetching search results:", {
+        url: `/api/search/metadata?${searchParams.toString()}`,
+        hasAuthToken: !!authToken,
+        authTokenLength: authToken.length,
+      })
+
+      // Fetch data from API with auth token
       const response = await fetch(
-        `/api/search/metadata?${searchParams.toString()}`
+        `/api/search/metadata?${searchParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
       )
 
       if (!response.ok) {
@@ -140,6 +165,11 @@ function SearchForm() {
       }
 
       const result = await response.json()
+      console.log("Search results:", {
+        success: result.success,
+        total: result.data?.total,
+        metadataCount: result.data?.metadata?.length,
+      })
 
       setSearchResults(result.data.metadata || [])
       setTotalResults(result.data.total || 0)
@@ -274,7 +304,7 @@ function SearchForm() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || !authToken}>
                 {isLoading ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -294,6 +324,15 @@ function SearchForm() {
 
         {isLoading ? (
           <SearchResultsSkeleton />
+        ) : !authToken ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-6">
+              Please log in to search metadata records.
+            </p>
+            <Button asChild>
+              <Link href="/login">Log In</Link>
+            </Button>
+          </div>
         ) : searchResults.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-6">
