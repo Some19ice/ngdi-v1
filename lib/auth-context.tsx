@@ -49,69 +49,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Set up session refresh interval
   useEffect(() => {
-    if (!session) return;
+    // Refresh session every 10 minutes
+    const refreshInterval = setInterval(
+      async () => {
+        try {
+          if (status === "authenticated") {
+            await refreshSession()
+          }
+        } catch (error) {
+          console.error("Failed to refresh session:", error)
+        }
+      },
+      10 * 60 * 1000
+    ) // 10 minutes
 
-    const refreshInterval = setInterval(async () => {
-      await refreshSession();
-    }, 5 * 60 * 1000); // Refresh every 5 minutes
+    return () => clearInterval(refreshInterval)
+  }, [status])
 
-    return () => clearInterval(refreshInterval);
-  }, [session]);
-
+  // Login function
   const login = async (email: string, password: string) => {
-    setStatus("loading");
     try {
-      const newSession = await authClient.login(email, password);
-      setSession(newSession);
-      setStatus("authenticated");
+      setStatus("loading")
+      const newSession = await authClient.login(email, password)
+      setSession(newSession)
+      setStatus("authenticated")
     } catch (error) {
-      console.error("Login failed:", error);
-      setStatus("unauthenticated");
-      throw error;
+      console.error("Login failed:", error)
+      setStatus("unauthenticated")
+      throw error
     }
-  };
+  }
 
+  // Register function
   const register = async (email: string, password: string, name?: string) => {
-    setStatus("loading");
     try {
-      const newSession = await authClient.register(email, password, name);
-      setSession(newSession);
-      setStatus("authenticated");
+      setStatus("loading")
+      const newSession = await authClient.register(email, password, name)
+      setSession(newSession)
+      setStatus("authenticated")
     } catch (error) {
-      console.error("Registration failed:", error);
-      setStatus("unauthenticated");
-      throw error;
+      console.error("Registration failed:", error)
+      setStatus("unauthenticated")
+      throw error
     }
-  };
+  }
 
+  // Logout function
   const logout = async () => {
-    setStatus("loading");
     try {
-      await authClient.logout();
-      setSession(null);
-      setStatus("unauthenticated");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      setStatus("unauthenticated");
-    }
-  };
+      setStatus("loading")
+      await authClient.logout()
+      setSession(null)
+      setStatus("unauthenticated")
 
+      // Force a page reload to clear any client-side state
+      window.location.href = "/auth/signin"
+    } catch (error) {
+      console.error("Logout failed:", error)
+      // Still clear the session even if the API call fails
+      setSession(null)
+      setStatus("unauthenticated")
+    }
+  }
+
+  // Refresh session function
   const refreshSession = async () => {
     try {
-      const newSession = await authClient.getSession();
+      const newSession = await authClient.getSession()
       if (newSession) {
-        setSession(newSession);
-        setStatus("authenticated");
+        setSession(newSession)
+        setStatus("authenticated")
       } else {
-        setSession(null);
-        setStatus("unauthenticated");
+        setSession(null)
+        setStatus("unauthenticated")
       }
     } catch (error) {
-      console.error("Session refresh failed:", error);
-      setSession(null);
-      setStatus("unauthenticated");
+      console.error("Failed to refresh session:", error)
+      setSession(null)
+      setStatus("unauthenticated")
     }
-  };
+  }
 
   return (
     <AuthContext.Provider

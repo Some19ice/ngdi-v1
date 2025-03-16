@@ -63,6 +63,24 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     const result = await AuthService.login(data)
     console.log("Login successful")
 
+    // Set cookies for authentication
+    const cookieOptions = {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    }
+
+    c.header(
+      "Set-Cookie",
+      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+    c.header(
+      "Set-Cookie",
+      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+
     return c.json(result)
   } catch (error) {
     console.error("Login error:", error)
@@ -88,6 +106,25 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
   try {
     const data = await c.req.json()
     const result = await AuthService.register(data)
+
+    // Set cookies for authentication
+    const cookieOptions = {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    }
+
+    c.header(
+      "Set-Cookie",
+      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+    c.header(
+      "Set-Cookie",
+      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+
     return c.json(result)
   } catch (error) {
     if (error instanceof HTTPException) {
@@ -153,8 +190,24 @@ auth.get("/verify-email", zValidator("query", verifyEmailSchema), async (c) => {
 // Refresh token route
 auth.post("/refresh-token", async (c) => {
   try {
-    const refreshToken = c.req.header("Authorization")?.replace("Bearer ", "")
+    // Get refresh token from Authorization header or cookies
+    let refreshToken = c.req.header("Authorization")?.replace("Bearer ", "")
 
+    // If not in header, try to get from cookies
+    if (!refreshToken) {
+      const cookieHeader = c.req.raw.headers.get("cookie")
+      if (cookieHeader) {
+        const cookies = cookieHeader.split(";")
+        const refreshTokenCookie = cookies.find((c) =>
+          c.trim().startsWith("refresh_token=")
+        )
+        if (refreshTokenCookie) {
+          refreshToken = refreshTokenCookie.split("=")[1]
+        }
+      }
+    }
+
+    // Check if we have a refresh token
     if (!refreshToken) {
       throw new ApiError(
         "Refresh token is required",
@@ -173,12 +226,38 @@ auth.post("/refresh-token", async (c) => {
       role: decoded.role,
     })
 
+    // Generate new refresh token
+    const newRefreshToken = await generateRefreshToken({
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+    })
+
+    // Set cookies for authentication
+    const cookieOptions = {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    }
+
+    c.header(
+      "Set-Cookie",
+      `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+    c.header(
+      "Set-Cookie",
+      `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    )
+
     return c.json(
       {
         success: true,
         message: "Token refreshed",
         data: {
-          token: accessToken,
+          accessToken,
+          refreshToken: newRefreshToken,
         },
       },
       200
@@ -319,7 +398,25 @@ auth.post(
 
 // Logout route
 auth.post("/logout", async (c) => {
-  return c.json({ message: "Logged out successfully" })
+  try {
+    // Clear authentication cookies
+    c.header(
+      "Set-Cookie",
+      "auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+    )
+    c.header(
+      "Set-Cookie",
+      "refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+    )
+
+    return c.json({
+      success: true,
+      message: "Logged out successfully",
+    })
+  } catch (error) {
+    console.error("Logout error:", error)
+    throw new HTTPException(500, { message: "Logout failed" })
+  }
 })
 
 // Get current user (me) endpoint

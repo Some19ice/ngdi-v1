@@ -24,15 +24,27 @@ export function SignInContent() {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
   const returnUrl = searchParams?.get("from") || "/"
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setDebugInfo("Email and password are required")
+      return
+    }
+
     setIsLoading(true)
+    setDebugInfo("Starting login process...")
 
     try {
       console.log(`Attempting to sign in with email: ${email}`)
+      setDebugInfo(`Calling authClient.login with email: ${email}...`)
+
       const session = await authClient.login(email, password, rememberMe)
+
+      setDebugInfo(
+        `Sign-in successful, session received. User role: ${session.user?.role}`
+      )
       console.log("Sign-in successful, session:", {
         hasUser: !!session.user,
         userRole: session.user?.role,
@@ -42,12 +54,23 @@ export function SignInContent() {
       toast.success("Signed in successfully")
 
       // Small delay to ensure cookies are set
+      setDebugInfo("Setting timeout for redirect...")
       setTimeout(() => {
+        setDebugInfo(`Redirecting to ${returnUrl}...`)
         router.push(returnUrl)
         router.refresh()
       }, 500)
     } catch (error: any) {
       console.error("Login failed:", error)
+
+      // Extract and display detailed error information
+      const errorDetail = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : "No response data"
+      const errorStatus = error.response?.status || "No status"
+      setDebugInfo(
+        `Login failed: ${error.message || "Unknown error"}\nStatus: ${errorStatus}\nDetails: ${errorDetail}`
+      )
 
       // Extract error message
       const errorMessage =
@@ -59,6 +82,13 @@ export function SignInContent() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log("Form submitted")
+    setDebugInfo("Form submitted, starting login...")
+    await handleLogin()
   }
 
   return (
@@ -111,9 +141,20 @@ export function SignInContent() {
                 Remember me
               </Label>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={isLoading}
+              onClick={handleLogin}
+            >
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>
+
+            {debugInfo && (
+              <div className="mt-4 p-2 bg-gray-100 text-xs text-gray-800 rounded overflow-auto max-h-32">
+                <pre>{debugInfo}</pre>
+              </div>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

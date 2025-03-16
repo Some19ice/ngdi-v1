@@ -4,6 +4,9 @@ import { PROTECTED_ROUTES } from "./lib/auth/paths"
 import * as jose from "jose"
 import { UserRole } from "./lib/auth/constants"
 
+// Constants
+const AUTH_COOKIE_NAME = "auth_token"
+
 // Safely parse JSON
 function safeJsonParse(str: string | null) {
   if (!str) return null
@@ -46,64 +49,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check if the user is authenticated - try multiple cookie formats
-  const authToken = request.cookies.get("auth_token")?.value
-  const authTokensStr = request.cookies.get("auth_tokens")?.value
+  // Check if the user is authenticated
+  const authToken = request.cookies.get(AUTH_COOKIE_NAME)?.value
 
-  // Also check for cookies with different casing (some browsers might normalize)
-  const authTokenAlt =
-    request.cookies.get("Auth_Token")?.value ||
-    request.cookies.get("AUTH_TOKEN")?.value
-
-  // Get the token to use
-  let tokenToUse: string | undefined = authToken || authTokenAlt
-
-  // Log all cookies for debugging
-  console.log(
-    "All cookies:",
-    [...request.cookies.getAll()].map((c) => c.name)
-  )
-
-  if (!tokenToUse && authTokensStr) {
-    try {
-      const parsedTokens = safeJsonParse(authTokensStr)
-      tokenToUse = parsedTokens?.accessToken
-
-      // Validate token format
-      if (
-        tokenToUse &&
-        (!tokenToUse.includes(".") || tokenToUse.trim() === "")
-      ) {
-        console.log("Invalid token format from auth_tokens cookie, ignoring")
-        tokenToUse = undefined
-      }
-    } catch (error) {
-      console.error("Error parsing auth_tokens:", error)
-      tokenToUse = undefined
-    }
-  }
-
-  // Log token status with more details
+  // Log token status
   console.log(`Token status for ${path}: `, {
     hasAuthToken: !!authToken,
-    authTokenLength: authToken ? authToken.length : 0,
-    hasAuthTokensStr: !!authTokensStr,
-    hasTokenToUse: !!tokenToUse,
-    tokenFormat: tokenToUse
-      ? tokenToUse.includes(".")
-        ? "JWT"
-        : "Invalid"
-      : "None",
+    tokenLength: authToken ? authToken.length : 0,
   })
 
   // Create a response object that we'll modify
   let response = NextResponse.next()
 
   // If we have a token, try to decode it and set user headers
-  if (tokenToUse && tokenToUse.split(".").length === 3) {
+  if (authToken && authToken.split(".").length === 3) {
     try {
       // Decode the token without verification
-      const decoded = jose.decodeJwt(tokenToUse)
+      const decoded = jose.decodeJwt(authToken)
 
       // Extract user information
       const userId =
@@ -132,7 +94,7 @@ export async function middleware(request: NextRequest) {
     } catch (error) {
       console.error(`Error decoding token for ${path}:`, error)
     }
-  } else if (tokenToUse) {
+  } else if (authToken) {
     console.log(`Invalid token format for ${path}`)
   }
 
@@ -142,7 +104,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // For protected routes, check if the user is authenticated
-  if (isProtectedRoute && !tokenToUse) {
+  if (isProtectedRoute && !authToken) {
     console.log(
       `Redirecting from protected route ${path} to signin due to missing auth token`
     )

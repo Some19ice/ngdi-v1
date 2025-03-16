@@ -10,10 +10,13 @@ import {
 } from "@/components/profile/types"
 import { verify } from "jsonwebtoken"
 
+// Constants
+const AUTH_COOKIE_NAME = "auth_token"
+
 export async function updateUserProfile(values: Partial<ProfileFormValues>) {
   try {
     // 1. Get the user session from cookies
-    const token = cookies().get("auth_token")?.value
+    const token = cookies().get(AUTH_COOKIE_NAME)?.value
 
     if (!token) {
       return {

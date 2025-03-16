@@ -26,141 +26,17 @@ export interface AuthTokens {
 
 // Constants
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-const TOKEN_KEY = "auth_tokens"
-const TOKEN_EXPIRY_KEY = "auth_token_expiry"
+const AUTH_COOKIE_NAME = "auth_token"
+const REFRESH_COOKIE_NAME = "refresh_token"
 
-// Helper functions
-function getTokens(): AuthTokens | null {
-  if (typeof window === "undefined") return null
+// Helper functions to get cookies on the client side
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null
 
-  const tokensStr = localStorage.getItem(TOKEN_KEY)
-  if (!tokensStr) return null
-
-  try {
-    return JSON.parse(tokensStr) as AuthTokens
-  } catch (error) {
-    console.error("Failed to parse auth tokens:", error)
-    return null
-  }
-}
-
-function setTokens(tokens: AuthTokens, rememberMe: boolean = false): void {
-  if (typeof window === "undefined") return
-
-  // Validate tokens before setting
-  if (!tokens || !tokens.accessToken) {
-    console.error("Invalid tokens object provided to setTokens:", tokens)
-    return
-  }
-
-  // Validate token format (should be a JWT with at least two dots)
-  if (!tokens.accessToken.includes(".")) {
-    console.error(
-      "Invalid accessToken format (not a JWT):",
-      tokens.accessToken.substring(0, 10) + "..."
-    )
-    return
-  }
-
-  console.log("Setting tokens:", {
-    accessTokenLength: tokens.accessToken.length,
-    refreshTokenLength: tokens.refreshToken?.length || 0,
-    expiresAt: new Date(tokens.expiresAt * 1000).toLocaleString(),
-    rememberMe,
-  })
-
-  // Store tokens in localStorage
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
-
-  // Set token expiry based on remember me preference
-  const expiryDate = new Date()
-  if (rememberMe) {
-    // 30 days if remember me is checked
-    expiryDate.setDate(expiryDate.getDate() + 30)
-  } else {
-    // 1 day if remember me is not checked
-    expiryDate.setDate(expiryDate.getDate() + 1)
-  }
-  localStorage.setItem(TOKEN_EXPIRY_KEY, expiryDate.toISOString())
-
-  // Set the auth_token cookie for SSR
-  const cookieOptions = `path=/; expires=${expiryDate.toUTCString()}; ${
-    process.env.NODE_ENV === "production" ? "secure; " : ""
-  }samesite=lax`
-
-  // Set the auth_token cookie
-  document.cookie = `auth_token=${tokens.accessToken}; ${cookieOptions}`
-
-  // Also set auth_tokens cookie with the full tokens object
-  document.cookie = `auth_tokens=${JSON.stringify(tokens)}; ${cookieOptions}`
-
-  console.log("Auth cookies set:", {
-    authToken: `auth_token=${tokens.accessToken.substring(0, 10)}...`,
-    authTokens: "auth_tokens=[object]",
-    expires: expiryDate.toUTCString(),
-  })
-}
-
-function clearTokens(): void {
-  if (typeof window === "undefined") return
-
-  // Clear localStorage
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(TOKEN_EXPIRY_KEY)
-
-  // Clear the auth cookies
-  document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
-  document.cookie =
-    "auth_tokens=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
-  
-  console.log("Auth tokens and cookies cleared")
-}
-
-async function decodeJwt(token: string): Promise<{ exp: number }> {
-  try {
-    // Skip verification and just decode the token
-    const decoded = jose.decodeJwt(token)
-    if (!decoded.exp) {
-      throw new Error("Token has no expiration")
-    }
-    return { exp: decoded.exp as number }
-  } catch (error) {
-    console.error("Failed to decode JWT:", error)
-    // Return a default expiration 1 hour from now as fallback
-    return { exp: Math.floor(Date.now() / 1000) + 3600 }
-  }
-}
-
-async function isTokenExpired(token: string): Promise<boolean> {
-  try {
-    const decoded = await decodeJwt(token)
-    const currentTime = Date.now() / 1000
-    return decoded.exp < currentTime
-  } catch (error) {
-    return true
-  }
-}
-
-// Helper function to normalize user data from API
-function normalizeUserData(userData: any): User {
-  // Ensure role is uppercase for consistency
-  const rawRole = userData.role || UserRole.USER
-  const normalizedRole = normalizeRole(rawRole) || UserRole.USER
-
-  console.log("[normalizeUserData] Role normalization:", {
-    rawRole,
-    normalizedRole,
-    isAdmin: normalizedRole === UserRole.ADMIN,
-  })
-
-  return {
-    id: userData.id,
-    email: userData.email,
-    name: userData.name || null,
-    // Use the normalized role
-    role: normalizedRole,
-    image: userData.image || null,
-  }
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || null
+  return null
 }
 
 // Helper function to validate JWT token structure
@@ -276,6 +152,38 @@ export async function validateJwtToken(token: string): Promise<{
   }
 }
 
+// Helper function to normalize user data from API
+function normalizeUserData(userData: any): User {
+  // Ensure role is uppercase for consistency
+  const rawRole = userData.role || UserRole.USER
+  const normalizedRole = normalizeRole(rawRole) || UserRole.USER
+
+  console.log("[normalizeUserData] Role normalization:", {
+    rawRole,
+    normalizedRole,
+    isAdmin: normalizedRole === UserRole.ADMIN,
+  })
+
+  return {
+    id: userData.id,
+    email: userData.email,
+    name: userData.name || null,
+    // Use the normalized role
+    role: normalizedRole,
+    image: userData.image || null,
+  }
+}
+
+async function isTokenExpired(token: string): Promise<boolean> {
+  try {
+    const decoded = jose.decodeJwt(token)
+    const currentTime = Date.now() / 1000
+    return (decoded.exp as number) < currentTime
+  } catch (error) {
+    return true
+  }
+}
+
 // Auth client
 export const authClient = {
   async login(
@@ -301,18 +209,7 @@ export const authClient = {
       })
 
       // Extract tokens from response
-      const { accessToken, refreshToken, expiresIn } = response.data
-
-      // Calculate expiry time
-      const expiresAt = Math.floor(Date.now() / 1000) + (expiresIn || 3600)
-
-      // Store tokens
-      const tokens = {
-        accessToken,
-        refreshToken,
-        expiresAt,
-      }
-      setTokens(tokens, rememberMe)
+      const { accessToken, refreshToken } = response.data
 
       // Get user data
       const userData = response.data.user || {}
@@ -321,7 +218,9 @@ export const authClient = {
       // Create and return session
       const session = {
         user,
-        expires: new Date(expiresAt * 1000).toISOString(),
+        expires:
+          response.data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         accessToken,
         refreshToken,
       }
@@ -329,7 +228,6 @@ export const authClient = {
       // For debugging purposes, log the token info
       console.log("Login successful, token info:", {
         tokenLength: accessToken.length,
-        expiresAt: new Date(expiresAt * 1000).toLocaleString(),
         userRole: user.role,
       })
 
@@ -374,22 +272,12 @@ export const authClient = {
 
       const { accessToken, refreshToken, user } = response.data
 
-      // Decode token to get expiry
-      const decoded = await decodeJwt(accessToken)
-      const expiresAt = decoded.exp
-
-      // Store tokens with rememberMe set to true for new registrations
-      const tokens = {
-        accessToken,
-        refreshToken,
-        expiresAt,
-      }
-      setTokens(tokens, true)
-
       // Create and return session
       const session = {
         user,
-        expires: new Date(expiresAt * 1000).toISOString(),
+        expires:
+          response.data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         accessToken,
         refreshToken,
       }
@@ -397,7 +285,6 @@ export const authClient = {
       console.log("Registration successful, session created:", {
         userEmail: user.email,
         userRole: user.role,
-        expires: new Date(expiresAt * 1000).toLocaleString(),
       })
 
       return session
@@ -426,50 +313,36 @@ export const authClient = {
 
   async logout(): Promise<void> {
     try {
-      const tokens = getTokens()
-      if (tokens) {
+      const token = getCookie(AUTH_COOKIE_NAME)
+      if (token) {
         await axios.post(
           `${API_URL}/api/auth/logout`,
           {},
           {
             headers: {
-              Authorization: `Bearer ${tokens.accessToken}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         )
       }
     } catch (error) {
       console.error("Logout failed:", error)
-    } finally {
-      clearTokens()
     }
   },
 
-  async refreshToken(): Promise<AuthTokens | null> {
-    const tokens = getTokens()
-    if (!tokens) return null
+  async refreshToken(): Promise<string | null> {
+    const refreshToken = getCookie(REFRESH_COOKIE_NAME)
+    if (!refreshToken) return null
 
     try {
       const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-        refreshToken: tokens.refreshToken,
+        refreshToken,
       })
 
-      const { accessToken, refreshToken } = response.data
-
-      // Decode token to get expiry
-      const decoded = await decodeJwt(accessToken)
-
-      const newTokens = {
-        accessToken,
-        refreshToken,
-        expiresAt: decoded.exp,
-      }
-
-      setTokens(newTokens)
-      return newTokens
+      const { accessToken } = response.data
+      return accessToken
     } catch (error) {
       console.error("Token refresh failed:", error)
-      clearTokens()
       return null
     }
   },
@@ -478,7 +351,7 @@ export const authClient = {
    * Check if the user is authenticated
    */
   async isAuthenticated(): Promise<boolean> {
-    const token = this.getAccessToken()
+    const token = getCookie(AUTH_COOKIE_NAME)
     if (!token) return false
 
     try {
@@ -496,31 +369,22 @@ export const authClient = {
   async getSession(): Promise<Session | null> {
     console.log("getSession called")
 
-    // Check both token sources
-    const token = this.getAccessToken()
-    const tokenFromCookie =
-      typeof document !== "undefined"
-        ? document.cookie.match(/auth_token=([^;]+)/)?.[1]
-        : null
+    // Check for auth token in cookies
+    const token = getCookie(AUTH_COOKIE_NAME)
 
-    console.log("Token sources:", {
-      fromGetAccessToken: !!token,
+    console.log("Token status:", {
+      hasToken: !!token,
       tokenLength: token?.length,
-      fromCookie: !!tokenFromCookie,
-      cookieTokenLength: tokenFromCookie?.length,
     })
 
-    if (!token && !tokenFromCookie) {
+    if (!token) {
       console.log("No token found, returning null session")
       return null
     }
 
-    // Use whichever token is available
-    const tokenToUse = token || tokenFromCookie
-
     try {
       console.log("Validating token...")
-      const validationResult = await validateJwtToken(tokenToUse!)
+      const validationResult = await validateJwtToken(token)
       console.log("Token validation result:", validationResult)
 
       if (!validationResult.isValid) {
@@ -536,8 +400,8 @@ export const authClient = {
           role: validationResult.role || UserRole.USER,
         },
         expires: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
-        accessToken: tokenToUse!,
-        refreshToken: "",
+        accessToken: token,
+        refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
       }
 
       console.log("Created session with user role:", session.user.role)
@@ -549,55 +413,31 @@ export const authClient = {
   },
 
   getAccessToken(): string | null {
-    const tokens = getTokens()
-    return tokens?.accessToken || null
+    return getCookie(AUTH_COOKIE_NAME)
   },
 
   /**
    * Exchange an authorization code for a session
-   * This is a placeholder implementation - you'll need to implement the actual code exchange
-   * based on your authentication system
    */
   async exchangeCodeForSession(code: string): Promise<Session> {
     try {
       // Make API request to exchange code for tokens
       const response = await axios.post(`${API_URL}/auth/callback`, { code })
 
-      const { accessToken, refreshToken, expiresAt, user } = response.data
-
-      // Store tokens
-      setTokens({
-        accessToken,
-        refreshToken,
-        expiresAt,
-      })
+      const { accessToken, refreshToken, user } = response.data
 
       // Return session
       return {
         user,
-        expires: new Date(expiresAt).toISOString(),
+        expires:
+          response.data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         accessToken,
         refreshToken,
       }
     } catch (error) {
       console.error("Failed to exchange code for session:", error)
       throw error
-    }
-  },
-
-  // Check if tokens are expired based on the stored expiry date
-  isSessionExpired(): boolean {
-    if (typeof window === "undefined") return true
-
-    const expiryStr = localStorage.getItem(TOKEN_EXPIRY_KEY)
-    if (!expiryStr) return true
-
-    try {
-      const expiry = new Date(expiryStr)
-      return expiry < new Date()
-    } catch (error) {
-      console.error("Failed to parse token expiry:", error)
-      return true
     }
   },
 }
@@ -609,14 +449,14 @@ export const authAxios = axios.create({
 
 // Add interceptor to handle token refresh
 authAxios.interceptors.request.use(async (config) => {
-  let tokens = getTokens();
+  let token = getCookie(AUTH_COOKIE_NAME)
   
-  if (tokens && await isTokenExpired(tokens.accessToken)) {
-    tokens = await authClient.refreshToken();
+  if (token && (await isTokenExpired(token))) {
+    token = await authClient.refreshToken()
   }
   
-  if (tokens) {
-    config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   
   return config;
