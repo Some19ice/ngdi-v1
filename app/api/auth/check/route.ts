@@ -3,6 +3,9 @@ import { cookies } from "next/headers"
 import * as jose from "jose"
 import { UserRole } from "@/lib/auth/constants"
 
+// In production, we need to use the local API routes from the packages directory
+const isProduction = process.env.NODE_ENV === "production"
+
 export async function GET(req: NextRequest) {
   try {
     console.log("Auth check: Checking authentication status")
@@ -17,6 +20,7 @@ export async function GET(req: NextRequest) {
       authTokenLength: authToken?.length,
       hasRefreshToken: !!refreshToken,
       refreshTokenLength: refreshToken?.length,
+      isProduction,
     })
 
     if (!authToken) {
@@ -29,20 +33,54 @@ export async function GET(req: NextRequest) {
 
     // Decode the token without verification
     try {
-      console.log("Auth check: Decoding token")
-      const decoded = jose.decodeJwt(authToken)
-      console.log("Auth check: Token decoded", {
-        sub: decoded.sub,
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-        exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : "none",
-      })
+      let decoded
+      let userId
+      let email
+      let role
 
-      // Extract user information
-      const userId = decoded.sub || (decoded.userId as string)
-      const email = decoded.email as string
-      const role = decoded.role as string
+      if (isProduction) {
+        try {
+          // Import the JWT utilities dynamically in production
+          const { verifyToken } = await import("@/packages/api/src/utils/jwt")
+          console.log("Auth check: Using direct JWT verification in production")
+
+          // Verify the token
+          const verifiedToken = await verifyToken(authToken)
+          userId = verifiedToken.userId
+          email = verifiedToken.email
+          role = verifiedToken.role
+
+          console.log("Auth check: Token verified with direct JWT utils", {
+            userId,
+            email,
+            role,
+          })
+        } catch (importError) {
+          console.error("Failed to import JWT utilities:", importError)
+          // Fall back to jose decoding if import fails
+          decoded = jose.decodeJwt(authToken)
+          userId = decoded.sub || (decoded.userId as string)
+          email = decoded.email as string
+          role = decoded.role as string
+        }
+      } else {
+        console.log("Auth check: Decoding token with jose")
+        decoded = jose.decodeJwt(authToken)
+        console.log("Auth check: Token decoded", {
+          sub: decoded.sub,
+          userId: decoded.userId,
+          email: decoded.email,
+          role: decoded.role,
+          exp: decoded.exp
+            ? new Date(decoded.exp * 1000).toISOString()
+            : "none",
+        })
+
+        // Extract user information
+        userId = decoded.sub || (decoded.userId as string)
+        email = decoded.email as string
+        role = decoded.role as string
+      }
 
       if (!userId) {
         console.log("Auth check: Invalid token - missing user ID")

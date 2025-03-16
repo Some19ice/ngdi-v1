@@ -25,7 +25,10 @@ export interface AuthTokens {
 }
 
 // Constants
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+const isProduction = process.env.NODE_ENV === "production"
+const API_URL = isProduction
+  ? process.env.NEXT_PUBLIC_API_URL || "/api"
+  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 const AUTH_COOKIE_NAME = "auth_token"
 const REFRESH_COOKIE_NAME = "refresh_token"
 

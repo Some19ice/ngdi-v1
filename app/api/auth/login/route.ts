@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
+import path from "path"
+import { fileURLToPath } from "url"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+// In production, we need to use the local API routes from the packages directory
+const isProduction = process.env.NODE_ENV === "production"
+const API_URL = isProduction
+  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app/api"
+  : "http://localhost:3001"
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,19 +18,45 @@ export async function POST(req: NextRequest) {
     console.log("Login proxy: Forwarding request to API server", {
       apiUrl: API_URL,
       email: data.email,
+      isProduction,
     })
 
-    // Forward the request to the API server
-    const response = await axios.post(`${API_URL}/api/auth/login`, data)
+    let result
 
-    // Create the response
-    const result = response.data
-    console.log("Login proxy: Received response from API server", {
-      status: response.status,
-      hasAccessToken: !!result.accessToken,
-      hasRefreshToken: !!result.refreshToken,
-      hasUser: !!result.user,
-    })
+    if (isProduction) {
+      // In production, we'll use the local API directly
+      try {
+        // Import the auth service dynamically
+        const { AuthService } = await import(
+          "@/packages/api/src/services/auth.service"
+        )
+        console.log(
+          "Login proxy: Using direct AuthService import in production"
+        )
+
+        // Call the login method directly
+        result = await AuthService.login(data)
+        console.log("Login proxy: Direct login successful")
+      } catch (importError) {
+        console.error("Failed to import AuthService:", importError)
+        throw new Error(
+          "Failed to import authentication service: " +
+            (importError instanceof Error
+              ? importError.message
+              : String(importError))
+        )
+      }
+    } else {
+      // In development, forward the request to the API server
+      const response = await axios.post(`${API_URL}/api/auth/login`, data)
+      result = response.data
+      console.log("Login proxy: Received response from API server", {
+        status: response.status,
+        hasAccessToken: !!result.accessToken,
+        hasRefreshToken: !!result.refreshToken,
+        hasUser: !!result.user,
+      })
+    }
 
     // Create a Next.js response
     const nextResponse = NextResponse.json(result)
@@ -41,7 +73,7 @@ export async function POST(req: NextRequest) {
         value: authToken,
         httpOnly: true,
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       })
@@ -54,7 +86,7 @@ export async function POST(req: NextRequest) {
         value: refreshToken,
         httpOnly: true,
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       })

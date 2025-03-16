@@ -1,20 +1,37 @@
 import { NextRequest, NextResponse } from "next/server"
 import axios from "axios"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+// In production, we need to use the local API routes from the packages directory
+const isProduction = process.env.NODE_ENV === "production"
+const API_URL = isProduction 
+  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app/api" 
+  : "http://localhost:3001"
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("Logout proxy: Forwarding request to API server")
+    console.log("Logout proxy: Processing logout request")
 
-    // Forward the request to the API server
-    const response = await axios.post(`${API_URL}/api/auth/logout`)
-    console.log("Logout proxy: Received response from API server", {
-      status: response.status,
-    })
+    let responseData
+
+    if (isProduction) {
+      // In production, we don't need to call the API server
+      console.log("Logout proxy: Using direct logout in production")
+      responseData = {
+        success: true,
+        message: "Logged out successfully",
+      }
+    } else {
+      // In development, forward the request to the API server
+      console.log("Logout proxy: Forwarding request to API server")
+      const response = await axios.post(`${API_URL}/api/auth/logout`)
+      console.log("Logout proxy: Received response from API server", {
+        status: response.status,
+      })
+      responseData = response.data
+    }
 
     // Create a Next.js response
-    const nextResponse = NextResponse.json(response.data)
+    const nextResponse = NextResponse.json(responseData)
 
     // Clear cookies directly in the Next.js response
     console.log("Logout proxy: Clearing auth_token cookie")
@@ -23,7 +40,7 @@ export async function POST(req: NextRequest) {
       value: "",
       httpOnly: true,
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 0, // Expire immediately
     })
@@ -34,7 +51,7 @@ export async function POST(req: NextRequest) {
       value: "",
       httpOnly: true,
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 0, // Expire immediately
     })
