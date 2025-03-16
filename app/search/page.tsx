@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, FileIcon, MapPinIcon, TagIcon } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { MetadataItem } from "@/types/metadata"
 
 const searchFormSchema = z.object({
   keyword: z.string().optional(),
@@ -53,63 +54,27 @@ const searchFormSchema = z.object({
 type SearchFormValues = z.infer<typeof searchFormSchema>
 
 const dataTypes = [
+  { value: "vector", label: "Vector" },
+  { value: "raster", label: "Raster" },
+  { value: "boundary", label: "Boundary" },
   { value: "water-bodies", label: "Water Bodies" },
-  { value: "boundaries", label: "Boundaries" },
   { value: "education", label: "Education" },
   { value: "elevation", label: "Elevation" },
   { value: "environment", label: "Environment" },
   { value: "geographic", label: "Geographic Information" },
   { value: "health", label: "Health" },
-  { value: "imagery", label: "Imagery/Earthly Observations" },
   { value: "transportation", label: "Transportation" },
   { value: "utilities", label: "Utilities" },
-]
-
-// Mock data for search results
-const mockSearchResults = [
-  {
-    id: "1",
-    title: "Nigeria Administrative Boundaries",
-    description:
-      "Administrative boundaries for Nigeria including states and local government areas",
-    dataType: "boundaries",
-    organization: "National Geospatial Data Infrastructure",
-    createdAt: "2023-05-15T10:30:00Z",
-    thumbnailUrl: "/images/sample-map-1.jpg",
-    location: "Nigeria",
-  },
-  {
-    id: "2",
-    title: "Water Resources Map of Nigeria",
-    description:
-      "Comprehensive mapping of water resources across Nigeria including rivers, lakes, and groundwater sources",
-    dataType: "water-bodies",
-    organization: "Ministry of Water Resources",
-    createdAt: "2023-06-22T14:45:00Z",
-    thumbnailUrl: "/images/sample-map-2.jpg",
-    location: "Nigeria",
-  },
-  {
-    id: "3",
-    title: "Educational Facilities Distribution",
-    description:
-      "Distribution of educational facilities across Nigeria including primary, secondary, and tertiary institutions",
-    dataType: "education",
-    organization: "Ministry of Education",
-    createdAt: "2023-07-10T09:15:00Z",
-    thumbnailUrl: null,
-    location: "Nigeria",
-  },
 ]
 
 function SearchForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const [searchResults, setSearchResults] = useState(mockSearchResults)
-  const [totalResults, setTotalResults] = useState(42)
+  const [searchResults, setSearchResults] = useState<MetadataItem[]>([])
+  const [totalResults, setTotalResults] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(5)
+  const [totalPages, setTotalPages] = useState(1)
 
   const form = useForm<SearchFormValues>({
     resolver: zodResolver(searchFormSchema),
@@ -121,59 +86,92 @@ function SearchForm() {
     },
   })
 
-  async function onSubmit(data: SearchFormValues) {
+  // Load initial results based on URL parameters
+  useEffect(() => {
+    const page = parseInt(searchParams?.get("page") || "1", 10)
+    setCurrentPage(page)
+
+    const initialSearch = {
+      keyword: searchParams?.get("keyword") || "",
+      dataType: searchParams?.get("dataType") || "",
+      organization: searchParams?.get("organization") || "",
+      dateRange: undefined as DateRange | undefined,
+    }
+
+    if (searchParams?.get("dateFrom")) {
+      initialSearch.dateRange = {
+        from: new Date(searchParams.get("dateFrom") as string),
+        to: searchParams?.get("dateTo")
+          ? new Date(searchParams.get("dateTo") as string)
+          : undefined,
+      }
+    }
+
+    fetchSearchResults(initialSearch, page)
+  }, [searchParams])
+
+  async function fetchSearchResults(data: SearchFormValues, page: number = 1) {
     setIsLoading(true)
 
     try {
-      // In a real implementation, this would be an API call
-      console.log("Search criteria:", data)
+      // Prepare search parameters
+      const searchParams = new URLSearchParams()
+      searchParams.set("page", page.toString())
+      searchParams.set("limit", "9") // Show 9 items per page
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update URL with search params
-      const params = new URLSearchParams()
-      if (data.keyword) params.set("keyword", data.keyword)
-      if (data.dataType) params.set("dataType", data.dataType)
-      if (data.organization) params.set("organization", data.organization)
+      if (data.keyword) searchParams.set("search", data.keyword)
+      if (data.dataType) searchParams.set("category", data.dataType)
+      if (data.organization) searchParams.set("organization", data.organization)
       if (data.dateRange?.from) {
-        params.set("dateFrom", data.dateRange.from.toISOString())
+        searchParams.set("dateFrom", data.dateRange.from.toISOString())
       }
       if (data.dateRange?.to) {
-        params.set("dateTo", data.dateRange.to.toISOString())
+        searchParams.set("dateTo", data.dateRange.to.toISOString())
       }
 
-      router.push(`/search?${params.toString()}`)
+      // Fetch data from API
+      const response = await fetch(
+        `/api/search/metadata?${searchParams.toString()}`
+      )
 
-      // Filter mock results based on search criteria
-      let filteredResults = [...mockSearchResults]
-      if (data.dataType) {
-        filteredResults = filteredResults.filter(
-          (item) => item.dataType === data.dataType
-        )
-      }
-      if (data.keyword) {
-        const keyword = data.keyword.toLowerCase()
-        filteredResults = filteredResults.filter(
-          (item) =>
-            item.title.toLowerCase().includes(keyword) ||
-            item.description.toLowerCase().includes(keyword)
-        )
-      }
-      if (data.organization) {
-        const org = data.organization.toLowerCase()
-        filteredResults = filteredResults.filter((item) =>
-          item.organization.toLowerCase().includes(org)
-        )
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`)
       }
 
-      setSearchResults(filteredResults)
-      setTotalResults(filteredResults.length + 39) // Mock total for pagination demo
+      const result = await response.json()
+
+      setSearchResults(result.data.metadata || [])
+      setTotalResults(result.data.total || 0)
+      setTotalPages(result.data.totalPages || 1)
+      setCurrentPage(result.data.currentPage || 1)
     } catch (error) {
       console.error("Search error:", error)
+      setSearchResults([])
+      setTotalResults(0)
+      setTotalPages(1)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  async function onSubmit(data: SearchFormValues) {
+    // Update URL with search params
+    const params = new URLSearchParams()
+    if (data.keyword) params.set("keyword", data.keyword)
+    if (data.dataType) params.set("dataType", data.dataType)
+    if (data.organization) params.set("organization", data.organization)
+    if (data.dateRange?.from) {
+      params.set("dateFrom", data.dateRange.from.toISOString())
+    }
+    if (data.dateRange?.to) {
+      params.set("dateTo", data.dateRange.to.toISOString())
+    }
+    params.set("page", "1") // Reset to first page on new search
+
+    router.push(`/search?${params.toString()}`)
+
+    // Fetch results
+    fetchSearchResults(data, 1)
   }
 
   // Function to build pagination URL
@@ -204,7 +202,10 @@ function SearchForm() {
                   <FormItem>
                     <FormLabel>Keyword Search</FormLabel>
                     <FormControl>
-                      <Input placeholder="Search by keyword..." {...field} />
+                      <Input
+                        placeholder="Search by name, ID, type..."
+                        {...field}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -226,6 +227,7 @@ function SearchForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">All types</SelectItem>
                         {dataTypes.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
@@ -306,22 +308,11 @@ function SearchForm() {
                   className="overflow-hidden flex flex-col h-full"
                 >
                   <div className="aspect-video relative bg-muted">
-                    {result.thumbnailUrl ? (
-                      <Image
-                        src={result.thumbnailUrl}
-                        alt={result.title}
-                        width={400}
-                        height={300}
-                        className="w-full h-40 object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center w-full h-40 bg-secondary/20">
-                        <FileIcon className="h-10 w-10 text-muted-foreground" />
-                      </div>
-                    )}
+                    <div className="flex items-center justify-center w-full h-40 bg-secondary/20">
+                      <FileIcon className="h-10 w-10 text-muted-foreground" />
+                    </div>
                     <Badge className="absolute top-2 right-2">
-                      {dataTypes.find((t) => t.value === result.dataType)
-                        ?.label || result.dataType}
+                      {result.dataType || "Unknown"}
                     </Badge>
                   </div>
 
@@ -332,22 +323,22 @@ function SearchForm() {
 
                     <div className="flex items-center text-sm text-muted-foreground">
                       <MapPinIcon className="mr-2 h-4 w-4" />
-                      <span>{result.location}</span>
+                      <span>Nigeria</span>
                     </div>
 
                     <div className="flex items-center text-sm text-muted-foreground">
                       <TagIcon className="mr-2 h-4 w-4" />
-                      <span>{result.organization}</span>
+                      <span>{result.organization || "NGDI"}</span>
                     </div>
 
                     <p className="text-sm text-muted-foreground line-clamp-3">
-                      {result.description}
+                      {result.abstract || "No description available"}
                     </p>
                   </div>
 
                   <div className="p-4 pt-0 mt-auto">
                     <Button asChild className="w-full">
-                      <Link href={`/data/${result.id}`}>View Details</Link>
+                      <Link href={`/metadata/${result.id}`}>View Details</Link>
                     </Button>
                   </div>
                 </Card>
