@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { metadataService } from "@/lib/services/metadata.service"
 import {
@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MetadataItem, MetadataSearchResponse } from "@/types/metadata"
+import {
+  MetadataItem,
+  MetadataListResponse,
+  MetadataSearchResponse,
+} from "@/types/metadata"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import {
@@ -39,7 +43,17 @@ import { AlertCircle, Search } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useDebounce } from "@/hooks/use-debounce"
 
-export function MetadataList() {
+interface MetadataListProps {
+  initialMetadata: MetadataItem[]
+  initialTotal: number
+  authToken?: string
+}
+
+export function MetadataList({
+  initialMetadata = [],
+  initialTotal = 0,
+  authToken,
+}: MetadataListProps) {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("")
@@ -47,14 +61,68 @@ export function MetadataList() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string>("createdAt")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [manuallyFetched, setManuallyFetched] = useState(false)
   const { toast } = useToast()
 
   // Debounce search input to reduce API calls
   const debouncedSearch = useDebounce(search, 500)
   const debouncedCategory = useDebounce(category, 500)
 
+  // Fetch metadata directly if we have filters or need to refresh
+  const fetchMetadata = useCallback(async (): Promise<MetadataListResponse> => {
+    try {
+      const params = {
+        page,
+        limit: 10,
+        search: debouncedSearch,
+        category: debouncedCategory,
+        sortBy: sortBy as any,
+        sortOrder,
+      }
+
+      // Use the API directly if we have an auth token
+      if (authToken) {
+        const response = await fetch(
+          `/api/metadata/search?${new URLSearchParams({
+            page: page.toString(),
+            limit: "10",
+            ...(debouncedSearch ? { search: debouncedSearch } : {}),
+            ...(debouncedCategory ? { category: debouncedCategory } : {}),
+            sortBy,
+            sortOrder,
+          })}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch metadata")
+        }
+
+        const result = await response.json()
+        return result.data
+      }
+
+      // Fall back to the service if no auth token
+      const result = await metadataService.searchMetadata(params)
+      return {
+        metadata: result.metadata,
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+      }
+    } catch (error) {
+      console.error("Error fetching metadata:", error)
+      throw error
+    }
+  }, [page, debouncedSearch, debouncedCategory, sortBy, sortOrder, authToken])
+
+  // Use React Query for data fetching
   const { data, isLoading, isError, error, refetch } =
-    useQuery<MetadataSearchResponse>({
+    useQuery<MetadataListResponse>({
       queryKey: [
         "metadata",
         page,
@@ -63,16 +131,17 @@ export function MetadataList() {
         sortBy,
         sortOrder,
       ],
-      queryFn: () =>
-        metadataService.searchMetadata({
-          page,
-          limit: 10,
-          search: debouncedSearch,
-          category: debouncedCategory,
-          sortBy: sortBy as any,
-          sortOrder,
-        }),
+      queryFn: fetchMetadata,
       staleTime: 1000 * 60, // 1 minute
+      initialData: manuallyFetched
+        ? undefined
+        : {
+            metadata: initialMetadata,
+            total: initialTotal,
+            totalPages: Math.ceil(initialTotal / 10),
+            currentPage: 1,
+          },
+      enabled: manuallyFetched || !initialMetadata.length,
     })
 
   const confirmDelete = (id: string) => {
@@ -108,11 +177,20 @@ export function MetadataList() {
     const [field, order] = value.split(":")
     setSortBy(field)
     setSortOrder(order as "asc" | "desc")
+    setManuallyFetched(true)
   }
 
   // Reset to page 1 when search or filters change
   useEffect(() => {
-    setPage(1)
+    if (
+      debouncedSearch ||
+      debouncedCategory ||
+      sortBy !== "createdAt" ||
+      sortOrder !== "desc"
+    ) {
+      setPage(1)
+      setManuallyFetched(true)
+    }
   }, [debouncedSearch, debouncedCategory, sortBy, sortOrder])
 
   return (
@@ -266,7 +344,10 @@ export function MetadataList() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => {
+                    setPage(page - 1)
+                    setManuallyFetched(true)
+                  }}
                   disabled={page === 1}
                   variant="outline"
                   size="sm"
@@ -275,15 +356,15 @@ export function MetadataList() {
                 </Button>
                 <div className="flex h-9 items-center gap-1.5">
                   {Array.from(
-                    { length: Math.min(5, data.totalPages) },
+                    { length: Math.min(5, data.totalPages || 1) },
                     (_, i) => {
                       // Logic to show relevant page numbers
                       let pageNum = i + 1
-                      if (data.totalPages > 5) {
+                      if ((data.totalPages || 1) > 5) {
                         if (page <= 3) {
                           pageNum = i + 1
-                        } else if (page >= data.totalPages - 2) {
-                          pageNum = data.totalPages - 4 + i
+                        } else if (page >= (data.totalPages || 1) - 2) {
+                          pageNum = (data.totalPages || 1) - 4 + i
                         } else {
                           pageNum = page - 2 + i
                         }
@@ -295,7 +376,10 @@ export function MetadataList() {
                           variant={pageNum === page ? "default" : "outline"}
                           size="sm"
                           className="h-9 w-9 p-0"
-                          onClick={() => setPage(pageNum)}
+                          onClick={() => {
+                            setPage(pageNum)
+                            setManuallyFetched(true)
+                          }}
                         >
                           {pageNum}
                         </Button>
@@ -304,8 +388,11 @@ export function MetadataList() {
                   )}
                 </div>
                 <Button
-                  onClick={() => setPage(page + 1)}
-                  disabled={!data || page >= data.totalPages}
+                  onClick={() => {
+                    setPage(page + 1)
+                    setManuallyFetched(true)
+                  }}
+                  disabled={!data || page >= (data.totalPages || 1)}
                   variant="outline"
                   size="sm"
                 >
