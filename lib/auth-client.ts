@@ -194,15 +194,9 @@ export const authClient = {
     console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
 
     try {
-      // For debugging: Use the test endpoint if a special email is provided
-      const useTestEndpoint =
-        email.includes("test@") || email.includes("debug@")
-      const endpoint = useTestEndpoint
-        ? "/api/auth/login-test"
-        : "/api/auth/login"
-
-      console.log(`Making API request to ${endpoint}`)
-      const response = await axios.post(endpoint, {
+      // Call the login API through our Next.js proxy
+      console.log(`Making API request to /api/auth/login`)
+      const response = await axios.post(`/api/auth/login`, {
         email,
         password,
       })
@@ -327,15 +321,38 @@ export const authClient = {
   },
 
   async refreshToken(): Promise<string | null> {
+    console.log("refreshToken called")
     const refreshToken = getCookie(REFRESH_COOKIE_NAME)
-    if (!refreshToken) return null
+    
+    if (!refreshToken) {
+      console.log("No refresh token found in cookies")
+      return null
+    }
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-        refreshToken,
+      console.log("Calling refresh token proxy endpoint")
+      const response = await axios.post(
+        `/api/auth/refresh`,
+        {},
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      console.log("Refresh token response:", {
+        status: response.status,
+        hasAccessToken: !!response.data.data?.accessToken,
       })
 
-      const { accessToken } = response.data
+      const accessToken = response.data.data?.accessToken
+
+      if (!accessToken) {
+        console.error("No access token returned from refresh endpoint")
+        return null
+      }
+      
       return accessToken
     } catch (error) {
       console.error("Token refresh failed:", error)
@@ -367,9 +384,13 @@ export const authClient = {
 
     try {
       // First try to get session from the server-side auth check endpoint
+      console.log(
+        "Attempting to fetch session from server-side auth check endpoint"
+      )
       const response = await fetch("/api/auth/check", {
         method: "GET",
         credentials: "include", // Important: include cookies in the request
+        cache: "no-store", // Prevent caching of auth status
       })
 
       if (response.ok) {
@@ -377,6 +398,7 @@ export const authClient = {
         console.log("Auth check response:", data)
 
         if (data.authenticated && data.user) {
+          console.log("Server confirmed authentication, creating session")
           return {
             user: {
               id: data.user.id,
@@ -388,10 +410,19 @@ export const authClient = {
             accessToken: getCookie(AUTH_COOKIE_NAME) || "",
             refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
           }
+        } else {
+          console.log("Server reports not authenticated:", data.message)
         }
+      } else {
+        console.error(
+          "Auth check endpoint returned error:",
+          response.status,
+          response.statusText
+        )
       }
 
       // Fallback to client-side cookie check
+      console.log("Falling back to client-side cookie check")
       const token = getCookie(AUTH_COOKIE_NAME)
 
       console.log("Token status:", {

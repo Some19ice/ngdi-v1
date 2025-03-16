@@ -71,7 +71,7 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       domain:
-        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
+        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
     c.header(
@@ -117,7 +117,7 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       domain:
-        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
+        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
     c.header(
@@ -245,7 +245,7 @@ auth.post("/refresh-token", async (c) => {
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       domain:
-        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
+        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
     c.header(
@@ -407,7 +407,7 @@ auth.post("/logout", async (c) => {
   try {
     // Clear authentication cookies with the same domain as set in login
     const domain =
-      process.env.NODE_ENV === "production" ? ".example.com" : "localhost"
+      process.env.NODE_ENV === "production" ? "vercel.app" : "localhost"
 
     c.header(
       "Set-Cookie",
