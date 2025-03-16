@@ -236,18 +236,24 @@ export function MetadataList({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search metadata..."
+              placeholder="Search by name, ID, type..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
             />
           </div>
-          <Input
-            placeholder="Filter by category..."
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="max-w-sm"
-          />
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All types</SelectItem>
+              <SelectItem value="vector">Vector</SelectItem>
+              <SelectItem value="raster">Raster</SelectItem>
+              <SelectItem value="housing">Housing</SelectItem>
+              <SelectItem value="boundary">Boundary</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Select
           value={`${sortBy}:${sortOrder}`}
@@ -257,12 +263,10 @@ export function MetadataList({
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="createdAt:desc">Newest first</SelectItem>
-            <SelectItem value="createdAt:asc">Oldest first</SelectItem>
-            <SelectItem value="title:asc">Title (A-Z)</SelectItem>
-            <SelectItem value="title:desc">Title (Z-A)</SelectItem>
-            <SelectItem value="author:asc">Author (A-Z)</SelectItem>
-            <SelectItem value="author:desc">Author (Z-A)</SelectItem>
+            <SelectItem value="productionDate:desc">Newest first</SelectItem>
+            <SelectItem value="productionDate:asc">Oldest first</SelectItem>
+            <SelectItem value="dataName:asc">Name (A-Z)</SelectItem>
+            <SelectItem value="dataName:desc">Name (Z-A)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -309,6 +313,7 @@ export function MetadataList({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Cloud Cover</TableHead>
                     <TableHead>Production Date</TableHead>
                     <TableHead>Abstract</TableHead>
@@ -326,6 +331,7 @@ export function MetadataList({
                           {item.title}
                         </Link>
                       </TableCell>
+                      <TableCell>{item.dataType || "Unknown"}</TableCell>
                       <TableCell>
                         {item.cloudCoverPercentage || "N/A"}
                       </TableCell>

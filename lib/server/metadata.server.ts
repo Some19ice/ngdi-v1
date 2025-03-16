@@ -31,15 +31,33 @@ export const metadataServerService = {
     const where: any = {}
 
     if (search) {
+      // Enhanced search across all relevant fields
       where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { author: { contains: search, mode: "insensitive" } },
-        { organization: { contains: search, mode: "insensitive" } },
+        { dataName: { contains: search, mode: "insensitive" } },
+        { abstract: { contains: search, mode: "insensitive" } },
+        { dataType: { contains: search, mode: "insensitive" } },
+        { fundamentalDatasets: { contains: search, mode: "insensitive" } },
+        // Add a search for IDs that start with the search term
+        { id: { startsWith: search } },
       ]
     }
 
     if (category) {
-      where.categories = { has: category }
+      // For NGDIMetadata, we might need to adjust how categories are filtered
+      // This depends on how categories are stored in your database
+      if (category === "vector") {
+        where.dataType = { equals: "Vector", mode: "insensitive" }
+      } else if (category === "raster") {
+        where.dataType = { equals: "Raster", mode: "insensitive" }
+      } else {
+        // Try to match category against any field
+        where.OR = [
+          ...(where.OR || []),
+          { dataType: { contains: category, mode: "insensitive" } },
+          { dataName: { contains: category, mode: "insensitive" } },
+          { abstract: { contains: category, mode: "insensitive" } },
+        ]
+      }
     }
 
     try {
@@ -60,14 +78,21 @@ export const metadataServerService = {
           skip,
           take: limit,
           orderBy: {
-            [sortBy]: sortOrder,
+            // Map frontend sort fields to database fields
+            ...(sortBy === "title"
+              ? { dataName: sortOrder }
+              : sortBy === "createdAt"
+                ? { productionDate: sortOrder }
+                : { [sortBy]: sortOrder }),
           },
           select: {
             id: true,
-            dataName: true, // Map to title
-            cloudCoverPercentage: true, // Additional field
-            productionDate: true, // Map to dateFrom
-            abstract: true, // Additional field
+            dataName: true,
+            dataType: true,
+            cloudCoverPercentage: true,
+            productionDate: true,
+            abstract: true,
+            fundamentalDatasets: true,
           },
         }),
         prisma.nGDIMetadata.count({ where }),
@@ -88,8 +113,12 @@ export const metadataServerService = {
           organization: "NGDI", // Default organization
           dateFrom: formatDate(item.productionDate),
           dateTo: formatDate(item.productionDate),
-          cloudCoverPercentage: item.cloudCoverPercentage,
-          abstract: item.abstract,
+          cloudCoverPercentage: item.cloudCoverPercentage ?? undefined,
+          abstract: item.abstract || undefined,
+          dataType: item.dataType || undefined,
+          fundamentalDatasets: item.fundamentalDatasets
+            ? String(item.fundamentalDatasets)
+            : undefined,
         })),
         total,
         currentPage: page,
