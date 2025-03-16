@@ -11,7 +11,7 @@ module.exports = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: [], // Add your image domains here
+    domains: ["ngdi.gov.ng"], // Add your image domains here
     formats: ["image/avif", "image/webp"],
     unoptimized: true,
   },

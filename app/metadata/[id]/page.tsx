@@ -32,6 +32,12 @@ async function getCurrentUserRole(): Promise<string | null> {
   return "USER"
 }
 
+// Helper function to check if a URL is external
+function isExternalUrl(url: string): boolean {
+  if (!url) return false
+  return url.startsWith('http://') || url.startsWith('https://')
+}
+
 interface MetadataPageProps {
   params: {
     id: string
@@ -266,13 +272,24 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
             </CardHeader>
             <CardContent>
               {metadata.thumbnailUrl ? (
-                <Image
-                  src={metadata.thumbnailUrl}
-                  alt={metadata.dataName}
-                  width={800}
-                  height={600}
-                  className="w-full h-auto rounded-lg"
-                />
+                isExternalUrl(metadata.thumbnailUrl) ? (
+                  <Image
+                    src={metadata.thumbnailUrl}
+                    alt={metadata.dataName}
+                    width={800}
+                    height={600}
+                    className="w-full h-auto rounded-lg"
+                    unoptimized
+                  />
+                ) : (
+                  <Image
+                    src={metadata.thumbnailUrl}
+                    alt={metadata.dataName}
+                    width={800}
+                    height={600}
+                    className="w-full h-auto rounded-lg"
+                  />
+                )
               ) : (
                 <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
                   <FileText className="h-12 w-12 text-muted-foreground" />
