@@ -3,10 +3,17 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ProfileCard } from "@/components/profile"
 import { requireAuth } from "@/lib/auth"
 import { ProfileClient } from "./profile-client"
+import { UserRole } from "@/lib/auth/constants"
 
 export default async function ProfilePage() {
   // Server-side authentication check
   const user = await requireAuth("/profile")
+
+  // Ensure the role is properly typed as UserRole from constants
+  const typedUser = {
+    ...user,
+    role: user.role as UserRole,
+  }
 
   return (
     <div className="space-y-8">
@@ -17,7 +24,7 @@ export default async function ProfilePage() {
           </div>
         }
       >
-        <ProfileClient initialUser={user} />
+        <ProfileClient initialUser={typedUser} />
       </Suspense>
     </div>
   )

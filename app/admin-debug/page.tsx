@@ -11,5 +11,11 @@ export default async function AdminDebugPage() {
     throw new Error("Unauthorized: Admin access required")
   }
 
-  return <AdminDebugContent user={user} />
+  // Ensure the role is properly typed as UserRole from constants
+  const typedUser = {
+    ...user,
+    role: user.role as UserRole,
+  }
+
+  return <AdminDebugContent user={typedUser} />
 }

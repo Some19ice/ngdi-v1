@@ -16,7 +16,7 @@ export default async function UsersPage() {
   }
 
   // Fetch initial users data server-side
-  const users = await prisma.user.findMany({
+  const prismaUsers = await prisma.user.findMany({
     select: {
       id: true,
       name: true,
@@ -30,6 +30,12 @@ export default async function UsersPage() {
     take: 10,
     orderBy: { createdAt: "desc" },
   })
+
+  // Map Prisma UserRole to constants UserRole
+  const users = prismaUsers.map((user) => ({
+    ...user,
+    role: user.role as unknown as UserRole,
+  }))
 
   // Get total count for pagination
   const total = await prisma.user.count()
