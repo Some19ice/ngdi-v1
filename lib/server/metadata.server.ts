@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client"
 import { MetadataListResponse, MetadataSearchParams } from "@/types/metadata"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 /**
  * Server-side metadata service for fetching metadata directly from the database
@@ -39,39 +37,50 @@ export const metadataServerService = {
       where.categories = { has: category }
     }
 
-    // Execute query and count in parallel
-    const [metadata, total] = await Promise.all([
-      prisma.metadata.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-        select: {
-          id: true,
-          title: true,
-          author: true,
-          organization: true,
-          dateFrom: true,
-          dateTo: true,
-        },
-      }),
-      prisma.metadata.count({ where }),
-    ])
+    try {
+      // Execute query and count in parallel
+      const [metadata, total] = await Promise.all([
+        prisma.metadata.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            [sortBy]: sortOrder,
+          },
+          select: {
+            id: true,
+            title: true,
+            author: true,
+            organization: true,
+            dateFrom: true,
+            dateTo: true,
+          },
+        }),
+        prisma.metadata.count({ where }),
+      ])
 
-    return {
-      metadata: metadata.map((item) => ({
-        id: item.id,
-        title: item.title,
-        author: item.author,
-        organization: item.organization,
-        dateFrom: formatDate(item.dateFrom),
-        dateTo: formatDate(item.dateTo),
-      })),
-      total,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
+      return {
+        metadata: metadata.map((item) => ({
+          id: item.id,
+          title: item.title,
+          author: item.author,
+          organization: item.organization,
+          dateFrom: formatDate(item.dateFrom),
+          dateTo: formatDate(item.dateTo),
+        })),
+        total,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+      }
+    } catch (error) {
+      console.error("Error fetching metadata:", error)
+      // Return empty results on error
+      return {
+        metadata: [],
+        total: 0,
+        currentPage: page,
+        totalPages: 0,
+      }
     }
   },
 }
