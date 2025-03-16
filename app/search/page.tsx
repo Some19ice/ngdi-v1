@@ -120,7 +120,8 @@ function SearchForm() {
       searchParams.set("limit", "9") // Show 9 items per page
 
       if (data.keyword) searchParams.set("search", data.keyword)
-      if (data.dataType) searchParams.set("category", data.dataType)
+      if (data.dataType && data.dataType !== "all")
+        searchParams.set("category", data.dataType)
       if (data.organization) searchParams.set("organization", data.organization)
       if (data.dateRange?.from) {
         searchParams.set("dateFrom", data.dateRange.from.toISOString())
@@ -227,7 +228,7 @@ function SearchForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All types</SelectItem>
+                        <SelectItem value="all">All types</SelectItem>
                         {dataTypes.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
