@@ -1,0 +1,85 @@
+import { PrismaClient } from "@prisma/client"
+import { MetadataListResponse, MetadataSearchParams } from "@/types/metadata"
+
+const prisma = new PrismaClient()
+
+/**
+ * Server-side metadata service for fetching metadata directly from the database
+ */
+export const metadataServerService = {
+  /**
+   * Search metadata with pagination and filtering
+   */
+  async searchMetadata(
+    params: MetadataSearchParams
+  ): Promise<MetadataListResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      category,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = params
+
+    const skip = (page - 1) * limit
+
+    // Build where conditions
+    const where: any = {}
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { author: { contains: search, mode: "insensitive" } },
+        { organization: { contains: search, mode: "insensitive" } },
+      ]
+    }
+
+    if (category) {
+      where.categories = { has: category }
+    }
+
+    // Execute query and count in parallel
+    const [metadata, total] = await Promise.all([
+      prisma.metadata.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          organization: true,
+          dateFrom: true,
+          dateTo: true,
+        },
+      }),
+      prisma.metadata.count({ where }),
+    ])
+
+    return {
+      metadata: metadata.map((item) => ({
+        id: item.id,
+        title: item.title,
+        author: item.author,
+        organization: item.organization,
+        dateFrom: formatDate(item.dateFrom),
+        dateTo: formatDate(item.dateTo),
+      })),
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    }
+  },
+}
+
+// Helper function to format dates
+function formatDate(date: Date | string): string {
+  if (date instanceof Date) {
+    return date.toISOString()
+  }
+  return date
+}

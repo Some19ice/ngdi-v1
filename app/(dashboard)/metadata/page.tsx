@@ -5,14 +5,14 @@ import Link from "next/link"
 import { requireRole } from "@/lib/auth"
 import { UserRole } from "@/lib/auth/constants"
 import { cookies } from "next/headers"
-import { metadataService } from "@/lib/services/metadata.service"
+import { metadataServerService } from "@/lib/server/metadata.server"
 
 export default async function MetadataPage() {
   // Check for required role
   await requireRole(["ADMIN", "NODE_OFFICER"])
 
   // Fetch initial metadata data server-side
-  const result = await metadataService.searchMetadata({
+  const result = await metadataServerService.searchMetadata({
     page: 1,
     limit: 10,
     sortBy: "createdAt",
