@@ -345,10 +345,10 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
     })
 
     // Revalidate all relevant paths to ensure UI is updated
-    revalidatePath("/metadata")
-    revalidatePath("/metadata/[id]")
-    revalidatePath("/search/metadata")
-    revalidatePath("/")
+    revalidatePath("/metadata", "page")
+    revalidatePath("/metadata/[id]", "page")
+    revalidatePath("/search/metadata", "page")
+    revalidatePath("/", "page")
 
     return { success: true, data: metadata }
   } catch (error) {
