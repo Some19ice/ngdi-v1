@@ -123,8 +123,6 @@ function SearchForm() {
   }, [searchParams, authToken])
 
   async function fetchSearchResults(data: SearchFormValues, page: number = 1) {
-    if (!authToken) return // Don't fetch without auth token
-
     setIsLoading(true)
 
     try {
@@ -147,16 +145,16 @@ function SearchForm() {
       console.log("Fetching search results:", {
         url: `/api/search/metadata?${searchParams.toString()}`,
         hasAuthToken: !!authToken,
-        authTokenLength: authToken.length,
+        authTokenLength: authToken?.length,
       })
 
-      // Fetch data from API with auth token
+      // Fetch data from API with auth token if available
       const response = await fetch(
         `/api/search/metadata?${searchParams.toString()}`,
         {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
+          headers: authToken
+            ? { Authorization: `Bearer ${authToken}` }
+            : undefined,
         }
       )
 
@@ -324,15 +322,6 @@ function SearchForm() {
 
         {isLoading ? (
           <SearchResultsSkeleton />
-        ) : !authToken ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-6">
-              Please log in to search metadata records.
-            </p>
-            <Button asChild>
-              <Link href="/login">Log In</Link>
-            </Button>
-          </div>
         ) : searchResults.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-6">
@@ -414,9 +403,19 @@ function SearchForm() {
                   </div>
 
                   <div className="p-4 pt-0 mt-auto">
-                    <Button asChild className="w-full">
-                      <Link href={`/metadata/${result.id}`}>View Details</Link>
-                    </Button>
+                    {authToken ? (
+                      <Button asChild className="w-full">
+                        <Link href={`/metadata/${result.id}`}>
+                          View Details
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild className="w-full">
+                        <Link href="/login?returnUrl=/search">
+                          Log in to view details
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}

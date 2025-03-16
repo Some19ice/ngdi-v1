@@ -30,9 +30,8 @@ export async function GET(req: NextRequest) {
       finalToken: token ? `${token.substring(0, 10)}...` : null,
     })
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // Allow public access for search, but note the token status
+    const isAuthenticated = !!token
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams
@@ -47,9 +46,7 @@ export async function GET(req: NextRequest) {
       const response = await axios.get(
         `${API_URL}/api/search/metadata?${queryString}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         }
       )
 
@@ -78,10 +75,23 @@ export async function GET(req: NextRequest) {
           data: axiosError.response?.data,
           message: axiosError.message,
           url: `${API_URL}/api/search/metadata?${queryString}`,
-          headers: {
-            Authorization: `Bearer ${token.substring(0, 5)}...`,
-          },
+          headers: token
+            ? { Authorization: `Bearer ${token.substring(0, 5)}...` }
+            : "No auth token",
         })
+
+        // If unauthorized and no token provided, return empty results instead of error
+        if (axiosError.response?.status === 401 && !isAuthenticated) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              metadata: [],
+              total: 0,
+              currentPage: 1,
+              totalPages: 0,
+            },
+          })
+        }
 
         const status = axiosError.response?.status || 500
         const message =
