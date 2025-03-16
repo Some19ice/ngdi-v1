@@ -109,13 +109,13 @@ export function MetadataList({
         // Use the API directly if we have an auth token
         if (authToken) {
           console.log("Fetching metadata with auth token", {
-            url: `/api/metadata/search`,
+            url: `/api/search/metadata`,
             params,
             authTokenLength: authToken.length,
           })
 
           const response = await fetch(
-            `/api/metadata/search?${new URLSearchParams({
+            `/api/search/metadata?${new URLSearchParams({
               page: params.page.toString(),
               limit: params.limit.toString(),
               ...(params.search ? { search: params.search } : {}),
