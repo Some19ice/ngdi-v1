@@ -42,7 +42,7 @@ export const metadataService = {
     params: MetadataSearchParams
   ): Promise<MetadataSearchResponse> {
     const response = await api.get<ApiResponse<MetadataSearchResponse>>(
-      "/metadata/search",
+      "/search/metadata",
       {
         params: {
           page: params.page,
