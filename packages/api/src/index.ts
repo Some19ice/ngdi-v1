@@ -8,6 +8,7 @@ import { swaggerUI } from "@hono/swagger-ui"
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
+import searchRouter from "./routes/search.routes"
 import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
 import { errorMiddleware } from "./middleware/error-handler"
@@ -36,6 +37,7 @@ const apiRouter = new OpenAPIHono()
 apiRouter.route("/auth", authRouter)
 apiRouter.route("/users", userRouter)
 apiRouter.route("/metadata", metadataRouter)
+apiRouter.route("/search", searchRouter)
 
 // Mount API router
 app.route("/api", apiRouter)

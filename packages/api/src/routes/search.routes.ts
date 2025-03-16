@@ -1,11 +1,11 @@
 import { Hono } from "hono"
-import { authMiddleware } from "../middleware/auth.middleware"
 import { metadataService } from "../services/metadata.service"
+import { authMiddleware } from "../middleware/auth.middleware"
 
-const search = new Hono()
+const searchRouter = new Hono()
 
-// Apply auth middleware
-search.use("*", authMiddleware)
+// Apply auth middleware to all routes
+searchRouter.use("*", authMiddleware)
 
 /**
  * @openapi
@@ -32,22 +32,24 @@ search.use("*", authMiddleware)
  *         name: search
  *         schema:
  *           type: string
- *         description: Search term
+ *         description: Search term for title, author, or organization
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
- *         description: Category filter
+ *         description: Filter by category
  *       - in: query
  *         name: dateFrom
  *         schema:
  *           type: string
- *         description: Start date filter
+ *           format: date
+ *         description: Filter by date from
  *       - in: query
  *         name: dateTo
  *         schema:
  *           type: string
- *         description: End date filter
+ *           format: date
+ *         description: Filter by date to
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -63,7 +65,7 @@ search.use("*", authMiddleware)
  *         description: Sort order
  *     responses:
  *       200:
- *         description: Metadata search results
+ *         description: List of metadata
  *         content:
  *           application/json:
  *             schema:
@@ -73,42 +75,33 @@ search.use("*", authMiddleware)
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-search.get("/metadata", async (c) => {
-  try {
-    const page = parseInt(c.req.query("page") || "1")
-    const limit = parseInt(c.req.query("limit") || "10")
-    const searchTerm = c.req.query("search") || ""
-    const category = c.req.query("category") || ""
-    const dateFrom = c.req.query("dateFrom") || ""
-    const dateTo = c.req.query("dateTo") || ""
-    const sortBy = c.req.query("sortBy") || "createdAt"
-    const sortOrder = (c.req.query("sortOrder") || "desc") as "asc" | "desc"
+searchRouter.get("/metadata", async (c) => {
+  const {
+    page = "1",
+    limit = "10",
+    search,
+    category,
+    dateFrom,
+    dateTo,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = c.req.query()
 
-    const result = await metadataService.searchMetadata({
-      page,
-      limit,
-      search: searchTerm,
-      category,
-      dateFrom,
-      dateTo,
-      sortBy,
-      sortOrder,
-    })
+  const result = await metadataService.searchMetadata({
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+    search,
+    category,
+    dateFrom,
+    dateTo,
+    sortBy: sortBy as "title" | "author" | "organization" | "createdAt",
+    sortOrder: sortOrder === "asc" ? "asc" : "desc",
+  })
 
-    return c.json({
-      success: true,
-      data: result,
-    })
-  } catch (error) {
-    console.error("Error searching metadata:", error)
-    return c.json(
-      {
-        success: false,
-        error: "Failed to search metadata",
-      },
-      500
-    )
-  }
+  return c.json({
+    success: true,
+    data: result,
+  })
 })
 
-export default search
+export default searchRouter
