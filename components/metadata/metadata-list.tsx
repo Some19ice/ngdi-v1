@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { metadataService } from "@/lib/services/metadata.service"
 import {
   Table,
@@ -41,7 +41,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, Search } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { useDebounce } from "@/hooks/use-debounce"
 
 interface MetadataListProps {
   initialMetadata: MetadataItem[]
@@ -64,85 +63,120 @@ export function MetadataList({
   const [manuallyFetched, setManuallyFetched] = useState(false)
   const { toast } = useToast()
 
-  // Debounce search input to reduce API calls
-  const debouncedSearch = useDebounce(search, 500)
-  const debouncedCategory = useDebounce(category, 500)
+  // Add debounced search state
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+  const [debouncedCategory, setDebouncedCategory] = useState(category)
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Debounce category input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCategory(category)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [category])
+
+  // Update query when debounced values change
+  useEffect(() => {
+    if (manuallyFetched) {
+      setManuallyFetched(false)
+      return
+    }
+
+    setPage(1)
+  }, [debouncedSearch, debouncedCategory])
 
   // Fetch metadata directly if we have filters or need to refresh
-  const fetchMetadata = useCallback(async (): Promise<MetadataListResponse> => {
-    try {
-      const params = {
+  const fetchMetadata = useCallback(
+    async (params: {
+      page: number
+      limit: number
+      search?: string
+      category?: string
+      sortBy: string
+      sortOrder: "asc" | "desc"
+    }): Promise<MetadataListResponse> => {
+      try {
+        // Use the API directly if we have an auth token
+        if (authToken) {
+          const response = await fetch(
+            `/api/metadata/search?${new URLSearchParams({
+              page: params.page.toString(),
+              limit: params.limit.toString(),
+              ...(params.search ? { search: params.search } : {}),
+              ...(params.category ? { category: params.category } : {}),
+              sortBy: params.sortBy,
+              sortOrder: params.sortOrder,
+            })}`,
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          )
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch metadata")
+          }
+
+          const result = await response.json()
+          return result.data
+        }
+
+        // Fall back to the service if no auth token
+        const result = await metadataService.searchMetadata(params)
+        return {
+          metadata: result.metadata,
+          total: result.total,
+          totalPages: result.totalPages,
+          currentPage: result.currentPage,
+        }
+      } catch (error) {
+        console.error("Error fetching metadata:", error)
+        throw error
+      }
+    },
+    [authToken]
+  )
+
+  // Use React Query for data fetching
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: [
+      "metadata",
+      page,
+      debouncedSearch,
+      debouncedCategory,
+      sortBy,
+      sortOrder,
+    ],
+    queryFn: () =>
+      fetchMetadata({
         page,
         limit: 10,
         search: debouncedSearch,
         category: debouncedCategory,
-        sortBy: sortBy as any,
-        sortOrder,
-      }
-
-      // Use the API directly if we have an auth token
-      if (authToken) {
-        const response = await fetch(
-          `/api/metadata/search?${new URLSearchParams({
-            page: page.toString(),
-            limit: "10",
-            ...(debouncedSearch ? { search: debouncedSearch } : {}),
-            ...(debouncedCategory ? { category: debouncedCategory } : {}),
-            sortBy,
-            sortOrder,
-          })}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch metadata")
-        }
-
-        const result = await response.json()
-        return result.data
-      }
-
-      // Fall back to the service if no auth token
-      const result = await metadataService.searchMetadata(params)
-      return {
-        metadata: result.metadata,
-        total: result.total,
-        totalPages: result.totalPages,
-        currentPage: result.currentPage,
-      }
-    } catch (error) {
-      console.error("Error fetching metadata:", error)
-      throw error
-    }
-  }, [page, debouncedSearch, debouncedCategory, sortBy, sortOrder, authToken])
-
-  // Use React Query for data fetching
-  const { data, isLoading, isError, error, refetch } =
-    useQuery<MetadataListResponse>({
-      queryKey: [
-        "metadata",
-        page,
-        debouncedSearch,
-        debouncedCategory,
         sortBy,
         sortOrder,
-      ],
-      queryFn: fetchMetadata,
-      staleTime: 1000 * 60, // 1 minute
-      initialData: manuallyFetched
-        ? undefined
-        : {
+      }),
+    initialData:
+      initialMetadata && initialTotal
+        ? {
             metadata: initialMetadata,
             total: initialTotal,
-            totalPages: Math.ceil(initialTotal / 10),
             currentPage: 1,
-          },
-      enabled: manuallyFetched || !initialMetadata.length,
-    })
+            totalPages: Math.ceil(initialTotal / 10),
+          }
+        : undefined,
+  })
 
   const confirmDelete = (id: string) => {
     setItemToDelete(id)
@@ -179,19 +213,6 @@ export function MetadataList({
     setSortOrder(order as "asc" | "desc")
     setManuallyFetched(true)
   }
-
-  // Reset to page 1 when search or filters change
-  useEffect(() => {
-    if (
-      debouncedSearch ||
-      debouncedCategory ||
-      sortBy !== "createdAt" ||
-      sortOrder !== "desc"
-    ) {
-      setPage(1)
-      setManuallyFetched(true)
-    }
-  }, [debouncedSearch, debouncedCategory, sortBy, sortOrder])
 
   return (
     <div className="space-y-4">
