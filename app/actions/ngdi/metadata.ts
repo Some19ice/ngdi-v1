@@ -334,21 +334,45 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
       },
     })
 
+    // Revalidate all relevant paths to ensure UI is updated
     revalidatePath("/metadata")
+    revalidatePath("/metadata/[id]")
+    revalidatePath("/")
+
     return { success: true, data: metadata }
   } catch (error) {
     if (error instanceof z.ZodError) {
+      // Format validation errors to be more user-friendly
+      const fieldErrors = error.errors
+        .map((err) => `${err.path.join(".")}: ${err.message}`)
+        .join(", ")
+
       return {
         success: false,
-        error: "Validation failed",
+        error: `Validation failed: ${fieldErrors}`,
         details: error.errors,
       }
     }
 
+    // Handle database-related errors
     if (error instanceof Error) {
+      console.error("Error creating NGDI metadata:", error)
+
+      // Check if it's a Prisma error
+      if (error.message.includes("Prisma")) {
+        return {
+          success: false,
+          error: "Database error. Please try again or contact support.",
+        }
+      }
+
       return { success: false, error: error.message }
     }
 
-    return { success: false, error: "Failed to create metadata" }
+    console.error("Unknown error creating NGDI metadata:", error)
+    return {
+      success: false,
+      error: "Failed to create metadata. Please try again.",
+    }
   }
 }

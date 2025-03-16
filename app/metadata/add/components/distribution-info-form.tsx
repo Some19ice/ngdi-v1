@@ -217,10 +217,10 @@ export default function DistributionInfoForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
+                <FormDescriptionWithTooltip tooltip="The telephone number for contacting the distributor about obtaining the dataset. Include country code if applicable.">
                   The telephone number for contacting the distributor about
                   obtaining the dataset
-                </FormDescription>
+                </FormDescriptionWithTooltip>
                 <FormMessage className="text-destructive text-xs" />
               </FormItem>
             )}
@@ -238,10 +238,10 @@ export default function DistributionInfoForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
+                <FormDescriptionWithTooltip tooltip="The URL of the distributor's website where additional information about the dataset or the distributor can be found. Must be a valid URL including http:// or https://.">
                   The URL of the distributor&apos;s website where additional
                   information about the dataset or the distributor can be found
-                </FormDescription>
+                </FormDescriptionWithTooltip>
                 <FormMessage />
               </FormItem>
             )}
@@ -254,15 +254,12 @@ export default function DistributionInfoForm({
               <FormItem>
                 <FormLabel>Social Media Handle</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter distributor social media handle"
-                    {...field}
-                  />
+                  <Input placeholder="Enter social media handle" {...field} />
                 </FormControl>
-                <FormDescription>
-                  The social media username or handle where the distributor can
-                  be contacted or where updates about the dataset may be posted
-                </FormDescription>
+                <FormDescriptionWithTooltip tooltip="The social media handle or username of the distributor organization. Include the platform name if applicable (e.g., @ngdi_nigeria on Twitter).">
+                  The social media handle or username of the distributor
+                  organization
+                </FormDescriptionWithTooltip>
                 <FormMessage />
               </FormItem>
             )}

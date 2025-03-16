@@ -53,17 +53,29 @@ export function MetadataForm() {
       const result = await createNGDIMetadata(completeData)
 
       if (!result?.success) {
-        throw new Error(result?.error || "Failed to create metadata")
+        // Show more detailed error message if available
+        const errorMessage = result?.error || "Failed to create metadata"
+        throw new Error(errorMessage)
       }
 
-      toast.success("Metadata created successfully")
-      router.push("/metadata")
-      router.refresh()
+      toast.success(
+        "Metadata created successfully! Redirecting to metadata list..."
+      )
+
+      // Short delay before redirecting to ensure toast is seen
+      setTimeout(() => {
+        router.push("/metadata")
+        router.refresh()
+      }, 1500)
     } catch (error) {
       console.error("Failed to save metadata:", error)
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create metadata"
-      )
+
+      // Show detailed error message
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error("Failed to create metadata. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }
