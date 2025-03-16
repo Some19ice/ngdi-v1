@@ -50,11 +50,12 @@ export const metadataServerService = {
         orderBy: {
           [sortBy]: sortOrder,
         },
+        table: "NGDIMetadata", // Log the table name we're querying
       })
 
       // Execute query and count in parallel
       const [metadata, total] = await Promise.all([
-        prisma.metadata.findMany({
+        prisma.nGDIMetadata.findMany({
           where,
           skip,
           take: limit,
@@ -63,14 +64,13 @@ export const metadataServerService = {
           },
           select: {
             id: true,
-            title: true,
-            author: true,
-            organization: true,
-            dateFrom: true,
-            dateTo: true,
+            dataName: true, // Map to title
+            cloudCoverPercentage: true, // Additional field
+            productionDate: true, // Map to dateFrom
+            abstract: true, // Additional field
           },
         }),
-        prisma.metadata.count({ where }),
+        prisma.nGDIMetadata.count({ where }),
       ])
 
       console.log("Prisma query results:", {
@@ -79,14 +79,17 @@ export const metadataServerService = {
         firstItem: metadata.length > 0 ? metadata[0] : null,
       })
 
+      // Map the NGDIMetadata fields to the expected MetadataItem structure
       return {
         metadata: metadata.map((item) => ({
           id: item.id,
-          title: item.title,
-          author: item.author,
-          organization: item.organization,
-          dateFrom: formatDate(item.dateFrom),
-          dateTo: formatDate(item.dateTo),
+          title: item.dataName || "Untitled",
+          author: "NGDI", // Default author
+          organization: "NGDI", // Default organization
+          dateFrom: formatDate(item.productionDate),
+          dateTo: formatDate(item.productionDate),
+          cloudCoverPercentage: item.cloudCoverPercentage,
+          abstract: item.abstract,
         })),
         total,
         currentPage: page,
@@ -110,5 +113,5 @@ function formatDate(date: Date | string): string {
   if (date instanceof Date) {
     return date.toISOString()
   }
-  return date
+  return date || new Date().toISOString()
 }

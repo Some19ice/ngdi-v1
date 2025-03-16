@@ -67,10 +67,16 @@ export interface MetadataSearchResponse {
 export interface MetadataItem {
   id: string
   title: string
-  author: string
-  organization: string
-  dateFrom: string | Date
-  dateTo: string | Date
+  author?: string
+  organization?: string
+  dateFrom: string
+  dateTo?: string
+  cloudCoverPercentage?: string | number
+  abstract?: string
+  dataType?: string
+  dataName?: string
+  productionDate?: string
+  fundamentalDatasets?: string
 }
 
 export interface MetadataListResponse {

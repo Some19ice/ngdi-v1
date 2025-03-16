@@ -309,9 +309,9 @@ export function MetadataList({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Date Range</TableHead>
+                    <TableHead>Cloud Cover</TableHead>
+                    <TableHead>Production Date</TableHead>
+                    <TableHead>Abstract</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -321,10 +321,12 @@ export function MetadataList({
                       <TableCell className="font-medium">
                         {item.title}
                       </TableCell>
-                      <TableCell>{item.author}</TableCell>
-                      <TableCell>{item.organization}</TableCell>
                       <TableCell>
-                        {formatDate(item.dateFrom)} - {formatDate(item.dateTo)}
+                        {item.cloudCoverPercentage || "N/A"}
+                      </TableCell>
+                      <TableCell>{formatDate(item.dateFrom)}</TableCell>
+                      <TableCell>
+                        {item.abstract || "No abstract available"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
