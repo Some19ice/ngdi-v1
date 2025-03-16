@@ -194,9 +194,9 @@ export const authClient = {
     console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
 
     try {
-      // Call the login API
-      console.log(`Making API request to ${API_URL}/api/auth/login`)
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
+      // Call the login API through our Next.js proxy
+      console.log(`Making API request to /api/auth/login`)
+      const response = await axios.post(`/api/auth/login`, {
         email,
         password,
       })
@@ -313,18 +313,8 @@ export const authClient = {
 
   async logout(): Promise<void> {
     try {
-      const token = getCookie(AUTH_COOKIE_NAME)
-      if (token) {
-        await axios.post(
-          `${API_URL}/api/auth/logout`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        )
-      }
+      // Use our Next.js proxy endpoint instead of the direct API
+      await axios.post(`/api/auth/logout`, {})
     } catch (error) {
       console.error("Logout failed:", error)
     }

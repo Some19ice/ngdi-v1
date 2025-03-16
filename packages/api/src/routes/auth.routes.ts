@@ -70,15 +70,17 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      domain:
+        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
     }
 
     c.header(
       "Set-Cookie",
-      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
     c.header(
       "Set-Cookie",
-      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
 
     return c.json(result)
@@ -114,15 +116,17 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      domain:
+        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
     }
 
     c.header(
       "Set-Cookie",
-      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
     c.header(
       "Set-Cookie",
-      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
 
     return c.json(result)
@@ -240,15 +244,17 @@ auth.post("/refresh-token", async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      domain:
+        process.env.NODE_ENV === "production" ? ".example.com" : "localhost",
     }
 
     c.header(
       "Set-Cookie",
-      `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
     c.header(
       "Set-Cookie",
-      `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+      `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
     )
 
     return c.json(
@@ -399,14 +405,17 @@ auth.post(
 // Logout route
 auth.post("/logout", async (c) => {
   try {
-    // Clear authentication cookies
+    // Clear authentication cookies with the same domain as set in login
+    const domain =
+      process.env.NODE_ENV === "production" ? ".example.com" : "localhost"
+
     c.header(
       "Set-Cookie",
-      "auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+      `auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`
     )
     c.header(
       "Set-Cookie",
-      "refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+      `refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`
     )
 
     return c.json({
