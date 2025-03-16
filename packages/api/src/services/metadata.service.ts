@@ -209,100 +209,139 @@ export const metadataService = {
       category,
     } = searchQuery
 
+    console.log("API searchMetadata called with:", {
+      searchQuery,
+      table: "NGDIMetadata", // Log that we're using NGDIMetadata
+    })
+
     const skip = (page - 1) * limit
 
-    const conditions: Prisma.MetadataWhereInput[] = []
+    // Build where conditions for NGDIMetadata table
+    const where: any = {}
+
+    if (search) {
+      // Enhanced search across all relevant fields
+      where.OR = [
+        { dataName: { contains: search, mode: "insensitive" } },
+        { abstract: { contains: search, mode: "insensitive" } },
+        { dataType: { contains: search, mode: "insensitive" } },
+        { fundamentalDatasets: { contains: search, mode: "insensitive" } },
+        // Add a search for IDs that start with the search term
+        { id: { startsWith: search } },
+      ]
+    }
+
+    if (category) {
+      // For NGDIMetadata, we need to adjust how categories are filtered
+      if (category === "vector") {
+        where.dataType = { equals: "Vector", mode: "insensitive" }
+      } else if (category === "raster") {
+        where.dataType = { equals: "Raster", mode: "insensitive" }
+      } else {
+        // Try to match category against any field
+        where.OR = [
+          ...(where.OR || []),
+          { dataType: { contains: category, mode: "insensitive" } },
+          { dataName: { contains: category, mode: "insensitive" } },
+          { abstract: { contains: category, mode: "insensitive" } },
+        ]
+      }
+    }
 
     if (organization) {
-      conditions.push({ organization: { contains: organization } })
+      where.organization = { contains: organization, mode: "insensitive" }
     }
-    if (author) {
-      conditions.push({ author: { contains: author } })
-    }
+
     if (dateFrom) {
-      conditions.push({ dateFrom: { gte: dateFrom } })
+      where.productionDate = { gte: new Date(dateFrom) }
     }
+
     if (dateTo) {
-      conditions.push({ dateTo: { lte: dateTo } })
-    }
-    if (fileFormat) {
-      conditions.push({ fileFormat })
-    }
-    if (category) {
-      conditions.push({ categories: { has: category } })
-    }
-    if (search) {
-      conditions.push({
-        OR: [
-          { title: { contains: search } },
-          { abstract: { contains: search } },
-          { purpose: { contains: search } },
-        ],
-      })
+      where.productionDate = {
+        ...(where.productionDate || {}),
+        lte: new Date(dateTo),
+      }
     }
 
-    const where = conditions.length > 0 ? { AND: conditions } : {}
-
-    const [metadata, total] = await Promise.all([
-      prisma.metadata.findMany({
+    try {
+      console.log("Executing Prisma query with:", {
         where,
         skip,
         take: limit,
         orderBy: {
-          [sortBy]: sortOrder,
+          [mapSortField(sortBy)]: sortOrder,
         },
-      }),
-      prisma.metadata.count({ where }),
-    ])
+      })
 
-    return {
-      metadata: metadata.map((item) => ({
-        id: item.id,
-        title: item.title,
-        author: item.author,
-        organization: item.organization,
-        dateFrom: item.dateFrom,
-        dateTo: item.dateTo,
-        abstract: item.abstract,
-        purpose: item.purpose,
-        thumbnailUrl: item.thumbnailUrl,
-        imageName: item.imageName,
-        frameworkType: item.frameworkType,
-        categories: item.categories,
-        coordinateSystem: item.coordinateSystem,
-        projection: item.projection,
-        scale: item.scale,
-        resolution: item.resolution || undefined,
-        accuracyLevel: item.accuracyLevel,
-        completeness: item.completeness || undefined,
-        consistencyCheck: item.consistencyCheck || undefined,
-        validationStatus: item.validationStatus || undefined,
-        fileFormat: item.fileFormat,
-        fileSize: item.fileSize || undefined,
-        numFeatures: item.numFeatures || undefined,
-        softwareReqs: item.softwareReqs || undefined,
-        updateCycle: item.updateCycle || undefined,
-        lastUpdate: item.lastUpdate?.toISOString() || undefined,
-        nextUpdate: item.nextUpdate?.toISOString() || undefined,
-        distributionFormat: item.distributionFormat,
-        accessMethod: item.accessMethod,
-        downloadUrl: item.downloadUrl || undefined,
-        apiEndpoint: item.apiEndpoint || undefined,
-        licenseType: item.licenseType,
-        usageTerms: item.usageTerms,
-        attributionRequirements: item.attributionRequirements,
-        accessRestrictions: item.accessRestrictions,
-        contactPerson: item.contactPerson,
-        email: item.email,
-        department: item.department || undefined,
-        userId: item.userId,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-      })),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      // Execute query and count in parallel using NGDIMetadata table
+      const [metadata, total] = await Promise.all([
+        prisma.nGDIMetadata.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            // Map frontend sort fields to database fields
+            [mapSortField(sortBy)]: sortOrder,
+          },
+          select: {
+            id: true,
+            dataName: true,
+            dataType: true,
+            cloudCoverPercentage: true,
+            productionDate: true,
+            abstract: true,
+            fundamentalDatasets: true,
+          },
+        }),
+        prisma.nGDIMetadata.count({ where }),
+      ])
+
+      console.log("Prisma query results:", {
+        metadataCount: metadata.length,
+        total,
+        firstItem: metadata.length > 0 ? metadata[0] : null,
+      })
+
+      // Map the NGDIMetadata fields to the expected MetadataResponse structure
+      return {
+        metadata: metadata.map((item) => ({
+          id: item.id,
+          title: item.dataName || "Untitled",
+          author: "NGDI", // Default author
+          organization: "NGDI", // Default organization
+          dateFrom: formatDate(item.productionDate),
+          dateTo: formatDate(item.productionDate),
+          abstract: item.abstract || "",
+          purpose: "",
+          thumbnailUrl: "",
+          imageName: "",
+          frameworkType: "",
+          categories: [item.dataType || ""],
+          coordinateSystem: "",
+          projection: "",
+          scale: 0,
+          accuracyLevel: "",
+          fileFormat: "Unknown",
+          distributionFormat: "",
+          accessMethod: "",
+          licenseType: "",
+          usageTerms: "",
+          attributionRequirements: "",
+          accessRestrictions: [],
+          contactPerson: "",
+          email: "",
+          userId: "",
+          createdAt: formatDate(item.productionDate),
+          updatedAt: formatDate(item.productionDate),
+        })),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    } catch (error) {
+      console.error("Error searching NGDIMetadata:", error)
+      throw new HTTPException(500, { message: "Failed to search metadata" })
     }
   },
 
@@ -412,3 +451,24 @@ export const metadataService = {
 }
 
 export default metadataService
+
+// Helper function to map sort fields from frontend to database fields
+function mapSortField(sortBy: string): string {
+  switch (sortBy) {
+    case "title":
+      return "dataName"
+    case "createdAt":
+      return "productionDate"
+    default:
+      return sortBy
+  }
+}
+
+// Helper function to format dates
+function formatDate(date: Date | string | null): string {
+  if (!date) return new Date().toISOString()
+  if (date instanceof Date) {
+    return date.toISOString()
+  }
+  return date
+}
