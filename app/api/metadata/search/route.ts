@@ -21,6 +21,14 @@ export async function GET(req: NextRequest) {
 
     // Use the token from cookies or header
     const token = authToken || headerToken
+    
+    console.log("Metadata search: Token status", {
+      hasAuthToken: !!authToken,
+      authTokenLength: authToken?.length,
+      hasHeaderToken: !!headerToken,
+      headerTokenLength: headerToken?.length,
+      finalToken: token ? `${token.substring(0, 10)}...` : null,
+    })
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -34,33 +42,45 @@ export async function GET(req: NextRequest) {
       `Metadata search proxy: Forwarding request to API server: ${API_URL}/api/metadata/search?${queryString}`
     )
 
-    // Forward the request to the API server
-    const response = await axios.get(
-      `${API_URL}/api/metadata/search?${queryString}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      // Forward the request to the API server
+      const response = await axios.get(
+        `${API_URL}/api/metadata/search?${queryString}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      console.log("Metadata search proxy: Received response from API server", {
+        status: response.status,
+        hasData: !!response.data,
+      })
+
+      // Return the response from the API server
+      return NextResponse.json(response.data)
+    } catch (axiosError) {
+      if (axios.isAxiosError(axiosError)) {
+        console.error("API server error details:", {
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          data: axiosError.response?.data,
+          message: axiosError.message,
+        })
+
+        const status = axiosError.response?.status || 500
+        const message =
+          axiosError.response?.data?.message ||
+          axiosError.response?.data ||
+          "Internal server error"
+
+        return NextResponse.json({ error: message }, { status })
       }
-    )
-
-    console.log("Metadata search proxy: Received response from API server", {
-      status: response.status,
-      hasData: !!response.data,
-    })
-
-    // Return the response from the API server
-    return NextResponse.json(response.data)
+      throw axiosError // Re-throw if not an axios error
+    }
   } catch (error) {
     console.error("Error in metadata search API:", error)
-
-    // Handle axios errors
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status || 500
-      const message = error.response?.data?.message || "Internal server error"
-
-      return NextResponse.json({ error: message }, { status })
-    }
 
     return NextResponse.json(
       { error: "Internal server error" },
