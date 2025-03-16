@@ -105,7 +105,7 @@ function SearchForm() {
 
     const initialSearch = {
       keyword: searchParams?.get("keyword") || "",
-      dataType: searchParams?.get("dataType") || "",
+      dataType: searchParams?.get("dataType") || "all",
       organization: searchParams?.get("organization") || "",
       dateRange: undefined as DateRange | undefined,
     }
