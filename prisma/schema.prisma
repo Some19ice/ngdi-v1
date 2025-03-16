@@ -215,9 +215,9 @@ model NGDIMetadata {
   
   // Description
   /// Summary of the dataset's content and purpose
-  abstract                String
+  abstract                String  @db.Text
   /// Reason the dataset was created
-  purpose                 String
+  purpose                 String  @db.Text
   /// URL to the thumbnail image
   thumbnailUrl            String
   
@@ -248,97 +248,98 @@ model NGDIMetadata {
   // Data Status
   /// Completion status (Complete or Incomplete)
   assessment              String
-  /// How often the dataset is updated
+  /// Frequency of updates (Monthly, Quarterly, etc.)
   updateFrequency         String
   
   // Resource Constraint
-  /// Restrictions on who can access the dataset
-  accessConstraints       String
-  /// Restrictions on how the dataset can be used
-  useConstraints          String
-  /// Additional restrictions not covered by access or use constraints
-  otherConstraints        String
+  /// Limitations on access to the dataset
+  accessConstraints       String  @db.Text
+  /// Limitations on use of the dataset
+  useConstraints          String  @db.Text
+  /// Other constraints or legal prerequisites
+  otherConstraints        String  @db.Text
   
   // Metadata Reference
-  /// Date the metadata was created
+  /// Date when the metadata was created
   metadataCreationDate    String
-  /// Date the metadata was last reviewed
+  /// Date when the metadata was last reviewed
   metadataReviewDate      String
-  /// Name of the metadata contact person
+  /// Name of the contact person for metadata
   metadataContactName     String
-  /// Address of the metadata contact
-  metadataContactAddress  String
-  /// Email of the metadata contact
+  /// Address of the contact person
+  metadataContactAddress  String  @db.Text
+  /// Email of the contact person
   metadataContactEmail    String
-  /// Phone number of the metadata contact
+  /// Phone number of the contact person
   metadataContactPhone    String
   
   // Form 2: Data Quality Information
   // General Section
-  /// Information about the logical integrity of the dataset
-  logicalConsistencyReport String?
-  /// Information about omissions or factors affecting completeness
-  completenessReport      String?
+  /// Report on logical consistency
+  logicalConsistencyReport String?  @db.Text
+  /// Report on completeness
+  completenessReport      String?  @db.Text
   
   // Attribute Accuracy
-  /// Description of the accuracy of the attributes
-  attributeAccuracyReport String?
+  /// Report on attribute accuracy
+  attributeAccuracyReport String?  @db.Text
   
   // Positional Accuracy (stored as JSON)
-  /// Information about horizontal and vertical positional accuracy
+  /// Information about horizontal and vertical accuracy
   positionalAccuracy      Json?
   
   // Source Information (stored as JSON)
-  /// Information about the source material
+  /// Information about the source of the dataset
   sourceInformation       Json?
   
   // Data Processing Information
-  /// Description of the processing steps
-  processingDescription   String
-  /// Software used in processing
-  softwareVersion         String?
-  /// Date when processing occurred
+  /// Description of processing steps
+  processingDescription   String  @db.Text
+  /// Version of software used for processing
+  processingSoftwareVersion String?
+  /// Date when the data was processed
   processedDate           String
   
   // Processor Contact Information
-  /// Name of person responsible for processing
+  /// Name of the processor
   processorName           String
-  /// Email of process contact
+  /// Email of the processor
   processorEmail          String
-  /// Address of process contact
-  processorAddress        String
+  /// Address of the processor
+  processorAddress        String  @db.Text
   
   // Form 3: Data Distribution Information
   // Distributor Information
-  /// Name of the distributing organization
+  /// Name of the distributor
   distributorName         String
   /// Address of the distributor
-  distributorAddress      String
-  /// Email contact for the distributor
+  distributorAddress      String  @db.Text
+  /// Email of the distributor
   distributorEmail        String
-  /// Phone number for the distributor
+  /// Phone number of the distributor
   distributorPhone        String
   /// Website of the distributor
   distributorWebLink      String?
-  /// Social media contact for the distributor
+  /// Social media handle of the distributor
   distributorSocialMedia  String?
   
   // Distribution Details
-  /// Legal statement about liability
-  distributionLiability   String
+  /// Statement of liability
+  distributionLiability   String  @db.Text
   /// Process for custom orders
-  customOrderProcess      String
-  /// Technical requirements for using the data
-  technicalPrerequisites  String
+  customOrderProcess      String  @db.Text
+  /// Technical prerequisites for using the dataset
+  technicalPrerequisites  String  @db.Text
   
   // Standard Order Process
-  /// Cost to obtain the dataset
+  /// Fees for obtaining the dataset
   orderFees               String
-  /// Time required to fulfill orders
+  /// Typical time between order and delivery
   turnaroundTime          String
-  /// How to order the dataset
-  orderingInstructions    String
+  /// Instructions for ordering the dataset
+  orderingInstructions    String  @db.Text
   
+  // User reference
   /// Reference to the user who created this entry
   userId                  String
   user                    User     @relation(fields: [userId], references: [id])

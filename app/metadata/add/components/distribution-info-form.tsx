@@ -300,18 +300,18 @@ export default function DistributionInfoForm({
             name="distributionDetails.customOrderProcess"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Custom Order Process *</FormLabel>
+                <RequiredFormLabel>Custom Order Process</RequiredFormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Enter custom order process"
-                    className="min-h-[100px]"
+                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
+                <FormDescriptionWithTooltip tooltip="Instructions for how users can request customized versions or subsets of the dataset. Include contact methods, expected response times, and any special requirements.">
                   Instructions for how users can request customized versions or
                   subsets of the dataset
-                </FormDescription>
+                </FormDescriptionWithTooltip>
                 <FormMessage />
               </FormItem>
             )}
@@ -322,18 +322,18 @@ export default function DistributionInfoForm({
             name="distributionDetails.technicalPrerequisites"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Technical Prerequisites *</FormLabel>
+                <RequiredFormLabel>Technical Prerequisites</RequiredFormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Enter technical prerequisites"
-                    className="min-h-[100px]"
+                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>
+                <FormDescriptionWithTooltip tooltip="Description of any hardware, software, or technical knowledge required to properly use the dataset. Include minimum system requirements, software versions, and any specialized skills needed.">
                   Description of any hardware, software, or technical knowledge
                   required to properly use the dataset
-                </FormDescription>
+                </FormDescriptionWithTooltip>
                 <FormMessage />
               </FormItem>
             )}

@@ -292,8 +292,8 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
         // Data Processing Information
         processingDescription:
           validatedData.form2.dataProcessingInformation.description,
-        softwareVersion:
-          validatedData.form2.dataProcessingInformation.softwareVersion,
+        processingSoftwareVersion:
+          validatedData.form2.dataProcessingInformation.softwareVersion || null,
         processedDate:
           validatedData.form2.dataProcessingInformation.processedDate,
 
