@@ -295,10 +295,47 @@ function SearchForm() {
         {isLoading ? (
           <SearchResultsSkeleton />
         ) : searchResults.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-6">
               No results found. Try adjusting your search criteria.
             </p>
+
+            <div className="max-w-2xl mx-auto bg-muted/30 p-4 rounded-lg border border-border">
+              <h3 className="font-medium mb-2">Search Tips:</h3>
+              <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+                <li>
+                  Try searching for general terms like &quot;water&quot;,
+                  &quot;boundary&quot;, or &quot;education&quot;
+                </li>
+                <li>Filter by data type using the dropdown menu</li>
+                <li>
+                  If searching by organization, try using common abbreviations
+                  (e.g., &quot;NGDI&quot;)
+                </li>
+                <li>
+                  Use the date range filter to narrow results by time period
+                </li>
+                <li>Check if there are any metadata records in the system</li>
+              </ul>
+            </div>
+
+            <div className="mt-8">
+              <h3 className="font-medium mb-4">Sample Search Categories:</h3>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {dataTypes.slice(0, 6).map((type) => (
+                  <Button
+                    key={type.value}
+                    variant="outline"
+                    onClick={() => {
+                      form.setValue("dataType", type.value)
+                      form.handleSubmit(onSubmit)()
+                    }}
+                  >
+                    {type.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>
