@@ -334,6 +334,7 @@ export async function createMetadata(data: NGDIMetadataFormData) {
     })
 
     revalidatePath("/metadata")
+    revalidatePath("/search/metadata")
     return { success: true, data: metadata }
   } catch (error) {
     if (error instanceof z.ZodError) {

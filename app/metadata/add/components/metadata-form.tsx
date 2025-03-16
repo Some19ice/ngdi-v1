@@ -64,7 +64,7 @@ export function MetadataForm() {
 
       // Short delay before redirecting to ensure toast is seen
       setTimeout(() => {
-        router.push("/metadata")
+        router.push("/search/metadata")
         router.refresh()
       }, 1500)
     } catch (error) {

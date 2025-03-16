@@ -75,7 +75,7 @@ export default function MetadataSearchForm({
       params.set("page", "1")
 
       // Navigate to the search page with the new params
-      router.push(`/metadata?${params.toString()}`)
+      router.push(`/search/metadata?${params.toString()}`)
       setIsPending(false)
     },
     [router]
@@ -90,7 +90,7 @@ export default function MetadataSearchForm({
       sortBy: "createdAt",
       sortOrder: "desc",
     })
-    router.push("/metadata")
+    router.push("/search/metadata")
   }
 
   return (

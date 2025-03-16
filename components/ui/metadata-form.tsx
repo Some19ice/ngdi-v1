@@ -52,7 +52,7 @@ export function MetadataForm() {
 
       if (result.success) {
         toast.success("Metadata saved successfully")
-        router.push("/metadata")
+        router.push("/search/metadata")
       } else {
         if (result.details) {
           result.details.forEach((error) => {
