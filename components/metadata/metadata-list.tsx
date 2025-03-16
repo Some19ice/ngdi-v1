@@ -319,7 +319,12 @@ export function MetadataList({
                   {data.metadata.map((item: MetadataItem) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
-                        {item.title}
+                        <Link
+                          href={`/metadata/${item.id}`}
+                          className="hover:underline text-primary"
+                        >
+                          {item.title}
+                        </Link>
                       </TableCell>
                       <TableCell>
                         {item.cloudCoverPercentage || "N/A"}
