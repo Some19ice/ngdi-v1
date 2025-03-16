@@ -30,7 +30,7 @@ export default async function HomePage() {
                 Nigeria&apos;s Official Geospatial Platform
               </div>
               <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-                Nigeria Geospatial Data Infrastructure Portal
+                National Geospatial Data Infrastructure Portal
               </h1>
               <p className="mb-8 text-lg text-primary-foreground/90 sm:text-xl">
                 A centralized platform for accessing, managing, and sharing
