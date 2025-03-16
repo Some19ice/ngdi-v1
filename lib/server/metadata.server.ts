@@ -20,6 +20,11 @@ export const metadataServerService = {
       sortOrder = "desc",
     } = params
 
+    console.log("Server-side metadata search:", {
+      params,
+      prismaConnected: !!prisma,
+    })
+
     const skip = (page - 1) * limit
 
     // Build where conditions
@@ -38,6 +43,15 @@ export const metadataServerService = {
     }
 
     try {
+      console.log("Executing Prisma query with:", {
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      })
+
       // Execute query and count in parallel
       const [metadata, total] = await Promise.all([
         prisma.metadata.findMany({
@@ -58,6 +72,12 @@ export const metadataServerService = {
         }),
         prisma.metadata.count({ where }),
       ])
+
+      console.log("Prisma query results:", {
+        metadataCount: metadata.length,
+        total,
+        firstItem: metadata.length > 0 ? metadata[0] : null,
+      })
 
       return {
         metadata: metadata.map((item) => ({

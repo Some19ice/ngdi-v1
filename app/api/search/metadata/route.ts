@@ -56,6 +56,16 @@ export async function GET(req: NextRequest) {
       console.log("Search metadata proxy: Received response from API server", {
         status: response.status,
         hasData: !!response.data,
+        dataStructure: response.data ? Object.keys(response.data) : null,
+        success: response.data?.success,
+        dataContent: response.data?.data
+          ? {
+              total: response.data.data.total,
+              currentPage: response.data.data.currentPage,
+              totalPages: response.data.data.totalPages,
+              metadataCount: response.data.data.metadata?.length,
+            }
+          : null,
       })
 
       // Return the response from the API server
@@ -67,6 +77,10 @@ export async function GET(req: NextRequest) {
           statusText: axiosError.response?.statusText,
           data: axiosError.response?.data,
           message: axiosError.message,
+          url: `${API_URL}/api/search/metadata?${queryString}`,
+          headers: {
+            Authorization: `Bearer ${token.substring(0, 5)}...`,
+          },
         })
 
         const status = axiosError.response?.status || 500
