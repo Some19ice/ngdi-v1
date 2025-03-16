@@ -11,9 +11,19 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient }
 export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
-    log: ["error"],
+    log: ["query", "error", "warn"],
     // Configure connection pool with environment variables
     // See: https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#connection-pool
   })
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+
+// Log Prisma connection status
+prisma
+  .$connect()
+  .then(() => {
+    console.log("Prisma connected successfully to the database")
+  })
+  .catch((error) => {
+    console.error("Prisma connection error:", error)
+  })
