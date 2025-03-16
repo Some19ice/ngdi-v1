@@ -108,6 +108,12 @@ export function MetadataList({
       try {
         // Use the API directly if we have an auth token
         if (authToken) {
+          console.log("Fetching metadata with auth token", {
+            url: `/api/metadata/search`,
+            params,
+            authTokenLength: authToken.length,
+          })
+
           const response = await fetch(
             `/api/metadata/search?${new URLSearchParams({
               page: params.page.toString(),
@@ -125,7 +131,15 @@ export function MetadataList({
           )
 
           if (!response.ok) {
-            throw new Error("Failed to fetch metadata")
+            const errorText = await response.text().catch(() => "Unknown error")
+            console.error("Metadata fetch error:", {
+              status: response.status,
+              statusText: response.statusText,
+              errorText,
+            })
+            throw new Error(
+              `Failed to fetch metadata: ${response.status} ${response.statusText} - ${errorText}`
+            )
           }
 
           const result = await response.json()
@@ -133,6 +147,7 @@ export function MetadataList({
         }
 
         // Fall back to the service if no auth token
+        console.log("Fetching metadata with service (no auth token)", params)
         const result = await metadataService.searchMetadata(params)
         return {
           metadata: result.metadata,
