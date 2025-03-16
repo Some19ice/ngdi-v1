@@ -49,7 +49,7 @@ export default function MetadataSearchForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       search: searchParams.search || "",
-      category: searchParams.category || "",
+      category: searchParams.category || "all",
       dateFrom: searchParams.dateFrom || "",
       dateTo: searchParams.dateTo || "",
       sortBy: searchParams.sortBy || "createdAt",
@@ -84,7 +84,7 @@ export default function MetadataSearchForm({
   const handleReset = () => {
     form.reset({
       search: "",
-      category: "",
+      category: "all",
       dateFrom: "",
       dateTo: "",
       sortBy: "createdAt",
@@ -131,7 +131,7 @@ export default function MetadataSearchForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
+                        <SelectItem value="all">All Categories</SelectItem>
                         <SelectItem value="geodeticData">
                           Geodetic Data
                         </SelectItem>

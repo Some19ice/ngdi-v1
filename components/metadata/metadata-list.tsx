@@ -55,7 +55,7 @@ export function MetadataList({
 }: MetadataListProps) {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("")
+  const [category, setCategory] = useState("all")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string>("createdAt")
@@ -247,7 +247,7 @@ export function MetadataList({
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All types</SelectItem>
+              <SelectItem value="all">All types</SelectItem>
               <SelectItem value="vector">Vector</SelectItem>
               <SelectItem value="raster">Raster</SelectItem>
               <SelectItem value="housing">Housing</SelectItem>
