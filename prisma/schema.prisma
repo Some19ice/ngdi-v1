@@ -296,7 +296,7 @@ model NGDIMetadata {
   /// Description of processing steps
   processingDescription   String  @db.Text
   /// Version of software used for processing
-  processingSoftwareVersion String?
+  softwareVersion         String?
   /// Date when the data was processed
   processedDate           String
   
