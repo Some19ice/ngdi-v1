@@ -43,7 +43,18 @@ export const metadataService = {
   ): Promise<MetadataSearchResponse> {
     const response = await api.get<ApiResponse<MetadataSearchResponse>>(
       "/metadata/search",
-      { params }
+      {
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          category: params.category,
+          dateFrom: params.dateFrom,
+          dateTo: params.dateTo,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+        },
+      }
     )
     return response.data.data
   },
@@ -53,7 +64,18 @@ export const metadataService = {
   ): Promise<MetadataSearchResponse> {
     const response = await api.get<ApiResponse<MetadataSearchResponse>>(
       "/metadata/user",
-      { params }
+      {
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          category: params.category,
+          dateFrom: params.dateFrom,
+          dateTo: params.dateTo,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+        },
+      }
     )
     return response.data.data
   },
