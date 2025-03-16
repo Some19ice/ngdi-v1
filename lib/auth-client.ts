@@ -369,20 +369,45 @@ export const authClient = {
   async getSession(): Promise<Session | null> {
     console.log("getSession called")
 
-    // Check for auth token in cookies
-    const token = getCookie(AUTH_COOKIE_NAME)
-
-    console.log("Token status:", {
-      hasToken: !!token,
-      tokenLength: token?.length,
-    })
-
-    if (!token) {
-      console.log("No token found, returning null session")
-      return null
-    }
-
     try {
+      // First try to get session from the server-side auth check endpoint
+      const response = await fetch("/api/auth/check", {
+        method: "GET",
+        credentials: "include", // Important: include cookies in the request
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Auth check response:", data)
+
+        if (data.authenticated && data.user) {
+          return {
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name || "",
+              role: data.user.role,
+            },
+            expires: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
+            accessToken: getCookie(AUTH_COOKIE_NAME) || "",
+            refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+          }
+        }
+      }
+
+      // Fallback to client-side cookie check
+      const token = getCookie(AUTH_COOKIE_NAME)
+
+      console.log("Token status:", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+      })
+
+      if (!token) {
+        console.log("No token found, returning null session")
+        return null
+      }
+
       console.log("Validating token...")
       const validationResult = await validateJwtToken(token)
       console.log("Token validation result:", validationResult)

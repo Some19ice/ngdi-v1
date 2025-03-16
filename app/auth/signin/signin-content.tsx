@@ -55,11 +55,39 @@ export function SignInContent() {
 
       // Small delay to ensure cookies are set
       setDebugInfo("Setting timeout for redirect...")
-      setTimeout(() => {
-        setDebugInfo(`Redirecting to ${returnUrl}...`)
-        router.push(returnUrl)
-        router.refresh()
-      }, 500)
+      setTimeout(async () => {
+        // Verify that the session is properly set by checking with the server
+        try {
+          const response = await fetch("/api/auth/check", {
+            method: "GET",
+            credentials: "include",
+          })
+
+          const authCheck = await response.json()
+          setDebugInfo(`Auth check result: ${JSON.stringify(authCheck)}`)
+
+          if (authCheck.authenticated) {
+            setDebugInfo(
+              `Authentication confirmed, redirecting to ${returnUrl}...`
+            )
+            router.push(returnUrl)
+            router.refresh()
+          } else {
+            setDebugInfo(
+              `Authentication failed after login: ${authCheck.message}`
+            )
+            toast.error(
+              "Login succeeded but session was not established. Please try again."
+            )
+          }
+        } catch (checkError) {
+          console.error("Auth check error:", checkError)
+          setDebugInfo(`Auth check error: ${checkError}`)
+          // Still redirect even if the check fails
+          router.push(returnUrl)
+          router.refresh()
+        }
+      }, 1000) // Increased timeout to ensure cookies are set
     } catch (error: any) {
       console.error("Login failed:", error)
 

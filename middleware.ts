@@ -109,7 +109,9 @@ export async function middleware(request: NextRequest) {
       `Redirecting from protected route ${path} to signin due to missing auth token`
     )
     // If not authenticated and trying to access a protected route, redirect to signin
-    return NextResponse.redirect(new URL("/auth/signin", request.url))
+    const redirectUrl = new URL("/auth/signin", request.url)
+    redirectUrl.searchParams.set("from", path)
+    return NextResponse.redirect(redirectUrl)
   }
 
   // Continue to the requested page
