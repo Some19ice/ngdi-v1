@@ -9,6 +9,14 @@ import auth from "./auth/index"
 import { userRouter, adminRouter } from "./user.routes.new"
 import { app as api } from "../config/swagger"
 import { z } from "zod"
+import { Hono } from "hono"
+import { userRoutes } from "./user.routes"
+import { authRoutes } from "./auth.routes"
+import { metadataRoutes } from "./metadata.routes"
+import { adminRoutes } from "./admin.routes"
+import { rateLimit } from "../middleware/rate-limit.middleware"
+import { errorHandler } from "../middleware/error-handler.middleware"
+import searchRouter from "./search.routes"
 
 // Global middlewares
 api.use("*", logger())
@@ -66,6 +74,9 @@ api.onError((err, c) => {
 api.route("/auth", auth)
 api.route("/users", userRouter)
 api.route("/admin/users", adminRouter)
+api.route("/metadata", metadataRoutes)
+api.route("/admin", adminRoutes)
+api.route("/search", searchRouter)
 
 // Health check route
 const healthCheckResponse = z.object({
@@ -98,4 +109,58 @@ api.openapi(
     })
 )
 
-export default api
+// Create the main Hono app
+const app = new Hono()
+
+// Apply global middleware
+app.use("*", cors())
+app.use("*", logger())
+app.use("*", prettyJSON())
+app.use("*", secureHeaders())
+app.use("*", rateLimit())
+app.use("*", errorHandler())
+
+// Health check endpoint
+app.get("/", (c) => {
+  return c.json({
+    status: "ok",
+    message: "NGDI API is running",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+  })
+})
+
+// Mount the routes
+app.route("/auth", authRoutes)
+app.route("/users", userRoutes)
+app.route("/metadata", metadataRoutes)
+app.route("/admin", adminRoutes)
+app.route("/search", searchRouter)
+
+// Add a route for /search/metadata that maps to /metadata/search
+app.get("/search/metadata", async (c) => {
+  // Forward the request to /metadata/search
+  const url = new URL(c.req.url)
+  const searchParams = url.searchParams
+
+  // Create a new URL for the internal endpoint
+  const internalUrl = new URL(url.origin)
+  internalUrl.pathname = "/metadata/search"
+
+  // Copy all search parameters
+  searchParams.forEach((value, key) => {
+    internalUrl.searchParams.append(key, value)
+  })
+
+  // Forward the request
+  const response = await fetch(internalUrl.toString(), {
+    method: "GET",
+    headers: c.req.headers,
+  })
+
+  // Return the response
+  const data = await response.json()
+  return c.json(data)
+})
+
+export default app
