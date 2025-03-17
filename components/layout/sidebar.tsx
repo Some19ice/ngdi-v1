@@ -279,16 +279,30 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                           "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-text))] hover:bg-[hsl(var(--sidebar-active))] hover:brightness-95 dark:bg-[hsl(var(--sidebar-active))] dark:text-[hsl(var(--sidebar-active-text))] font-medium shadow-sm border-[hsl(var(--sidebar-active))] dark:border-[hsl(var(--sidebar-active))] ring-offset-background transition-colors",
                         !isActive &&
                           "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
-                        isCollapsed ? "px-2" : "px-3"
+                        isCollapsed && isActive && "p-1.5 rounded-md",
+                        isCollapsed &&
+                          !isActive &&
+                          "px-2 flex justify-center items-center",
+                        !isCollapsed && "px-3"
                       )}
                       size={isCollapsed ? "icon" : "sm"}
                     >
-                      <Icon
+                      <div
                         className={cn(
-                          "h-4 w-4 shrink-0",
-                          isActive && "text-[hsl(var(--sidebar-active-text))]"
+                          isCollapsed &&
+                            isActive &&
+                            "p-1 rounded-full flex items-center justify-center"
                         )}
-                      />
+                      >
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 shrink-0",
+                            isActive &&
+                              "text-[hsl(var(--sidebar-active-text))]",
+                            isCollapsed && "h-5 w-5"
+                          )}
+                        />
+                      </div>
                       {!isCollapsed && (
                         <span
                           className={cn("text-sm", isActive && "font-medium")}
@@ -308,7 +322,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
                       )}
                       {isActive && isCollapsed && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
+                        <span className="absolute left-0 right-0 bottom-0 h-1 bg-[hsl(var(--sidebar-active-text))] rounded-sm" />
                       )}
                     </Button>
                   </Link>
@@ -341,16 +355,29 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                       "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-text))] hover:bg-[hsl(var(--sidebar-active))] hover:brightness-95 dark:bg-[hsl(var(--sidebar-active))] dark:text-[hsl(var(--sidebar-active-text))] font-medium shadow-sm border-[hsl(var(--sidebar-active))] dark:border-[hsl(var(--sidebar-active))] ring-offset-background transition-colors",
                     !isActive &&
                       "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
-                    isCollapsed ? "px-2" : "px-3"
+                    isCollapsed && isActive && "p-1.5 rounded-md",
+                    isCollapsed &&
+                      !isActive &&
+                      "px-2 flex justify-center items-center",
+                    !isCollapsed && "px-3"
                   )}
                   size={isCollapsed ? "icon" : "sm"}
                 >
-                  <Icon
+                  <div
                     className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive && "text-[hsl(var(--sidebar-active-text))]"
+                      isCollapsed &&
+                        isActive &&
+                        "p-1 rounded-full flex items-center justify-center"
                     )}
-                  />
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        isActive && "text-[hsl(var(--sidebar-active-text))]",
+                        isCollapsed && "h-5 w-5"
+                      )}
+                    />
+                  </div>
                   {!isCollapsed && (
                     <span className={cn("text-sm", isActive && "font-medium")}>
                       {item.title}
@@ -360,7 +387,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
                   )}
                   {isActive && isCollapsed && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
+                    <span className="absolute left-0 right-0 bottom-0 h-1 bg-[hsl(var(--sidebar-active-text))] rounded-sm" />
                   )}
                 </Button>
               </Link>
