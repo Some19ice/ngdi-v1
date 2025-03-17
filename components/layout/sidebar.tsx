@@ -276,7 +276,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                       className={cn(
                         "w-full justify-start gap-2 relative",
                         isActive &&
-                          "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
+                          "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-text))] hover:bg-[hsl(var(--sidebar-active))] hover:brightness-95 dark:bg-[hsl(var(--sidebar-active))] dark:text-[hsl(var(--sidebar-active-text))] font-medium shadow-sm border-[hsl(var(--sidebar-active))] dark:border-[hsl(var(--sidebar-active))] ring-offset-background transition-colors",
                         !isActive &&
                           "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
                         isCollapsed ? "px-2" : "px-3"
@@ -290,7 +290,9 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                         )}
                       />
                       {!isCollapsed && (
-                        <span className="flex-grow truncate text-sm">
+                        <span
+                          className={cn("text-sm", isActive && "font-medium")}
+                        >
                           {item.title}
                         </span>
                       )}
@@ -303,7 +305,10 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                         </Badge>
                       )}
                       {isActive && !isCollapsed && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
+                      )}
+                      {isActive && isCollapsed && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
                       )}
                     </Button>
                   </Link>
@@ -333,7 +338,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                   className={cn(
                     "w-full justify-start gap-2 relative",
                     isActive &&
-                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
+                      "bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-text))] hover:bg-[hsl(var(--sidebar-active))] hover:brightness-95 dark:bg-[hsl(var(--sidebar-active))] dark:text-[hsl(var(--sidebar-active-text))] font-medium shadow-sm border-[hsl(var(--sidebar-active))] dark:border-[hsl(var(--sidebar-active))] ring-offset-background transition-colors",
                     !isActive &&
                       "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
                     isCollapsed ? "px-2" : "px-3"
@@ -344,10 +349,15 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                     className={cn("h-4 w-4 shrink-0", isActive && "text-white")}
                   />
                   {!isCollapsed && (
-                    <span className="text-sm">{item.title}</span>
+                    <span className={cn("text-sm", isActive && "font-medium")}>
+                      {item.title}
+                    </span>
                   )}
                   {isActive && !isCollapsed && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
+                  )}
+                  {isActive && isCollapsed && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
                   )}
                 </Button>
               </Link>
