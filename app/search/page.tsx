@@ -96,6 +96,10 @@ function SearchForm() {
       console.log("Auth token from cookie:", {
         hasToken: !!token,
         tokenLength: token?.length,
+        cookieString:
+          document.cookie.length > 0
+            ? `${document.cookie.substring(0, 20)}...`
+            : "empty",
       })
 
       if (token) {
@@ -110,6 +114,23 @@ function SearchForm() {
               tokenLength: storedToken.length,
             })
             setAuthToken(storedToken)
+          } else {
+            // Try to get token from API directly
+            fetch("/api/auth/session")
+              .then((response) => response.json())
+              .then((data) => {
+                console.log("Auth session response:", {
+                  success: !!data,
+                  hasToken: !!data?.accessToken,
+                  tokenLength: data?.accessToken?.length,
+                })
+                if (data?.accessToken) {
+                  setAuthToken(data.accessToken)
+                }
+              })
+              .catch((error) => {
+                console.error("Error fetching auth session:", error)
+              })
           }
         } catch (error) {
           console.error("Error accessing localStorage:", error)
@@ -121,7 +142,7 @@ function SearchForm() {
 
     // Set up an interval to periodically check for token changes
     const tokenCheckInterval = setInterval(getToken, 5000)
-
+    
     return () => clearInterval(tokenCheckInterval)
   }, [])
 
