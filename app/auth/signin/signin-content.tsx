@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { authClient } from "@/lib/auth-client"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 export function SignInContent() {
@@ -26,6 +26,7 @@ export function SignInContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
   const returnUrl = searchParams?.get("from") || "/"
+  const { login } = useAuth()
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -38,56 +39,18 @@ export function SignInContent() {
 
     try {
       console.log(`Attempting to sign in with email: ${email}`)
-      setDebugInfo(`Calling authClient.login with email: ${email}...`)
+      setDebugInfo(`Calling login with email: ${email}...`)
 
-      const session = await authClient.login(email, password, rememberMe)
+      await login(email, password)
 
-      setDebugInfo(
-        `Sign-in successful, session received. User role: ${session.user?.role}`
-      )
-      console.log("Sign-in successful, session:", {
-        hasUser: !!session.user,
-        userRole: session.user?.role,
-        expires: session.expires,
-      })
+      setDebugInfo(`Sign-in successful, redirecting to ${returnUrl}`)
+      console.log("Sign-in successful, redirecting to:", returnUrl)
 
+      // Show success toast
       toast.success("Signed in successfully")
 
-      // Small delay to ensure cookies are set
-      setDebugInfo("Setting timeout for redirect...")
-      setTimeout(async () => {
-        // Verify that the session is properly set by checking with the server
-        try {
-          const response = await fetch("/api/auth/check", {
-            method: "GET",
-            credentials: "include",
-          })
-
-          const authCheck = await response.json()
-          setDebugInfo(`Auth check result: ${JSON.stringify(authCheck)}`)
-
-          if (authCheck.authenticated) {
-            setDebugInfo(
-              `Authentication confirmed, redirecting to ${returnUrl}...`
-            )
-            router.push(returnUrl)
-            router.refresh()
-          } else {
-            setDebugInfo(
-              `Authentication failed after login: ${authCheck.message}`
-            )
-            toast.error(
-              "Login succeeded but session was not established. Please try again."
-            )
-          }
-        } catch (checkError) {
-          console.error("Auth check error:", checkError)
-          setDebugInfo(`Auth check error: ${checkError}`)
-          // Still redirect even if the check fails
-          router.push(returnUrl)
-          router.refresh()
-        }
-      }, 1000) // Increased timeout to ensure cookies are set
+      // Use router.push instead of window.location for client-side routing
+      router.push(returnUrl)
     } catch (error: any) {
       console.error("Login failed:", error)
 

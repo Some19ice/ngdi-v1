@@ -40,12 +40,12 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap gap-4">
                 {isAuthenticated ? (
-                  <Link href="/">
+                  <Link href="/search">
                     <Button
                       size="lg"
                       className="bg-white text-primary hover:bg-white/90"
                     >
-                      Go to Dashboard
+                      Explore the Portal
                     </Button>
                   </Link>
                 ) : (
