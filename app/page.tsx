@@ -1,7 +1,8 @@
 import { cookies } from "next/headers"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
+import { ImageCarousel } from "@/components/landing/image-carousel"
+import { landingImages } from "@/lib/landing-images"
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic"
@@ -71,21 +72,7 @@ export default async function HomePage() {
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <div className="relative h-[400px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 backdrop-blur-sm"></div>
-                <Image
-                  src="/images/stakeholders.gif"
-                  alt="Nigeria Map Visualization"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-6 text-white">
-                  <p className="font-medium">
-                    Stakeholders in the Geospatial Data Infrastructure
-                  </p>
-                </div>
-              </div>
+              <ImageCarousel images={landingImages} />
             </div>
           </div>
         </div>
