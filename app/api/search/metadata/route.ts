@@ -6,7 +6,7 @@ import axios from "axios"
 // In production, we need to use the local API routes from the packages directory
 const isProduction = process.env.NODE_ENV === "production"
 const API_URL = isProduction
-  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app/api"
+  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app"
   : "http://localhost:3001"
 
 export async function GET(req: NextRequest) {
@@ -37,18 +37,18 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     const queryString = searchParams.toString()
 
+    // Construct the correct API URL
+    const apiEndpoint = `${API_URL}/api/search/metadata?${queryString}`
+
     console.log(
-      `Search metadata proxy: Forwarding request to API server: ${API_URL}/api/search/metadata?${queryString}`
+      `Search metadata proxy: Forwarding request to API server: ${apiEndpoint}`
     )
 
     try {
       // Forward the request to the API server
-      const response = await axios.get(
-        `${API_URL}/api/search/metadata?${queryString}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }
-      )
+      const response = await axios.get(apiEndpoint, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
 
       console.log("Search metadata proxy: Received response from API server", {
         status: response.status,
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
           statusText: axiosError.response?.statusText,
           data: axiosError.response?.data,
           message: axiosError.message,
-          url: `${API_URL}/api/search/metadata?${queryString}`,
+          url: apiEndpoint,
           headers: token
             ? { Authorization: `Bearer ${token.substring(0, 5)}...` }
             : "No auth token",
