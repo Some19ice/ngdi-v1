@@ -95,8 +95,9 @@ export async function GET(req: NextRequest) {
         email,
         role,
       })
-      
-      return NextResponse.json(
+
+      // Create response
+      const response = NextResponse.json(
         {
           authenticated: true,
           user: {
@@ -111,6 +112,30 @@ export async function GET(req: NextRequest) {
         },
         { status: 200 }
       )
+
+      // Ensure cookies are set on the response - this helps with client-side auth
+      if (authToken) {
+        response.cookies.set("auth_token", authToken, {
+          path: "/",
+          httpOnly: false, // Allow JavaScript access
+          secure: process.env.NODE_ENV === "production", // Secure in production
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+        })
+      }
+
+      // Also set refresh token if available
+      if (refreshToken) {
+        response.cookies.set("refresh_token", refreshToken, {
+          path: "/",
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+        })
+      }
+
+      return response
     } catch (error) {
       console.error("Auth check: Error decoding token:", error)
       return NextResponse.json(

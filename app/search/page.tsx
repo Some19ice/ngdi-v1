@@ -91,20 +91,19 @@ function SearchForm() {
   // Get auth token on component mount
   useEffect(() => {
     const getToken = () => {
+      // Track if we've set a token to avoid duplicates
+      let hasSetToken = false
+
       // Try to get token from cookie
       const token = getCookie("auth_token")
-      console.log("Auth token from cookie:", {
-        hasToken: !!token,
-        tokenLength: token?.length,
-        cookieString:
-          document.cookie.length > 0
-            ? `${document.cookie.substring(0, 20)}...`
-            : "empty",
-      })
 
       if (token) {
+        console.log("Auth token from cookie:", {
+          hasToken: true,
+          tokenLength: token.length,
+        })
         setAuthToken(token)
-        return
+        return // Exit early if token found
       }
 
       // If no token in cookie, check localStorage as fallback
@@ -116,14 +115,19 @@ function SearchForm() {
             tokenLength: storedToken.length,
           })
           setAuthToken(storedToken)
-          return
+          return // Exit early if token found
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error)
       }
 
       // If still no token, try to get it from API directly
-      fetch("/api/auth/check")
+      console.log(
+        "No token found in cookie or localStorage, trying API auth check"
+      )
+      fetch("/api/auth/check", {
+        credentials: "include", // Important: include cookies in the request
+      })
         .then((response) => response.json())
         .then((data) => {
           console.log("Auth check response:", {
@@ -131,22 +135,19 @@ function SearchForm() {
             authenticated: data?.authenticated,
             hasUser: !!data?.user,
           })
+
           if (data?.authenticated && data?.user) {
-            // Get token from cookie instead since the check endpoint doesn't return tokens
-            const cookieToken = document.cookie
-              .split("; ")
-              .find((row) => row.startsWith("auth_token="))
-              ?.split("=")[1]
-
-            console.log("Auth token from cookie:", {
-              hasToken: !!cookieToken,
-              tokenLength: cookieToken?.length,
-              cookieString: cookieToken ? "present" : "empty",
-            })
-
-            if (cookieToken) {
-              setAuthToken(cookieToken)
-            }
+            // After successful auth, check for cookies again
+            setTimeout(() => {
+              const cookieToken = getCookie("auth_token")
+              if (cookieToken) {
+                console.log("Auth token from cookie after auth check:", {
+                  hasToken: true,
+                  tokenLength: cookieToken.length,
+                })
+                setAuthToken(cookieToken)
+              }
+            }, 100) // Small delay to allow cookies to be set
           }
         })
         .catch((error) => {
@@ -157,7 +158,8 @@ function SearchForm() {
     getToken()
 
     // Set up an interval to periodically check for token changes
-    const tokenCheckInterval = setInterval(getToken, 5000)
+    // Use a longer interval to reduce duplicate checks
+    const tokenCheckInterval = setInterval(getToken, 10000)
     
     return () => clearInterval(tokenCheckInterval)
   }, [])
