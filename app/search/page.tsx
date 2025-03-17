@@ -104,38 +104,54 @@ function SearchForm() {
 
       if (token) {
         setAuthToken(token)
-      } else {
-        // If no token in cookie, check localStorage as fallback
-        try {
-          const storedToken = localStorage.getItem("auth_token")
-          if (storedToken) {
-            console.log("Auth token from localStorage:", {
-              hasToken: true,
-              tokenLength: storedToken.length,
-            })
-            setAuthToken(storedToken)
-          } else {
-            // Try to get token from API directly
-            fetch("/api/auth/session")
-              .then((response) => response.json())
-              .then((data) => {
-                console.log("Auth session response:", {
-                  success: !!data,
-                  hasToken: !!data?.accessToken,
-                  tokenLength: data?.accessToken?.length,
-                })
-                if (data?.accessToken) {
-                  setAuthToken(data.accessToken)
-                }
-              })
-              .catch((error) => {
-                console.error("Error fetching auth session:", error)
-              })
-          }
-        } catch (error) {
-          console.error("Error accessing localStorage:", error)
-        }
+        return
       }
+
+      // If no token in cookie, check localStorage as fallback
+      try {
+        const storedToken = localStorage.getItem("auth_token")
+        if (storedToken) {
+          console.log("Auth token from localStorage:", {
+            hasToken: true,
+            tokenLength: storedToken.length,
+          })
+          setAuthToken(storedToken)
+          return
+        }
+      } catch (error) {
+        console.error("Error accessing localStorage:", error)
+      }
+
+      // If still no token, try to get it from API directly
+      fetch("/api/auth/check")
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("Auth check response:", {
+            success: !!data,
+            authenticated: data?.authenticated,
+            hasUser: !!data?.user,
+          })
+          if (data?.authenticated && data?.user) {
+            // Get token from cookie instead since the check endpoint doesn't return tokens
+            const cookieToken = document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("auth_token="))
+              ?.split("=")[1]
+
+            console.log("Auth token from cookie:", {
+              hasToken: !!cookieToken,
+              tokenLength: cookieToken?.length,
+              cookieString: cookieToken ? "present" : "empty",
+            })
+
+            if (cookieToken) {
+              setAuthToken(cookieToken)
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching auth session:", error)
+        })
     }
 
     getToken()
