@@ -197,16 +197,39 @@ function SearchForm() {
       searchParams.set("page", page.toString())
       searchParams.set("limit", "9") // Show 9 items per page
 
-      if (data.keyword) searchParams.set("search", data.keyword)
-      if (data.dataType && data.dataType !== "all")
+      // Add search term and ensure it's properly formatted
+      if (data.keyword && data.keyword.trim()) {
+        const cleanKeyword = data.keyword.trim()
+        searchParams.set("search", cleanKeyword)
+        console.log(`Adding search term: "${cleanKeyword}"`)
+      }
+
+      // Add category filter
+      if (data.dataType && data.dataType !== "all") {
         searchParams.set("category", data.dataType)
-      if (data.organization) searchParams.set("organization", data.organization)
+        console.log(`Adding category filter: ${data.dataType}`)
+      }
+
+      // Add organization filter
+      if (data.organization && data.organization.trim()) {
+        searchParams.set("organization", data.organization.trim())
+        console.log(`Adding organization filter: ${data.organization}`)
+      }
+
+      // Add date filters
       if (data.dateRange?.from) {
-        searchParams.set("dateFrom", data.dateRange.from.toISOString())
+        const dateFrom = data.dateRange.from.toISOString()
+        searchParams.set("dateFrom", dateFrom)
+        console.log(`Adding date from: ${dateFrom}`)
       }
+
       if (data.dateRange?.to) {
-        searchParams.set("dateTo", data.dateRange.to.toISOString())
+        const dateTo = data.dateRange.to.toISOString()
+        searchParams.set("dateTo", dateTo)
+        console.log(`Adding date to: ${dateTo}`)
       }
+
+      const apiUrl = `/api/search/metadata?${searchParams.toString()}`
 
       // Get the latest token before making the request
       const currentToken =
@@ -215,20 +238,18 @@ function SearchForm() {
         authToken
 
       console.log("Fetching search results:", {
-        url: `/api/search/metadata?${searchParams.toString()}`,
+        url: apiUrl,
         hasAuthToken: !!currentToken,
         authTokenLength: currentToken?.length,
+        params: Object.fromEntries(searchParams.entries()),
       })
 
       // Fetch data from API with auth token if available
-      const response = await fetch(
-        `/api/search/metadata?${searchParams.toString()}`,
-        {
-          headers: currentToken
-            ? { Authorization: `Bearer ${currentToken}` }
-            : undefined,
-        }
-      )
+      const response = await fetch(apiUrl, {
+        headers: currentToken
+          ? { Authorization: `Bearer ${currentToken}` }
+          : undefined,
+      })
 
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`)
@@ -256,6 +277,19 @@ function SearchForm() {
   }
 
   async function onSubmit(data: SearchFormValues) {
+    // Debug log
+    console.log("Search form submitted with:", {
+      keyword: data.keyword || "(empty)",
+      dataType: data.dataType || "(all)",
+      organization: data.organization || "(none)",
+      dateRange: data.dateRange
+        ? {
+            from: data.dateRange.from?.toISOString(),
+            to: data.dateRange.to?.toISOString(),
+          }
+        : "(none)",
+    })
+
     // Update URL with search params
     const params = new URLSearchParams()
     if (data.keyword) params.set("keyword", data.keyword)
@@ -269,7 +303,9 @@ function SearchForm() {
     }
     params.set("page", "1") // Reset to first page on new search
 
-    router.push(`/search?${params.toString()}`)
+    const searchUrl = `/search?${params.toString()}`
+    console.log("Navigating to:", searchUrl)
+    router.push(searchUrl)
 
     // Fetch results
     fetchSearchResults(data, 1)

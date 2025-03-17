@@ -31,15 +31,56 @@ export const metadataServerService = {
     const where: any = {}
 
     if (search) {
-      // Enhanced search across all relevant fields
+      // Enhanced search across all relevant fields with wildcards for better matching
       where.OR = [
+        // Main search fields with wildcard on both sides
         { dataName: { contains: search, mode: "insensitive" } },
         { abstract: { contains: search, mode: "insensitive" } },
         { dataType: { contains: search, mode: "insensitive" } },
-        { fundamentalDatasets: { contains: search, mode: "insensitive" } },
-        // Add a search for IDs that start with the search term
+
+        // Location-based searches - important for searching by place names
+        { country: { contains: search, mode: "insensitive" } },
+        { state: { contains: search, mode: "insensitive" } },
+        { lga: { contains: search, mode: "insensitive" } },
+        { townCity: { contains: search, mode: "insensitive" } },
+        { geopoliticalZone: { contains: search, mode: "insensitive" } },
+
+        // ID-based search (exact start match)
         { id: { startsWith: search } },
       ]
+
+      // For PostgreSQL JSON search
+      try {
+        // Try to add a JSON path query for fundamentalDatasets
+        // Check if the field exists in any string value of the JSON
+        where.OR.push({
+          fundamentalDatasets: {
+            path: ["$.**"],
+            string_contains: search,
+          },
+        })
+      } catch (e) {
+        console.log("JSON path search not supported:", e)
+
+        // Fallback: Try a string-based search if database is SQLite or doesn't support JSON operators
+        try {
+          where.OR.push({
+            fundamentalDatasets: {
+              contains: search,
+            },
+          })
+        } catch (e2) {
+          console.log("Basic JSON contains search failed:", e2)
+        }
+      }
+
+      // Debug log the search term and condition
+      console.log("Search condition added:", {
+        searchTerm: search,
+        conditionCount: where.OR.length,
+        searchLocations: true,
+        searchJSON: true,
+      })
     }
 
     if (category) {
@@ -58,6 +99,15 @@ export const metadataServerService = {
           { abstract: { contains: category, mode: "insensitive" } },
         ]
       }
+
+      // Debug log the category filter
+      console.log("Category filter added:", {
+        category,
+        condition:
+          category === "vector" || category === "raster"
+            ? { dataType: { equals: category, mode: "insensitive" } }
+            : { OR: where.OR },
+      })
     }
 
     try {

@@ -41,13 +41,15 @@ export async function GET(request: Request) {
     console.log("Search parameters:", {
       page,
       limit,
-      search,
-      category,
-      dateFrom,
-      dateTo,
+      search: search ? `"${search}"` : "(empty)",
+      searchLength: search?.length,
+      category: category || "(none)",
+      dateFrom: dateFrom || "(none)",
+      dateTo: dateTo || "(none)",
     })
 
     // Call the metadata service with the token
+    console.log("Calling metadata service...")
     const result = await metadataService.searchMetadata({
       page,
       limit,
@@ -55,6 +57,12 @@ export async function GET(request: Request) {
       category,
       dateFrom,
       dateTo,
+    })
+
+    console.log("Search results:", {
+      totalResults: result.total,
+      itemsReturned: result.metadata.length,
+      firstItem: result.metadata.length > 0 ? result.metadata[0].title : "none",
     })
 
     return NextResponse.json({ success: true, data: result })
