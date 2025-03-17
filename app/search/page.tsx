@@ -98,8 +98,6 @@ function SearchForm() {
 
   // Load initial results based on URL parameters
   useEffect(() => {
-    if (!authToken) return // Wait for auth token to be available
-
     const page = parseInt(searchParams?.get("page") || "1", 10)
     setCurrentPage(page)
 
@@ -120,7 +118,7 @@ function SearchForm() {
     }
 
     fetchSearchResults(initialSearch, page)
-  }, [searchParams, authToken])
+  }, [searchParams])
 
   async function fetchSearchResults(data: SearchFormValues, page: number = 1) {
     setIsLoading(true)
@@ -302,7 +300,7 @@ function SearchForm() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading || !authToken}>
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? "Searching..." : "Search"}
               </Button>
             </div>
