@@ -226,16 +226,21 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start gap-2",
+                    "w-full justify-start gap-2 relative",
                     isActive &&
-                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600",
+                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
                     !isActive &&
-                      "hover:bg-ngdi-green-50 hover:text-ngdi-green-500",
+                      "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
                     isCollapsed && "px-2"
                   )}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
+                  <Icon
+                    className={cn("h-5 w-5 shrink-0", isActive && "text-white")}
+                  />
                   {!isCollapsed && <span>{item.title}</span>}
+                  {isActive && !isCollapsed && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
+                  )}
                 </Button>
               </Link>
             )
@@ -252,16 +257,21 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start gap-2",
+                    "w-full justify-start gap-2 relative",
                     isActive &&
-                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600",
+                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
                     !isActive &&
-                      "hover:bg-ngdi-green-50 hover:text-ngdi-green-500",
+                      "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
                     isCollapsed && "px-2"
                   )}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
+                  <Icon
+                    className={cn("h-5 w-5 shrink-0", isActive && "text-white")}
+                  />
                   {!isCollapsed && <span>{item.title}</span>}
+                  {isActive && !isCollapsed && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
+                  )}
                 </Button>
               </Link>
             )
