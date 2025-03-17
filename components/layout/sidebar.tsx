@@ -22,6 +22,9 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  Compass,
+  BookOpen,
 } from "lucide-react"
 import { Permission, Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
@@ -40,12 +43,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 
 interface NavItem {
   title: string
   href: string
   icon: LucideIcon
+  badge?: string
   permission: Permission
+}
+
+interface NavSection {
+  title?: string
+  items: NavItem[]
 }
 
 interface SidebarProps {
@@ -53,8 +64,9 @@ interface SidebarProps {
   onCollapsedChange: (collapsed: boolean) => void
 }
 
-const getMainNavItems = (role?: string): NavItem[] => {
-  const items: NavItem[] = [
+const getMainNavItems = (role?: string): NavSection[] => {
+  // Core navigation items
+  const coreItems: NavItem[] = [
     {
       title: "Home",
       href: "/",
@@ -73,6 +85,10 @@ const getMainNavItems = (role?: string): NavItem[] => {
       icon: Map,
       permission: Permissions.READ_METADATA,
     },
+  ]
+
+  // Content navigation items
+  const contentItems: NavItem[] = [
     {
       title: "Gallery",
       href: "/gallery",
@@ -85,6 +101,10 @@ const getMainNavItems = (role?: string): NavItem[] => {
       icon: Newspaper,
       permission: Permissions.READ_METADATA,
     },
+  ]
+
+  // About navigation items
+  const aboutItems: NavItem[] = [
     {
       title: "About NGDI",
       href: "/about",
@@ -100,29 +120,32 @@ const getMainNavItems = (role?: string): NavItem[] => {
     {
       title: "Publications",
       href: "/publications",
-      icon: FileText,
+      icon: BookOpen,
       permission: Permissions.READ_METADATA,
     },
   ]
 
+  const adminItems: NavItem[] = []
+
   // Add role-specific items
   if (role === UserRole.ADMIN || role === UserRole.NODE_OFFICER) {
-    items.push({
+    adminItems.push({
       title: "Add Metadata",
       href: "/metadata/add",
       icon: PlusCircle,
+      badge: "New",
       permission: Permissions.CREATE_METADATA,
     })
   }
 
   if (role === UserRole.ADMIN) {
-    items.push({
+    adminItems.push({
       title: "Analytics",
       href: "/admin/analytics",
       icon: BarChart,
       permission: Permissions.VIEW_ANALYTICS,
     })
-    items.push({
+    adminItems.push({
       title: "Organizations",
       href: "/admin/organizations",
       icon: Building2,
@@ -130,7 +153,19 @@ const getMainNavItems = (role?: string): NavItem[] => {
     })
   }
 
-  return items
+  // Create sections
+  const sections: NavSection[] = [
+    { title: "Main", items: coreItems },
+    { title: "Content", items: contentItems },
+    { title: "Information", items: aboutItems },
+  ]
+
+  // Only add admin section if there are admin items
+  if (adminItems.length > 0) {
+    sections.push({ title: "Admin", items: adminItems })
+  }
+
+  return sections
 }
 
 const getUserNavItems = (role?: string): NavItem[] => {
@@ -192,7 +227,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
     return null
   }
 
-  const mainNavItems = getMainNavItems(session.user.role)
+  const navSections = getMainNavItems(session.user.role)
   const userNavItems = getUserNavItems(session.user.role)
 
   return (
@@ -208,46 +243,85 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
           isCollapsed ? "justify-center" : "gap-2 px-2"
         )}
       >
-        <Map className="h-6 w-6 shrink-0 text-ngdi-green-500" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-ngdi-green-500/10">
+          <Map className="h-5 w-5 text-ngdi-green-500" />
+        </div>
         {!isCollapsed && (
-          <span className="text-lg font-semibold text-ngdi-green-500">
-            NGDI Portal
+          <span className="text-lg font-semibold text-foreground">
+            NGDI <span className="text-ngdi-green-500">Portal</span>
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-2">
-          {mainNavItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
 
-            return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant={isActive ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start gap-2 relative",
-                    isActive &&
-                      "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
-                    !isActive &&
-                      "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
-                    isCollapsed && "px-2"
-                  )}
-                >
-                  <Icon
-                    className={cn("h-5 w-5 shrink-0", isActive && "text-white")}
-                  />
-                  {!isCollapsed && <span>{item.title}</span>}
-                  {isActive && !isCollapsed && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
-                  )}
-                </Button>
-              </Link>
-            )
-          })}
-        </div>
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
+        {navSections.map((section, index) => (
+          <div key={section.title || index} className="mb-2">
+            {!isCollapsed && section.title && (
+              <div className="mb-2 px-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {section.title}
+                </p>
+                <Separator className="mt-1" />
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
 
-        <div className="mt-auto flex flex-col gap-2">
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button
+                      variant={isActive ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start gap-2 relative",
+                        isActive &&
+                          "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
+                        !isActive &&
+                          "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
+                        isCollapsed ? "px-2" : "px-3"
+                      )}
+                      size={isCollapsed ? "icon" : "sm"}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          isActive && "text-white"
+                        )}
+                      />
+                      {!isCollapsed && (
+                        <span className="flex-grow truncate text-sm">
+                          {item.title}
+                        </span>
+                      )}
+                      {!isCollapsed && item.badge && (
+                        <Badge
+                          variant="outline"
+                          className="ml-auto text-xs h-5 bg-primary/10 text-primary border-primary/20"
+                        >
+                          {item.badge}
+                        </Badge>
+                      )}
+                      {isActive && !isCollapsed && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
+                      )}
+                    </Button>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-auto pt-2">
+        {!isCollapsed && (
+          <div className="mb-2 px-2">
+            <p className="text-xs font-medium text-muted-foreground">Account</p>
+            <Separator className="mt-1" />
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
           {userNavItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -262,13 +336,16 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                       "bg-ngdi-green-500 text-white hover:bg-ngdi-green-600 dark:bg-ngdi-green-500 dark:text-white font-medium",
                     !isActive &&
                       "text-foreground hover:bg-ngdi-green-50 hover:text-ngdi-green-500 dark:text-muted-foreground dark:hover:text-white border-transparent",
-                    isCollapsed && "px-2"
+                    isCollapsed ? "px-2" : "px-3"
                   )}
+                  size={isCollapsed ? "icon" : "sm"}
                 >
                   <Icon
-                    className={cn("h-5 w-5 shrink-0", isActive && "text-white")}
+                    className={cn("h-4 w-4 shrink-0", isActive && "text-white")}
                   />
-                  {!isCollapsed && <span>{item.title}</span>}
+                  {!isCollapsed && (
+                    <span className="text-sm">{item.title}</span>
+                  )}
                   {isActive && !isCollapsed && (
                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4/5 bg-white rounded-r-sm" />
                   )}
@@ -284,9 +361,10 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
             <AlertDialogTrigger asChild>
               <Button
                 variant="ghost"
+                size={isCollapsed ? "icon" : "sm"}
                 className={cn(
-                  "w-full justify-start gap-2 hover:bg-destructive/10 hover:text-destructive",
-                  isCollapsed && "px-2"
+                  "w-full justify-start gap-2 hover:bg-destructive/10 hover:text-destructive text-muted-foreground",
+                  isCollapsed ? "px-2" : "px-3"
                 )}
                 onClick={(e) => {
                   e.preventDefault()
@@ -294,11 +372,11 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 }}
               >
                 {isSigningOut ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-4 w-4" />
                 )}
-                {!isCollapsed && <span>Sign out</span>}
+                {!isCollapsed && <span className="text-sm">Sign out</span>}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -328,7 +406,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto hidden w-9 lg:flex"
+            className="ml-auto mt-2 hidden w-9 lg:flex"
             onClick={() => onCollapsedChange(!isCollapsed)}
           >
             {isCollapsed ? (
