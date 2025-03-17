@@ -98,7 +98,7 @@ export function ImageCarousel({ images, interval = 5000 }: ImageCarouselProps) {
   }
 
   return (
-    <div className="relative h-[400px] w-full max-w-md overflow-hidden rounded-lg shadow-2xl">
+    <div className="relative h-[450px] w-full max-w-lg overflow-hidden rounded-lg shadow-2xl">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 backdrop-blur-sm"></div>
 
       {validImages.map((image, index) => (
@@ -112,10 +112,12 @@ export function ImageCarousel({ images, interval = 5000 }: ImageCarouselProps) {
             src={image.src}
             alt={image.alt}
             fill
-            className="object-cover"
+            className="object-contain p-2"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             priority={index === 0}
             onLoad={() => handleImageLoad(image.src)}
             onError={() => handleImageError(image.src)}
+            quality={85}
           />
         </div>
       ))}
@@ -147,8 +149,10 @@ export function ImageCarousel({ images, interval = 5000 }: ImageCarouselProps) {
 
       {/* Caption */}
       {validImages[currentIndex]?.caption && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-6 text-white">
-          <p className="font-medium">{validImages[currentIndex].caption}</p>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/90 to-transparent p-6 text-white">
+          <p className="font-medium text-center">
+            {validImages[currentIndex].caption}
+          </p>
         </div>
       )}
 

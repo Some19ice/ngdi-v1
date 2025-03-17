@@ -13,7 +13,9 @@ module.exports = {
   images: {
     domains: ["ngdi.gov.ng", "example.com"], // Add your image domains here
     formats: ["image/avif", "image/webp"],
-    unoptimized: true,
+    unoptimized: false,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   experimental: {
     serverActions: true,

@@ -1,27 +1,32 @@
 export const landingImages = [
   {
-    src: "/images/landing/geospatial-data.webp",
-    alt: "Geospatial Data Visualization",
-    caption: "National Geospatial Data Infrastructure",
+    src: "/images/landing/Minister.jpeg",
+    alt: "Minister Stakeholder",
+    caption: "Minister of Science, Technology and Innovation",
   },
   {
-    src: "/images/landing/nigeria-map.webp",
-    alt: "Nigeria Map",
-    caption: "Comprehensive Coverage Across All 36 States",
+    src: "/images/landing/Director1.jpeg",
+    alt: "Director Stakeholder",
+    caption: "Director of Geospatial Data Infrastructure",
   },
   {
-    src: "/images/landing/stakeholders.webp",
-    alt: "Stakeholders Collaboration",
-    caption: "Stakeholders in the Geospatial Data Infrastructure",
+    src: "/images/landing/Dr-I-Bello-1.jpeg",
+    alt: "Dr. I. Bello",
+    caption: "Senior Technical Advisor, Geospatial Data Infrastructure",
   },
   {
-    src: "/images/landing/data-analysis.webp",
-    alt: "Data Analysis",
-    caption: "Advanced Geospatial Analytics and Insights",
+    src: "/images/landing/Group-image.jpeg",
+    alt: "Stakeholders Group Image",
+    caption: "Collaboration Among Key Geospatial Data Stakeholders",
+  },
+  {
+    src: "/images/landing/Vips.jpeg",
+    alt: "VIP Stakeholders",
+    caption: "High-Level Officials Supporting the Initiative",
   },
   {
     src: "/images/landing/stakeholders.gif",
-    alt: "Stakeholders Collaboration",
+    alt: "Stakeholders Animation",
     caption: "Stakeholders in the Geospatial Data Infrastructure",
   },
 ]
