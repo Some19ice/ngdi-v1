@@ -5,8 +5,11 @@ import axios from "axios"
 
 // In production, we need to use the local API routes from the packages directory
 const isProduction = process.env.NODE_ENV === "production"
+
+// Use a different URL for the backend API to avoid redirection loops
+// The frontend and API should be on different domains or ports
 const API_URL = isProduction
-  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app"
+  ? process.env.BACKEND_API_URL || "http://localhost:3001"
   : "http://localhost:3001"
 
 export async function GET(req: NextRequest) {
@@ -37,8 +40,8 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     const queryString = searchParams.toString()
 
-    // Construct the correct API URL
-    const apiEndpoint = `${API_URL}/api/search/metadata?${queryString}`
+    // Construct the correct API URL - use direct path to avoid loops
+    const apiEndpoint = `${API_URL}/search/metadata?${queryString}`
 
     console.log(
       `Search metadata proxy: Forwarding request to API server: ${apiEndpoint}`
