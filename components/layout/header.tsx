@@ -18,7 +18,7 @@ import {
   DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import {
@@ -128,11 +128,25 @@ function LoadingHeader() {
 
 export function Header() {
   const { data: session, status } = useSession()
-  const { logout } = useAuth()
+  const { logout, refreshSession } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const hasRefreshed = useRef(false)
+
+  // Add useEffect to ensure session is refreshed only once when needed
+  useEffect(() => {
+    const refreshUserSession = async () => {
+      // Only refresh if we haven't refreshed before and status is still loading
+      if (!hasRefreshed.current && status === "loading") {
+        await refreshSession()
+        hasRefreshed.current = true
+      }
+    }
+
+    refreshUserSession()
+  }, [refreshSession, status])
 
   const handleSignOut = async () => {
     try {

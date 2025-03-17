@@ -4,8 +4,8 @@ import { Header } from "@/components/layout/header"
 import { Banner } from "@/components/layout/banner"
 import Footer from "@/components/layout/footer"
 import { Sidebar } from "@/components/layout/sidebar"
-import { useState } from "react"
-import { useSession } from "@/lib/auth-context"
+import { useState, useEffect, useRef } from "react"
+import { useSession, useAuth } from "@/lib/auth-context"
 
 export default function RootLayoutClient({
   children,
@@ -13,7 +13,17 @@ export default function RootLayoutClient({
   children: React.ReactNode
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const { refreshSession } = useAuth()
+  const hasRefreshed = useRef(false)
+
+  // Refresh session only once when the component mounts
+  useEffect(() => {
+    if (!hasRefreshed.current && status === "loading") {
+      refreshSession()
+      hasRefreshed.current = true
+    }
+  }, [refreshSession, status])
 
   return (
     <div className="flex min-h-screen">
