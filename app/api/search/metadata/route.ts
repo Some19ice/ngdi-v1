@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import * as jose from "jose"
 import axios from "axios"
+import { metadataServerService as metadataService } from "@/lib/server/metadata.server"
 
 // In production, we need to use the local API routes from the packages directory
 const isProduction = process.env.NODE_ENV === "production"
@@ -12,100 +13,51 @@ const API_URL = isProduction
   ? process.env.BACKEND_API_URL || "http://localhost:3001"
   : "http://localhost:3001"
 
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   try {
-    // Get auth token from cookies
-    const cookieStore = cookies()
-    const authToken = cookieStore.get("auth_token")?.value
+    const { searchParams } = new URL(request.url)
 
-    // Get the auth token from authorization header as fallback
-    const authHeader = req.headers.get("authorization")
-    const headerToken = authHeader?.replace("Bearer ", "")
+    // Extract auth token from request headers
+    const authHeader = request.headers.get("Authorization")
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : null
 
-    // Use the token from cookies or header
-    const token = authToken || headerToken
-
-    console.log("Search metadata: Token status", {
-      hasAuthToken: !!authToken,
-      authTokenLength: authToken?.length,
-      hasHeaderToken: !!headerToken,
-      headerTokenLength: headerToken?.length,
-      finalToken: token ? `${token.substring(0, 10)}...` : null,
+    console.log("API route received request:", {
+      url: request.url,
+      hasAuthToken: !!token,
+      tokenLength: token?.length,
     })
 
-    // Allow public access for search, but note the token status
-    const isAuthenticated = !!token
+    // Extract search parameters
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "9")
+    const search = searchParams.get("search") || ""
+    const category = searchParams.get("category") || ""
+    const dateFrom = searchParams.get("dateFrom") || undefined
+    const dateTo = searchParams.get("dateTo") || undefined
 
-    // Get query parameters
-    const searchParams = req.nextUrl.searchParams
-    const queryString = searchParams.toString()
+    // Log search parameters for debugging
+    console.log("Search parameters:", {
+      page,
+      limit,
+      search,
+      category,
+      dateFrom,
+      dateTo,
+    })
 
-    // Construct the correct API URL - use direct path to avoid loops
-    const apiEndpoint = `${API_URL}/search/metadata?${queryString}`
+    // Call the metadata service with the token
+    const result = await metadataService.searchMetadata({
+      page,
+      limit,
+      search,
+      category,
+      dateFrom,
+      dateTo,
+    })
 
-    console.log(
-      `Search metadata proxy: Forwarding request to API server: ${apiEndpoint}`
-    )
-
-    try {
-      // Forward the request to the API server
-      const response = await axios.get(apiEndpoint, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      })
-
-      console.log("Search metadata proxy: Received response from API server", {
-        status: response.status,
-        hasData: !!response.data,
-        dataStructure: response.data ? Object.keys(response.data) : null,
-        success: response.data?.success,
-        dataContent: response.data?.data
-          ? {
-              total: response.data.data.total,
-              currentPage: response.data.data.currentPage,
-              totalPages: response.data.data.totalPages,
-              metadataCount: response.data.data.metadata?.length,
-            }
-          : null,
-      })
-
-      // Return the response from the API server
-      return NextResponse.json(response.data)
-    } catch (axiosError) {
-      if (axios.isAxiosError(axiosError)) {
-        console.error("API server error details:", {
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          data: axiosError.response?.data,
-          message: axiosError.message,
-          url: apiEndpoint,
-          headers: token
-            ? { Authorization: `Bearer ${token.substring(0, 5)}...` }
-            : "No auth token",
-        })
-
-        // If unauthorized and no token provided, return empty results instead of error
-        if (axiosError.response?.status === 401 && !isAuthenticated) {
-          return NextResponse.json({
-            success: true,
-            data: {
-              metadata: [],
-              total: 0,
-              currentPage: 1,
-              totalPages: 0,
-            },
-          })
-        }
-
-        const status = axiosError.response?.status || 500
-        const message =
-          axiosError.response?.data?.message ||
-          axiosError.response?.data ||
-          "Internal server error"
-
-        return NextResponse.json({ error: message }, { status })
-      }
-      throw axiosError // Re-throw if not an axios error
-    }
+    return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error("Error in search metadata API:", error)
 

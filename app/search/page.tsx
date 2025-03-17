@@ -90,10 +90,39 @@ function SearchForm() {
 
   // Get auth token on component mount
   useEffect(() => {
-    const token = getCookie("auth_token")
-    if (token) {
-      setAuthToken(token)
+    const getToken = () => {
+      // Try to get token from cookie
+      const token = getCookie("auth_token")
+      console.log("Auth token from cookie:", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+      })
+
+      if (token) {
+        setAuthToken(token)
+      } else {
+        // If no token in cookie, check localStorage as fallback
+        try {
+          const storedToken = localStorage.getItem("auth_token")
+          if (storedToken) {
+            console.log("Auth token from localStorage:", {
+              hasToken: true,
+              tokenLength: storedToken.length,
+            })
+            setAuthToken(storedToken)
+          }
+        } catch (error) {
+          console.error("Error accessing localStorage:", error)
+        }
+      }
     }
+
+    getToken()
+
+    // Set up an interval to periodically check for token changes
+    const tokenCheckInterval = setInterval(getToken, 5000)
+
+    return () => clearInterval(tokenCheckInterval)
   }, [])
 
   // Load initial results based on URL parameters
@@ -140,18 +169,24 @@ function SearchForm() {
         searchParams.set("dateTo", data.dateRange.to.toISOString())
       }
 
+      // Get the latest token before making the request
+      const currentToken =
+        getCookie("auth_token") ||
+        localStorage.getItem("auth_token") ||
+        authToken
+
       console.log("Fetching search results:", {
         url: `/api/search/metadata?${searchParams.toString()}`,
-        hasAuthToken: !!authToken,
-        authTokenLength: authToken?.length,
+        hasAuthToken: !!currentToken,
+        authTokenLength: currentToken?.length,
       })
 
       // Fetch data from API with auth token if available
       const response = await fetch(
         `/api/search/metadata?${searchParams.toString()}`,
         {
-          headers: authToken
-            ? { Authorization: `Bearer ${authToken}` }
+          headers: currentToken
+            ? { Authorization: `Bearer ${currentToken}` }
             : undefined,
         }
       )
