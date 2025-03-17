@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
@@ -59,57 +59,24 @@ import {
   Building2,
   Calendar,
   Tag,
+  Loader2,
 } from "lucide-react"
 import { redirect } from "next/navigation"
+import { MetadataItem } from "@/types/metadata"
 
-// Mock data - replace with actual API call
-const mockMetadata = [
-  {
-    id: "1",
-    title: "Nigeria Administrative Boundaries",
-    category: "Boundaries",
-    organization: "Federal Ministry of Environment",
-    author: "John Doe",
-    status: "Published",
-    validationStatus: "Validated",
-    dateCreated: "2024-02-01",
-    lastUpdated: "2024-02-05",
-    downloads: 156,
-    views: 1245,
-    tags: ["administrative", "boundaries", "nigeria"],
-  },
-  {
-    id: "2",
-    title: "Lagos State Water Bodies",
-    category: "Water Bodies",
-    organization: "Lagos State Ministry of Environment",
-    author: "Jane Smith",
-    status: "Draft",
-    validationStatus: "Pending",
-    dateCreated: "2024-02-03",
-    lastUpdated: "2024-02-03",
-    downloads: 0,
-    views: 15,
-    tags: ["water", "lagos", "hydrology"],
-  },
-  {
-    id: "3",
-    title: "National Healthcare Facilities",
-    category: "Health",
-    organization: "Federal Ministry of Health",
-    author: "Mike Johnson",
-    status: "Under Review",
-    validationStatus: "Failed",
-    dateCreated: "2024-01-28",
-    lastUpdated: "2024-02-04",
-    downloads: 45,
-    views: 367,
-    tags: ["health", "facilities", "healthcare"],
-  },
-]
+// Define the metadata type with admin fields
+interface AdminMetadataItem extends MetadataItem {
+  status?: string
+  validationStatus?: string
+  downloads?: number
+  views?: number
+  tags?: string[]
+}
 
 const categories = [
   "All Categories",
+  "Vector",
+  "Raster",
   "Boundaries",
   "Water Bodies",
   "Education",
@@ -117,7 +84,6 @@ const categories = [
   "Environment",
   "Geographic Information",
   "Health",
-  "Imagery/Earthly Observations",
   "Transportation",
   "Utilities",
 ]
@@ -138,15 +104,61 @@ export default function MetadataPage() {
   const [selectedValidation, setSelectedValidation] = useState(
     validationStatuses[0]
   )
-  const [metadata] = useState(mockMetadata)
+  const [metadata, setMetadata] = useState<AdminMetadataItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Fetch metadata from the API
+    const fetchMetadata = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch("/api/search/metadata?limit=100", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error fetching metadata: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+
+        // Transform the data to include admin fields with default values
+        const adminMetadata: AdminMetadataItem[] = data.data.metadata.map(
+          (item: MetadataItem) => ({
+            ...item,
+            status: "Published", // Default status
+            validationStatus: "Validated", // Default validation status
+            downloads: Math.floor(Math.random() * 200), // Random data for demo
+            views: Math.floor(Math.random() * 1000), // Random data for demo
+            tags: item.dataType ? [item.dataType.toLowerCase()] : [], // Use dataType as tag
+          })
+        )
+
+        setMetadata(adminMetadata)
+        console.log("Fetched metadata:", adminMetadata.length, "items")
+      } catch (err) {
+        console.error("Failed to fetch metadata:", err)
+        setError("Failed to load metadata. Please try again later.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMetadata()
+  }, [])
 
   const filteredMetadata = metadata.filter((item) => {
     const matchesSearch = item.title
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(searchQuery.toLowerCase())
     const matchesCategory =
       selectedCategory === "All Categories" ||
-      item.category === selectedCategory
+      item.dataType === selectedCategory
     const matchesStatus =
       selectedStatus === "All Statuses" || item.status === selectedStatus
     const matchesValidation =
@@ -158,7 +170,19 @@ export default function MetadataPage() {
     )
   })
 
-  const getStatusColor = (status: string) => {
+  // Function to safely format dates
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return "N/A"
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch (error) {
+      return "Invalid Date"
+    }
+  }
+
+  const getStatusColor = (status?: string): string => {
+    if (!status) return "bg-gray-500"
+
     switch (status) {
       case "Published":
         return "bg-ngdi-green-500"
@@ -171,7 +195,9 @@ export default function MetadataPage() {
     }
   }
 
-  const getValidationStatusColor = (status: string) => {
+  const getValidationStatusColor = (status?: string): string => {
+    if (!status) return "bg-gray-500"
+
     switch (status) {
       case "Validated":
         return "bg-ngdi-green-500"
@@ -265,105 +291,145 @@ export default function MetadataPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Validation</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead>Usage</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMetadata.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Created: {item.dateCreated}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      {item.organization}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
-                      {item.category}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={getStatusColor(item.status)}
-                    >
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={getValidationStatusColor(
-                        item.validationStatus
-                      )}
-                    >
-                      {item.validationStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{item.lastUpdated}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1 text-sm">
-                      <div>Downloads: {item.downloads}</div>
-                      <div>Views: {item.views}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
-                        </DropdownMenuItem>
-                        {can(Permissions.UPDATE_METADATA) && (
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {can(Permissions.UPDATE_METADATA) && (
-                          <DropdownMenuItem>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Validate
-                          </DropdownMenuItem>
-                        )}
-                        {can(Permissions.DELETE_METADATA) && (
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">Loading metadata...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <XCircle className="h-8 w-8 text-destructive mb-4" />
+              <p className="text-muted-foreground">{error}</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : filteredMetadata.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                No metadata found matching your filters.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setSearchQuery("")
+                  setSelectedCategory(categories[0])
+                  setSelectedStatus(statuses[0])
+                  setSelectedValidation(validationStatuses[0])
+                }}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Data Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Validation</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Usage</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredMetadata.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium">{item.title}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Created: {formatDate(item.dateFrom)}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        {item.organization || "NGDI"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        {item.dataType || "Unknown"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={getStatusColor(item.status)}
+                      >
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className={getValidationStatusColor(
+                          item.validationStatus
+                        )}
+                      >
+                        {item.validationStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {formatDate(item.dateTo || item.dateFrom)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1 text-sm">
+                        <div>Downloads: {item.downloads || 0}</div>
+                        <div>Views: {item.views || 0}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </DropdownMenuItem>
+                          {can(Permissions.UPDATE_METADATA) && (
+                            <DropdownMenuItem>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {can(Permissions.UPDATE_METADATA) && (
+                            <DropdownMenuItem>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Validate
+                            </DropdownMenuItem>
+                          )}
+                          {can(Permissions.DELETE_METADATA) && (
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
