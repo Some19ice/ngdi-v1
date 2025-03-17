@@ -286,7 +286,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                       <Icon
                         className={cn(
                           "h-4 w-4 shrink-0",
-                          isActive && "text-white"
+                          isActive && "text-[hsl(var(--sidebar-active-text))]"
                         )}
                       />
                       {!isCollapsed && (
@@ -346,7 +346,10 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                   size={isCollapsed ? "icon" : "sm"}
                 >
                   <Icon
-                    className={cn("h-4 w-4 shrink-0", isActive && "text-white")}
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      isActive && "text-[hsl(var(--sidebar-active-text))]"
+                    )}
                   />
                   {!isCollapsed && (
                     <span className={cn("text-sm", isActive && "font-medium")}>

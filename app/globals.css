@@ -42,8 +42,8 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar-active: 142.1 100% 26.5%;
-    --sidebar-active-text: 0 0% 100%;
+    --sidebar-active: 142.1 70% 40%;
+    --sidebar-active-text: 142.1 100% 95%;
     --radius: 0.5rem;
   }
   .dark {
@@ -71,8 +71,8 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-active: 142.1 70% 26.5%;
-    --sidebar-active-text: 0 0% 100%;
+    --sidebar-active: 142.1 70% 30%;
+    --sidebar-active-text: 142.1 60% 95%;
   }
 }
 
