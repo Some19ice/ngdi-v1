@@ -19,7 +19,7 @@ export default async function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-primary/90 to-primary px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-32">
+      <section className="relative bg-gradient-to-b from-primary/90 to-primary px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[url('/images/map-pattern.svg')] bg-center opacity-20"></div>
         </div>
@@ -78,34 +78,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-white px-4 py-12 sm:px-6 lg:px-8">
+      {/* Features Section - Moved to Top */}
+      <section className="bg-muted/30 px-4 py-16 sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-              <p className="text-3xl font-bold text-primary">250+</p>
-              <p className="text-sm text-muted-foreground">Datasets</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-              <p className="text-3xl font-bold text-primary">36</p>
-              <p className="text-sm text-muted-foreground">States Covered</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-              <p className="text-3xl font-bold text-primary">50+</p>
-              <p className="text-sm text-muted-foreground">Organizations</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-              <p className="text-3xl font-bold text-primary">1000+</p>
-              <p className="text-sm text-muted-foreground">Users</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="bg-muted/30 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="container mx-auto max-w-6xl">
-          <div className="mb-16 text-center">
+          <div className="mb-10 text-center">
             <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Key Features
             </h2>
@@ -115,7 +91,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {/* Feature 1 */}
             <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -276,6 +252,30 @@ export default async function HomePage() {
                 Generate insights with built-in analytics and reporting tools to
                 track data usage and quality metrics.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="bg-white px-4 py-12 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">250+</p>
+              <p className="text-sm text-muted-foreground">Datasets</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">36</p>
+              <p className="text-sm text-muted-foreground">States Covered</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">50+</p>
+              <p className="text-sm text-muted-foreground">Organizations</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+              <p className="text-3xl font-bold text-primary">1000+</p>
+              <p className="text-sm text-muted-foreground">Users</p>
             </div>
           </div>
         </div>
