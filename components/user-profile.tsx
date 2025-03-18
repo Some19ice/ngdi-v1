@@ -25,7 +25,8 @@ const profileSchema = z.object({
   organization: z
     .string()
     .min(2, "Organization must be at least 2 characters")
-    .optional(),
+    .optional()
+    .nullable(),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>

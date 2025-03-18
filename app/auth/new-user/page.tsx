@@ -29,7 +29,6 @@ import * as z from "zod"
 import { Loader2 } from "lucide-react"
 
 const onboardingSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
   organization: z.string().min(2, "Organization must be at least 2 characters"),
   department: z.string().optional(),
   phone: z
@@ -50,7 +49,6 @@ export default function NewUserPage() {
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      name: session?.user?.name || "",
       organization: "",
       department: "",
       phone: "",
@@ -61,9 +59,8 @@ export default function NewUserPage() {
     setIsSubmitting(true)
 
     try {
-      // Update user profile
+      // Update user profile - use the existing name from session
       await api.updateUser({
-        name: data.name,
         organization: data.organization,
         department: data.department,
         phone: data.phone,
@@ -103,23 +100,6 @@ export default function NewUserPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Pre-filled from your registration, modify if needed
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="organization"
