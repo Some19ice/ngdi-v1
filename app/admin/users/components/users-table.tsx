@@ -109,7 +109,7 @@ export function UsersTable({
           params.append("role", role)
         }
 
-        // Call API server directly instead of Next.js API
+        // Call API server directly
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`,
           {
@@ -121,6 +121,9 @@ export function UsersTable({
         )
 
         if (!response.ok) {
+          console.error(
+            `API error (${response.status}): ${response.statusText}`
+          )
           throw new Error(`Error fetching users: ${response.statusText}`)
         }
 
@@ -134,6 +137,7 @@ export function UsersTable({
             totalPages: result.data.totalPages,
           })
         } else {
+          console.error("Invalid API response format:", result)
           throw new Error("Invalid response format")
         }
       } catch (error) {
@@ -187,6 +191,7 @@ export function UsersTable({
       )
 
       if (!response.ok) {
+        console.error(`API error (${response.status}): ${response.statusText}`)
         throw new Error(`Error updating role: ${response.statusText}`)
       }
 
@@ -200,6 +205,7 @@ export function UsersTable({
         )
         toast.success("User role updated successfully")
       } else {
+        console.error("Invalid API response format:", result)
         throw new Error(result.message || "Failed to update user role")
       }
     } catch (error) {

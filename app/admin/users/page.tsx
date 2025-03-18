@@ -39,7 +39,8 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
     )
 
     if (!response.ok) {
-      throw new Error("Failed to fetch users")
+      console.error(`API error (${response.status}): ${response.statusText}`)
+      throw new Error(`Failed to fetch users: ${response.statusText}`)
     }
 
     const result = await response.json()
@@ -51,6 +52,7 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
       }
     }
 
+    console.error("Invalid API response format:", result)
     throw new Error("Invalid response format")
   } catch (error) {
     console.error("Error fetching users:", error)
