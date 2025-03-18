@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -166,8 +167,10 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cn(
-        "text-sm font-medium transition-colors hover:text-primary",
-        active ? "text-primary" : "text-muted-foreground",
+        "text-sm font-medium transition-colors",
+        active
+          ? "text-white border-b-2 border-white"
+          : "text-white/80 hover:text-white hover:border-b-2 hover:border-white/70",
         className
       )}
     >
@@ -232,92 +235,257 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <MapIcon className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">NGDI Portal</span>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <nav
-              className="ml-10 hidden space-x-6 lg:flex"
-              aria-label="Main navigation"
-            >
-              {getNavItems().map((link) => (
-                <NavLink
-                  key={link.name}
-                  href={link.href}
-                  active={pathname === link.href}
-                >
-                  {link.name}
-                </NavLink>
-              ))}
-            </nav>
+    <>
+      {/* Logo Banner */}
+      <div className="w-full bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center py-2">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center space-x-2">
+                <Image
+                  src="/images/logo.png"
+                  alt="NGDI Logo"
+                  width={150}
+                  height={50}
+                  className="h-auto w-auto"
+                  priority
+                />
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
+      {/* Main Navigation */}
+      <header className="sticky top-0 z-50 w-full bg-[#2a843c] text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between">
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center space-x-2 text-white">
+                <MapIcon className="h-5 w-5" />
+                <span className="text-base font-bold">NGDI Portal</span>
+              </Link>
 
-            {/* Mobile Navigation */}
-            <Sheet>
-              <SheetTrigger asChild className="lg:hidden">
-                <Button variant="ghost" size="icon" aria-label="Menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <SheetHeader className="mb-6">
-                  <SheetTitle className="flex items-center gap-2">
-                    <MapIcon className="h-5 w-5 text-primary" />
-                    <span>NGDI Portal</span>
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col gap-3 py-4">
-                  {getNavItems().map((link) => (
-                    <SheetClose asChild key={link.name}>
-                      <NavLink
-                        href={link.href}
-                        active={pathname === link.href}
-                        className="flex py-2"
+              {/* Desktop Navigation */}
+              <nav
+                className="ml-10 hidden space-x-6 lg:flex"
+                aria-label="Main navigation"
+              >
+                {getNavItems().map((link) => (
+                  <NavLink
+                    key={link.name}
+                    href={link.href}
+                    active={pathname === link.href}
+                  >
+                    {link.name}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+
+              {/* Mobile Navigation */}
+              <Sheet>
+                <SheetTrigger asChild className="lg:hidden">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Menu"
+                    className="text-white hover:bg-green-700"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                  <SheetHeader className="mb-6">
+                    <SheetTitle className="flex items-center gap-2">
+                      <MapIcon className="h-5 w-5 text-[#2a843c]" />
+                      <span>NGDI Portal</span>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-3 py-4">
+                    {getNavItems().map((link) => (
+                      <SheetClose asChild key={link.name}>
+                        <NavLink
+                          href={link.href}
+                          active={pathname === link.href}
+                          className={cn(
+                            "flex py-2",
+                            pathname === link.href
+                              ? "text-[#2a843c] border-none font-medium"
+                              : "text-gray-700 hover:text-[#2a843c] border-none"
+                          )}
+                        >
+                          {link.name}
+                        </NavLink>
+                      </SheetClose>
+                    ))}
+
+                    {/* Mobile-only user links */}
+                    {session?.user && (
+                      <>
+                        <div className="my-2 h-px bg-border" />
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">
+                          Your Account
+                        </p>
+                        {getUserMenuItems(session.user.role).map((item) => (
+                          <SheetClose asChild key={item.name}>
+                            <NavLink
+                              href={item.href}
+                              active={pathname === item.href}
+                              className={cn(
+                                "flex items-center gap-2 py-2",
+                                pathname === item.href
+                                  ? "text-[#2a843c] border-none font-medium"
+                                  : "text-gray-700 hover:text-[#2a843c] border-none"
+                              )}
+                            >
+                              {item.icon && <item.icon className="h-4 w-4" />}
+                              {item.name}
+                            </NavLink>
+                          </SheetClose>
+                        ))}
+
+                        <div className="my-2 h-px bg-border" />
+                        <AlertDialog
+                          open={showSignOutConfirm}
+                          onOpenChange={setShowSignOutConfirm}
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              className="mt-2"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setShowSignOutConfirm(true)
+                              }}
+                            >
+                              {isSigningOut ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <LogOut className="mr-2 h-4 w-4" />
+                              )}
+                              Sign out
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will sign you out of your account.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleSignOut}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {isSigningOut ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <LogOut className="mr-2 h-4 w-4" />
+                                )}
+                                Sign out
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+
+                    {/* Sign in button for mobile if not logged in */}
+                    {!session?.user && (
+                      <SheetClose asChild>
+                        <Button
+                          asChild
+                          variant="default"
+                          className="mt-4 bg-[#2a843c] text-white hover:bg-[#236e32]"
+                        >
+                          <Link href="/auth/signin">Sign in</Link>
+                        </Button>
+                      </SheetClose>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* User Menu (Desktop) */}
+              {session?.user ? (
+                <div className="hidden lg:block">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="relative h-8 w-8 rounded-full hover:bg-green-700"
+                        data-testid="user-menu"
                       >
-                        {link.name}
-                      </NavLink>
-                    </SheetClose>
-                  ))}
-
-                  {/* Mobile-only user links */}
-                  {session?.user && (
-                    <>
-                      <div className="my-2 h-px bg-border" />
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">
-                        Your Account
-                      </p>
-                      {getUserMenuItems(session.user.role).map((item) => (
-                        <SheetClose asChild key={item.name}>
-                          <NavLink
-                            href={item.href}
-                            active={pathname === item.href}
-                            className="flex items-center gap-2 py-2"
-                          >
-                            {item.icon && <item.icon className="h-4 w-4" />}
-                            {item.name}
-                          </NavLink>
-                        </SheetClose>
-                      ))}
-
-                      <div className="my-2 h-px bg-border" />
+                        <UserAvatar user={session.user} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-56"
+                      align="end"
+                      forceMount
+                    >
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {session.user.name ||
+                              session.user.email?.split("@")[0]}
+                          </p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {session.user.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        {getUserMenuItems(session.user.role).map((item) => (
+                          <DropdownMenuItem key={item.href} asChild>
+                            <Link
+                              href={item.href}
+                              className="flex w-full items-center"
+                            >
+                              {item.icon && (
+                                <item.icon className="mr-2 h-4 w-4" />
+                              )}
+                              {item.name}
+                              {item.shortcut && (
+                                <DropdownMenuShortcut>
+                                  {item.shortcut}
+                                </DropdownMenuShortcut>
+                              )}
+                            </Link>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        {supportMenuItems.map((item) => (
+                          <DropdownMenuItem key={item.href} asChild>
+                            <Link
+                              href={item.href}
+                              className="flex w-full items-center"
+                            >
+                              {item.icon && (
+                                <item.icon className="mr-2 h-4 w-4" />
+                              )}
+                              {item.name}
+                            </Link>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
                       <AlertDialog
                         open={showSignOutConfirm}
                         onOpenChange={setShowSignOutConfirm}
                       >
                         <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            className="mt-2"
-                            onClick={(e) => {
+                          <DropdownMenuItem
+                            onSelect={(e) => {
                               e.preventDefault()
                               setShowSignOutConfirm(true)
                             }}
@@ -327,8 +495,9 @@ export function Header() {
                             ) : (
                               <LogOut className="mr-2 h-4 w-4" />
                             )}
-                            Sign out
-                          </Button>
+                            <span>Sign out</span>
+                            <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+                          </DropdownMenuItem>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -348,148 +517,28 @@ export function Header() {
                               ) : (
                                 <LogOut className="mr-2 h-4 w-4" />
                               )}
-                              Sign out
+                              <span>Sign out</span>
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    </>
-                  )}
-
-                  {/* Sign in button for mobile if not logged in */}
-                  {!session?.user && (
-                    <SheetClose asChild>
-                      <Button asChild variant="default" className="mt-4">
-                        <Link href="/auth/signin">Sign in</Link>
-                      </Button>
-                    </SheetClose>
-                  )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </SheetContent>
-            </Sheet>
-
-            {/* User Menu (Desktop) */}
-            {session?.user ? (
-              <div className="hidden lg:block">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="relative h-8 w-8 rounded-full"
-                      data-testid="user-menu"
-                    >
-                      <UserAvatar user={session.user} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {session.user.name ||
-                            session.user.email?.split("@")[0]}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {session.user.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      {getUserMenuItems(session.user.role).map((item) => (
-                        <DropdownMenuItem key={item.href} asChild>
-                          <Link
-                            href={item.href}
-                            className="flex w-full items-center"
-                          >
-                            {item.icon && (
-                              <item.icon className="mr-2 h-4 w-4" />
-                            )}
-                            {item.name}
-                            {item.shortcut && (
-                              <DropdownMenuShortcut>
-                                {item.shortcut}
-                              </DropdownMenuShortcut>
-                            )}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      {supportMenuItems.map((item) => (
-                        <DropdownMenuItem key={item.href} asChild>
-                          <Link
-                            href={item.href}
-                            className="flex w-full items-center"
-                          >
-                            {item.icon && (
-                              <item.icon className="mr-2 h-4 w-4" />
-                            )}
-                            {item.name}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <AlertDialog
-                      open={showSignOutConfirm}
-                      onOpenChange={setShowSignOutConfirm}
-                    >
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault()
-                            setShowSignOutConfirm(true)
-                          }}
-                        >
-                          {isSigningOut ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <LogOut className="mr-2 h-4 w-4" />
-                          )}
-                          <span>Sign out</span>
-                          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will sign you out of your account.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleSignOut}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            {isSigningOut ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <LogOut className="mr-2 h-4 w-4" />
-                            )}
-                            <span>Sign out</span>
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ) : (
-              <Button
-                asChild
-                variant="default"
-                size="sm"
-                className="hidden lg:inline-flex"
-              >
-                <Link href="/auth/signin">Sign in</Link>
-              </Button>
-            )}
+              ) : (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="hidden lg:inline-flex text-white hover:bg-green-700 border border-white/40"
+                >
+                  <Link href="/auth/signin">Sign in</Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   )
 }
