@@ -74,7 +74,7 @@ const roleBasedNavItems: Record<
   ],
   [UserRole.NODE_OFFICER]: [
     { name: "Add Metadata", href: "/metadata/add" },
-    { name: "My Metadata", href: "/metadata" },
+    { name: "My Metadata", href: "/my-metadata" },
   ],
   [UserRole.USER]: [],
 }
@@ -103,7 +103,7 @@ const getUserMenuItems = (role: string | undefined) => {
   if (role === "admin" || role === "node_officer") {
     baseItems.push({
       name: "My Metadata",
-      href: "/metadata",
+      href: "/my-metadata",
       shortcut: "⌘M",
       icon: MapIcon,
     })
