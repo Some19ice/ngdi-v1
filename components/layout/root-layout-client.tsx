@@ -6,6 +6,9 @@ import Footer from "@/components/layout/footer"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useState, useEffect, useRef } from "react"
 import { useSession, useAuth } from "@/lib/auth-context"
+import { Menu } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export default function RootLayoutClient({
   children,
@@ -13,6 +16,7 @@ export default function RootLayoutClient({
   children: React.ReactNode
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { data: session, status } = useSession()
   const { refreshSession } = useAuth()
   const hasRefreshed = useRef(false)
@@ -25,16 +29,66 @@ export default function RootLayoutClient({
     }
   }, [refreshSession, status])
 
+  // Close mobile menu when window is resized to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [isMobileMenuOpen])
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [children])
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onCollapsedChange={setIsSidebarCollapsed}
-      />
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          onCollapsedChange={setIsSidebarCollapsed}
+        />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <div className="lg:hidden">
+        <Sidebar
+          isMobile
+          isOpen={isMobileMenuOpen}
+          onOpenChange={setIsMobileMenuOpen}
+          isCollapsed={false}
+          onCollapsedChange={() => {}}
+        />
+
+        {/* Backdrop */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </div>
+
       <div className="flex-1 flex flex-col">
         <Banner />
-        <Header />
-        <main className="flex-1 px-8 py-6">{children}</main>
+        <Header>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-2 lg:hidden text-white hover:bg-green-700"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Toggle sidebar menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </Header>
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">{children}</main>
         <Footer />
       </div>
     </div>

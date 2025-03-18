@@ -71,6 +71,9 @@ interface NavSection {
 interface SidebarProps {
   isCollapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
+  isMobile?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const getMainNavItems = (role?: string): NavSection[] => {
@@ -206,7 +209,13 @@ const getUserNavItems = (role?: string): NavItem[] => {
   return items
 }
 
-export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
+export function Sidebar({
+  isCollapsed,
+  onCollapsedChange,
+  isMobile = false,
+  isOpen = false,
+  onOpenChange = () => {},
+}: SidebarProps) {
   const { data: session, status } = useSession()
   const { logout } = useAuth()
   const pathname = usePathname()
@@ -244,7 +253,10 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
       <div
         className={cn(
           "flex h-full flex-col border-r bg-background py-4 transition-all duration-300",
-          isCollapsed ? "w-[60px] px-2" : "w-[240px] px-3"
+          isCollapsed && !isMobile ? "w-[60px] px-2" : "w-[240px] px-3",
+          isMobile ? "fixed inset-y-0 left-0 z-50 shadow-lg transform" : "",
+          isMobile && !isOpen ? "-translate-x-full" : "",
+          isMobile && isOpen ? "translate-x-0" : ""
         )}
       >
         <div
@@ -594,6 +606,16 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 <ChevronLeft className="h-4 w-4" />
               )}
             </Button>
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto mt-2 w-9 flex lg:hidden"
+                onClick={() => onOpenChange(!isOpen)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

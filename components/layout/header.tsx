@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import Link from "next/link";
+import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -180,7 +180,7 @@ function NavLink({
   )
 }
 
-export function Header() {
+export function Header({ children }: { children?: React.ReactNode }) {
   const { data: session, status } = useSession()
   const { logout, refreshSession } = useAuth()
   const pathname = usePathname()
@@ -262,6 +262,7 @@ export function Header() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-14 items-center justify-between">
             <div className="flex items-center">
+              {children}
               <Link href="/" className="flex items-center space-x-2 text-white">
                 <MapIcon className="h-5 w-5" />
                 <span className="text-base font-bold">NGDI Portal</span>
