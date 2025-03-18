@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 import { PROTECTED_ROUTES } from "./lib/auth/paths"
 import * as jose from "jose"
 import { UserRole } from "./lib/auth/constants"
+import { authClient, validateJwtToken } from "./lib/auth-client"
 
 // Constants
 const AUTH_COOKIE_NAME = "auth_token"
@@ -15,6 +16,27 @@ function safeJsonParse(str: string | null) {
   } catch (e) {
     console.error("Error parsing JSON:", e)
     return null
+  }
+}
+
+async function hasCompletedOnboarding(userId: string) {
+  // Check if user has completed onboarding
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/${userId}/profile`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+
+    if (!response.ok) return false
+
+    const userData = await response.json()
+    return !!userData.organization // Check if organization is set
+  } catch (error) {
+    console.error("Error checking onboarding status:", error)
+    return false
   }
 }
 
@@ -90,6 +112,17 @@ export async function middleware(request: NextRequest) {
         response.headers.set("x-user-role", role)
       } else {
         console.log(`Token missing user ID for ${path}`)
+      }
+
+      // Check if user is a node officer who hasn't completed onboarding
+      const tokenData = await validateJwtToken(authToken)
+      if (tokenData.isValid && role === UserRole.NODE_OFFICER) {
+        const hasOnboarded = await hasCompletedOnboarding(userId)
+
+        // If they haven't completed onboarding and aren't already on the onboarding page
+        if (!hasOnboarded && !path.startsWith("/auth/new-user")) {
+          return NextResponse.redirect(new URL("/auth/new-user", request.url))
+        }
       }
     } catch (error) {
       console.error(`Error decoding token for ${path}:`, error)

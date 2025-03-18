@@ -126,3 +126,26 @@ export async function getCurrentUser() {
     return null
   }
 }
+
+/**
+ * Server-side function to check if the user is a Node Officer
+ * Returns the user data if authenticated and has Node Officer role, otherwise redirects to unauthorized
+ */
+export async function requireNodeOfficer(redirectTo?: string) {
+  try {
+    const user = await requireAuth(redirectTo)
+
+    // Allow both ADMIN and NODE_OFFICER roles
+    if (user.role === UserRole.ADMIN || user.role === UserRole.NODE_OFFICER) {
+      return user
+    }
+
+    console.log(
+      "User is not a Node Officer, redirecting to unauthorized"
+    )
+    redirect("/unauthorized")
+  } catch (error) {
+    console.error("Error in requireNodeOfficer:", error)
+    redirect("/unauthorized")
+  }
+}

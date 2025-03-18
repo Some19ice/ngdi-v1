@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
+  organization: z.string().min(2, "Organization must be at least 2 characters"),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -43,6 +44,7 @@ export function UserProfile() {
     defaultValues: {
       name: "",
       email: "",
+      organization: "",
     },
   })
 
@@ -51,6 +53,7 @@ export function UserProfile() {
       form.reset({
         name: user.name || "",
         email: user.email,
+        organization: user.organization || "",
       })
     }
   }, [user, form])
@@ -130,6 +133,19 @@ export function UserProfile() {
                       placeholder="Enter your email"
                       {...field}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="organization"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organization</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter your organization" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
