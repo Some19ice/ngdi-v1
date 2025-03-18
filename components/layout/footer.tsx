@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { MapIcon } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle"
+import { MapIcon } from "lucide-react"
 
 const footerNavigation = {
   main: [
@@ -32,9 +31,6 @@ export default function Footer() {
             </Link>
           ))}
         </nav>
-        <div className="mt-6 flex items-center justify-center">
-          <ThemeToggle />
-        </div>
         <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
           &copy; {new Date().getFullYear()} National Geospatial Data
           Infrastructure. All rights reserved.

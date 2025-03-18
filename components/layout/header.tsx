@@ -15,6 +15,8 @@ import {
   HelpCircle,
   FileText,
   MessageSquare,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { useSession, useAuth } from "@/lib/auth-context"
 import { UserRole } from "@/lib/auth/constants"
@@ -52,6 +54,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // Public navigation items
 const publicNavItems = [
@@ -346,6 +349,11 @@ export function Header() {
                         ))}
 
                         <div className="my-2 h-px bg-border" />
+                        <div className="flex items-center px-2 py-2">
+                          <ThemeToggle variant="minimal" />
+                          <span className="ml-2 text-sm">Toggle theme</span>
+                        </div>
+
                         <AlertDialog
                           open={showSignOutConfirm}
                           onOpenChange={setShowSignOutConfirm}
@@ -476,6 +484,16 @@ export function Header() {
                         ))}
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator />
+
+                      {/* Theme Toggle */}
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <div className="flex w-full items-center">
+                          <ThemeToggle variant="minimal" />
+                          <span className="ml-2">Toggle theme</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+
                       <AlertDialog
                         open={showSignOutConfirm}
                         onOpenChange={setShowSignOutConfirm}
