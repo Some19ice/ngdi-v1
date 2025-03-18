@@ -3,6 +3,7 @@ import { verify } from "jsonwebtoken"
 import { prisma } from "../lib/prisma"
 import { HTTPException } from "hono/http-exception"
 import { UserRole } from "@prisma/client"
+import { config } from "../config"
 
 interface JWTPayload {
   userId: string
@@ -20,7 +21,7 @@ export async function authMiddleware(c: Context, next: Next) {
     const token = authHeader.split(" ")[1]
 
     // Check if this is a server API key request
-    if (process.env.SERVER_API_KEY && token === process.env.SERVER_API_KEY) {
+    if (config.serverApiKey && token === config.serverApiKey) {
       console.log("[DEBUG] Server API key authentication successful")
       // Set an admin user context for server requests
       c.set("user", {
@@ -30,6 +31,13 @@ export async function authMiddleware(c: Context, next: Next) {
       })
       await next()
       return
+    }
+
+    // Additional logging for debugging
+    if (token === process.env.SERVER_API_KEY) {
+      console.log(
+        "[DEBUG] Token matches process.env.SERVER_API_KEY but not config.serverApiKey"
+      )
     }
 
     // Normal JWT authentication flow

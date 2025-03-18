@@ -12,6 +12,7 @@ import {
   Activity,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import getConfig from "next/config"
 
 interface DashboardStats {
   userCount: number
@@ -24,36 +25,46 @@ interface DashboardStats {
 
 async function fetchStats(): Promise<DashboardStats> {
   try {
+    // Get server runtime config
+    const { serverRuntimeConfig } = getConfig() || { serverRuntimeConfig: {} }
+
+    // Load environment variables directly
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+    const serverApiKey =
+      serverRuntimeConfig.SERVER_API_KEY ||
+      process.env.SERVER_API_KEY ||
+      "admin-api-secret-token-for-server-requests"
+
     console.log("[SERVER] Fetching admin dashboard stats from API")
-    console.log("[SERVER] API URL:", process.env.NEXT_PUBLIC_API_URL)
+    console.log("[SERVER] API URL:", apiUrl)
+    console.log("[SERVER] SERVER_API_KEY present:", !!serverApiKey)
     console.log(
-      "[SERVER] SERVER_API_KEY present:",
-      !!process.env.SERVER_API_KEY
+      "[SERVER] Source:",
+      serverApiKey === serverRuntimeConfig.SERVER_API_KEY
+        ? "serverRuntimeConfig"
+        : "process.env"
     )
 
     // Make sure we have the required environment variables
-    if (!process.env.NEXT_PUBLIC_API_URL) {
+    if (!apiUrl) {
       console.error("[SERVER] Missing NEXT_PUBLIC_API_URL environment variable")
       throw new Error("Missing API URL configuration")
     }
 
-    if (!process.env.SERVER_API_KEY) {
+    if (!serverApiKey) {
       console.error("[SERVER] Missing SERVER_API_KEY environment variable")
       throw new Error("Missing API key configuration")
     }
 
     // Using the server-side fetch to call the main API server endpoint
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
-      {
-        cache: "no-store",
-        next: { revalidate: 60 }, // Revalidate every minute
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
-        },
-      }
-    )
+    const response = await fetch(`${apiUrl}/api/admin/dashboard-stats`, {
+      cache: "no-store",
+      next: { revalidate: 60 }, // Revalidate every minute
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serverApiKey}`,
+      },
+    })
 
     if (!response.ok) {
       console.error(

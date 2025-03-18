@@ -1,3 +1,6 @@
+// Import environment loader first
+import "./utils/env"
+
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
@@ -9,6 +12,7 @@ import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
 import searchRouter from "./routes/search.routes"
+import adminRouter from "./routes/admin.routes"
 import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
 import { errorMiddleware } from "./middleware/error-handler"
@@ -38,6 +42,7 @@ apiRouter.route("/auth", authRouter)
 apiRouter.route("/users", userRouter)
 apiRouter.route("/metadata", metadataRouter)
 apiRouter.route("/search", searchRouter)
+apiRouter.route("/admin", adminRouter)
 
 // Mount API router
 app.route("/api", apiRouter)

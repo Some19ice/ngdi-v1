@@ -4,6 +4,9 @@ import dotenv from "dotenv"
 // Load environment variables
 dotenv.config()
 
+// Check if SERVER_API_KEY is set
+console.log("[CONFIG] SERVER_API_KEY present:", !!process.env.SERVER_API_KEY);
+
 /**
  * Application configuration
  */
@@ -14,6 +17,10 @@ export const config = {
   // Application info
   appName: process.env.APP_NAME || "NGDI Portal API",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+
+  // API Authentication
+  serverApiKey:
+    process.env.SERVER_API_KEY || "admin-api-secret-token-for-server-requests",
 
   // Rate limiting configuration
   rateLimit: {
@@ -32,7 +39,10 @@ export const config = {
   // JWT configuration
   jwt: {
     secret: process.env.JWT_SECRET || "your-default-secret-for-dev-only",
-    refreshSecret: process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || "your-default-secret-for-dev-only",
+    refreshSecret:
+      process.env.REFRESH_TOKEN_SECRET ||
+      process.env.JWT_SECRET ||
+      "your-default-secret-for-dev-only",
     expiresIn: process.env.JWT_EXPIRES_IN || "1h",
     refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
   },
