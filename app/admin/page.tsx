@@ -25,6 +25,22 @@ interface DashboardStats {
 async function fetchStats(): Promise<DashboardStats> {
   try {
     console.log("[SERVER] Fetching admin dashboard stats from API")
+    console.log("[SERVER] API URL:", process.env.NEXT_PUBLIC_API_URL)
+    console.log(
+      "[SERVER] SERVER_API_KEY present:",
+      !!process.env.SERVER_API_KEY
+    )
+
+    // Make sure we have the required environment variables
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      console.error("[SERVER] Missing NEXT_PUBLIC_API_URL environment variable")
+      throw new Error("Missing API URL configuration")
+    }
+
+    if (!process.env.SERVER_API_KEY) {
+      console.error("[SERVER] Missing SERVER_API_KEY environment variable")
+      throw new Error("Missing API key configuration")
+    }
 
     // Using the server-side fetch to call the main API server endpoint
     const response = await fetch(

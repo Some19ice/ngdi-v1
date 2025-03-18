@@ -18,6 +18,21 @@ export async function authMiddleware(c: Context, next: Next) {
     }
 
     const token = authHeader.split(" ")[1]
+
+    // Check if this is a server API key request
+    if (process.env.SERVER_API_KEY && token === process.env.SERVER_API_KEY) {
+      console.log("[DEBUG] Server API key authentication successful")
+      // Set an admin user context for server requests
+      c.set("user", {
+        id: "server",
+        email: "server@system.local",
+        role: UserRole.ADMIN,
+      })
+      await next()
+      return
+    }
+
+    // Normal JWT authentication flow
     const decoded = verify(token, process.env.JWT_SECRET!) as JWTPayload
 
     const user = await prisma.user.findUnique({
@@ -35,8 +50,10 @@ export async function authMiddleware(c: Context, next: Next) {
 
     // Add user info to context
     c.set("user", user)
+    console.log("[DEBUG] User authentication successful:", user.email)
     await next()
   } catch (error) {
+    console.error("[ERROR] Authentication failed:", error)
     throw new HTTPException(401, { message: "Invalid token" })
   }
 }
