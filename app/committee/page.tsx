@@ -37,12 +37,12 @@ export default function CommitteePage() {
           <div className="prose dark:prose-invert max-w-none">
             <div className="bg-card rounded-lg p-5 border shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <p className="lead text-lg">
-                The NGDI committee, hosted by NASRDA, is a multidisciplinary
-                body that oversees the development and implementation of
-                Nigeria&apos;s Geo-Spatial Data Infrastructure. The committee
-                plays a crucial role in coordinating geospatial activities
-                across different sectors and ensuring alignment with national
-                objectives.
+                The NGDI committee, with secretariat hosted by NASRDA, is a
+                multidisciplinary body that oversees the development and
+                implementation of Nigeria&apos;s Geo-Spatial Data
+                Infrastructure. The committee plays a crucial role in
+                coordinating geospatial activities across different sectors and
+                ensuring alignment with national objectives.
               </p>
             </div>
 
@@ -77,19 +77,19 @@ export default function CommitteePage() {
                       <StatCard
                         icon={<Building className="h-5 w-5 text-blue-500" />}
                         title="Government"
-                        value="11+ Agencies"
+                        value="11 Agencies"
                       />
                       <StatCard
                         icon={
                           <GraduationCap className="h-5 w-5 text-green-500" />
                         }
                         title="Academia"
-                        value="4+ Institutions"
+                        value="4 Institutions"
                       />
                       <StatCard
                         icon={<Briefcase className="h-5 w-5 text-amber-500" />}
                         title="Private Sector"
-                        value="4+ Organizations"
+                        value="4 Organizations"
                       />
                     </div>
                   </CardContent>
