@@ -66,6 +66,7 @@ interface Pagination {
   totalPages: number
 }
 
+// Component props
 interface UsersTableProps {
   initialUsers: User[]
   initialTotal: number
@@ -78,365 +79,401 @@ export function UsersTable({
   authToken,
 }: UsersTableProps) {
   const router = useRouter()
-
-  // Convert dates to strings for consistent handling
-  const formattedInitialUsers = initialUsers.map((user) => ({
-    ...user,
-    createdAt:
-      user.createdAt instanceof Date
-        ? user.createdAt.toISOString()
-        : user.createdAt,
-    updatedAt:
-      user.updatedAt instanceof Date
-        ? user.updatedAt.toISOString()
-        : user.updatedAt,
-  }))
-
-  // State for users data
-  const [users, setUsers] = useState<User[]>(formattedInitialUsers)
+  const [users, setUsers] = useState<User[]>(initialUsers)
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [roleFilter, setRoleFilter] = useState<string>("all")
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
     total: initialTotal,
     totalPages: Math.ceil(initialTotal / 10),
   })
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false)
-  const [manuallyFetched, setManuallyFetched] = useState(true)
 
-  // State for filters
-  const [search, setSearch] = useState("")
-  const [roleFilter, setRoleFilter] = useState<string>("all")
+  // Fetch users from API
+  const fetchUsers = useCallback(
+    async (page = 1, search = "", role: string = "all") => {
+      setLoading(true)
+      try {
+        // Build query params
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: pagination.limit.toString(),
+        })
 
-  // Fetch users
-  const fetchUsers = useCallback(async () => {
-    if (isLoadingUsers) {
-      return
-    }
+        if (search) {
+          params.append("search", search)
+        }
 
-    setIsLoadingUsers(true)
+        if (role && role !== "all") {
+          params.append("role", role)
+        }
 
-    try {
-      // Build query params
-      const params = new URLSearchParams()
-      params.append("page", pagination.page.toString())
-      params.append("limit", pagination.limit.toString())
+        // Call API server directly instead of Next.js API
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        )
 
-      if (search) {
-        params.append("search", search)
+        if (!response.ok) {
+          throw new Error(`Error fetching users: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        if (result.success && result.data) {
+          setUsers(result.data.users)
+          setPagination({
+            page: result.data.page,
+            limit: result.data.limit,
+            total: result.data.total,
+            totalPages: result.data.totalPages,
+          })
+        } else {
+          throw new Error("Invalid response format")
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error)
+        toast.error("Failed to fetch users")
+      } finally {
+        setLoading(false)
       }
+    },
+    [authToken, pagination.limit]
+  )
 
-      if (roleFilter && roleFilter !== "all") {
-        params.append("role", roleFilter)
-      }
-
-      // Use the main API server route
-      const url = `/api/admin/users?${params.toString()}`
-
-      // Fetch users with auth token
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      })
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to fetch users")
-      }
-
-      // Update state
-      setUsers(data.data.users || data.data)
-
-      // Handle pagination data based on API response format
-      if (data.data.pagination) {
-        setPagination((prev) => ({
-          ...prev,
-          ...data.data.pagination,
-        }))
-      } else if (data.data.total !== undefined) {
-        setPagination((prev) => ({
-          ...prev,
-          total: data.data.total,
-          totalPages: Math.ceil(data.data.total / pagination.limit),
-        }))
-      }
-
-      setManuallyFetched(true)
-    } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error(
-        error instanceof Error ? error.message : "Failed to fetch users"
-      )
-    } finally {
-      setIsLoadingUsers(false)
-    }
-  }, [
-    isLoadingUsers,
-    pagination.page,
-    pagination.limit,
-    search,
-    roleFilter,
-    authToken,
-  ])
-
-  // Only fetch when filters change, not on initial load since we have server data
+  // Initial fetch
   useEffect(() => {
-    if (search || roleFilter !== "all" || pagination.page > 1) {
+    if (initialUsers.length === 0) {
       fetchUsers()
     }
-  }, [search, roleFilter, pagination.page, fetchUsers])
+  }, [fetchUsers, initialUsers.length])
 
-  // Handle search
+  // Handle search form submission
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setPagination((prev) => ({ ...prev, page: 1 }))
-    fetchUsers()
+    fetchUsers(1, searchQuery, roleFilter)
   }
 
   // Handle role filter change
   const handleRoleFilterChange = (value: string) => {
     setRoleFilter(value)
-    setPagination((prev) => ({ ...prev, page: 1 }))
-    fetchUsers()
+    fetchUsers(1, searchQuery, value)
   }
 
-  // Handle page change
+  // Handle pagination
   const handlePageChange = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }))
-    fetchUsers()
+    fetchUsers(page, searchQuery, roleFilter)
   }
 
   // Update user role
   const updateUserRole = async (userId: string, newRole: UserRole) => {
-    setIsUpdatingRole(true)
     try {
-      // Use the main API server route with PUT method
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ role: newRole }),
-      })
+      setLoading(true)
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}/role`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ role: newRole }),
+        }
+      )
 
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to update user role")
+      if (!response.ok) {
+        throw new Error(`Error updating role: ${response.statusText}`)
       }
 
-      // Update users list
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === userId ? { ...user, role: newRole } : user
+      const result = await response.json()
+      if (result.success) {
+        // Update local state
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.id === userId ? { ...user, role: newRole } : user
+          )
         )
-      )
-
-      toast.success("User role updated successfully")
+        toast.success("User role updated successfully")
+      } else {
+        throw new Error(result.message || "Failed to update user role")
+      }
     } catch (error) {
       console.error("Error updating user role:", error)
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update user role"
-      )
+      toast.error("Failed to update user role")
     } finally {
-      setIsUpdatingRole(false)
+      setLoading(false)
     }
   }
 
-  // Get role badge color
+  // Role badge styling helper
   const getRoleBadgeVariant = (role: UserRole) => {
     switch (role) {
       case UserRole.ADMIN:
-        return "destructive"
+        return "bg-red-100 text-red-800 hover:bg-red-200"
       case UserRole.NODE_OFFICER:
-        return "default"
+        return "bg-blue-100 text-blue-800 hover:bg-blue-200"
       default:
-        return "secondary"
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200"
     }
   }
 
-  // Format date
+  // Format date helper
   const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleDateString()
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  // Render pagination controls
+  const renderPagination = () => {
+    const pages = []
+    const { page, totalPages } = pagination
+
+    // Always show first page
+    pages.push(
+      <Button
+        key="first"
+        variant={page === 1 ? "secondary" : "outline"}
+        size="sm"
+        onClick={() => handlePageChange(1)}
+        disabled={page === 1 || loading}
+      >
+        1
+      </Button>
+    )
+
+    // Show ellipsis if needed
+    if (page > 3) {
+      pages.push(
+        <Button key="ellipsis1" variant="outline" size="sm" disabled>
+          ...
+        </Button>
+      )
+    }
+
+    // Show current page and neighbors
+    for (
+      let i = Math.max(2, page - 1);
+      i <= Math.min(totalPages - 1, page + 1);
+      i++
+    ) {
+      if (i > 1 && i < totalPages) {
+        pages.push(
+          <Button
+            key={i}
+            variant={page === i ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => handlePageChange(i)}
+            disabled={loading}
+          >
+            {i}
+          </Button>
+        )
+      }
+    }
+
+    // Show ellipsis if needed
+    if (page < totalPages - 2) {
+      pages.push(
+        <Button key="ellipsis2" variant="outline" size="sm" disabled>
+          ...
+        </Button>
+      )
+    }
+
+    // Always show last page
+    if (totalPages > 1) {
+      pages.push(
+        <Button
+          key="last"
+          variant={page === totalPages ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => handlePageChange(totalPages)}
+          disabled={page === totalPages || loading}
+        >
+          {totalPages}
+        </Button>
+      )
+    }
+
+    return (
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Showing {(page - 1) * pagination.limit + 1}-
+          {Math.min(page * pagination.limit, pagination.total)} of{" "}
+          {pagination.total} users
+        </div>
+        <div className="flex gap-1">{pages}</div>
+      </div>
+    )
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">User Management</h1>
-        <Button onClick={fetchUsers} disabled={isLoadingUsers}>
-          {isLoadingUsers ? "Loading..." : "Refresh Users"}
-        </Button>
-      </div>
-
-      {/* Search and filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <form onSubmit={handleSearch} className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex-1">
+          <form
+            onSubmit={handleSearch}
+            className="flex w-full max-w-sm items-center space-x-2"
+          >
             <Input
               type="search"
               placeholder="Search users..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
             />
-          </div>
-        </form>
-        <div className="w-full md:w-[200px]">
+            <Button type="submit" size="sm" disabled={loading}>
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              <span className="sr-only">Search</span>
+            </Button>
+          </form>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            Filter by role:
+          </span>
           <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by role" />
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-              <SelectItem value={UserRole.NODE_OFFICER}>
-                Node Officer
-              </SelectItem>
-              <SelectItem value={UserRole.USER}>User</SelectItem>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="USER">User</SelectItem>
+              <SelectItem value="NODE_OFFICER">Node Officer</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Users table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoadingUsers ? (
-            <div className="flex justify-center items-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading users...</span>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center p-8 text-muted-foreground">
-              {manuallyFetched
-                ? "No users found."
-                : "Click 'Refresh Users' to load the user list."}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Organization</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-[60px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  {loading ? (
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    "No users found."
+                  )}
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    {user.name || "N/A"}
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={getRoleBadgeVariant(user.role)}
+                    >
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{user.organization || "N/A"}</TableCell>
+                  <TableCell>{formatDate(user.createdAt)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          aria-label="Open menu"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            // View user details
+                            router.push(`/admin/users/${user.id}`)
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Change Role
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuItem
+                                disabled={user.role === UserRole.ADMIN}
+                                onClick={() =>
+                                  updateUserRole(user.id, UserRole.ADMIN)
+                                }
+                              >
+                                <Shield className="mr-2 h-4 w-4" />
+                                Admin
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={user.role === UserRole.NODE_OFFICER}
+                                onClick={() =>
+                                  updateUserRole(user.id, UserRole.NODE_OFFICER)
+                                }
+                              >
+                                <Briefcase className="mr-2 h-4 w-4" />
+                                Node Officer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={user.role === UserRole.USER}
+                                onClick={() =>
+                                  updateUserRole(user.id, UserRole.USER)
+                                }
+                              >
+                                <User className="mr-2 h-4 w-4" />
+                                Regular User
+                              </DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name || "—"}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(user.role)}>
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.organization || "—"}</TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              // View user details
-                              router.push(`/admin/users/${user.id}`)
-                            }}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <UserCog className="mr-2 h-4 w-4" />
-                              Change Role
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    updateUserRole(user.id, UserRole.ADMIN)
-                                  }
-                                  disabled={user.role === UserRole.ADMIN}
-                                >
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Admin
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    updateUserRole(
-                                      user.id,
-                                      UserRole.NODE_OFFICER
-                                    )
-                                  }
-                                  disabled={user.role === UserRole.NODE_OFFICER}
-                                >
-                                  <Briefcase className="mr-2 h-4 w-4" />
-                                  Node Officer
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    updateUserRole(user.id, UserRole.USER)
-                                  }
-                                  disabled={user.role === UserRole.USER}
-                                >
-                                  <User className="mr-2 h-4 w-4" />
-                                  User
-                                </DropdownMenuItem>
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-        {users.length > 0 && pagination.totalPages > 1 && (
-          <CardFooter className="flex justify-between items-center py-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {users.length} of {pagination.total} users
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1 || isLoadingUsers}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={
-                  pagination.page === pagination.totalPages || isLoadingUsers
-                }
-              >
-                Next
-              </Button>
-            </div>
-          </CardFooter>
-        )}
-      </Card>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="pt-4">{renderPagination()}</div>
     </div>
   )
 }
