@@ -24,11 +24,14 @@ interface DashboardStats {
 
 async function fetchStats(): Promise<DashboardStats> {
   try {
+    console.log("[SERVER] Fetching admin dashboard stats from API")
+
     // Using the server-side fetch to call the main API server endpoint
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
       {
         cache: "no-store",
+        next: { revalidate: 60 }, // Revalidate every minute
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
@@ -37,19 +40,24 @@ async function fetchStats(): Promise<DashboardStats> {
     )
 
     if (!response.ok) {
-      throw new Error("Failed to fetch stats")
+      console.error(
+        `[SERVER] API error (${response.status}): ${response.statusText}`
+      )
+      throw new Error(`Failed to fetch stats: ${response.statusText}`)
     }
 
     const result = await response.json()
 
     // Check the structure of the response and extract data
     if (result.success && result.data) {
+      console.log("[SERVER] Successfully fetched dashboard stats:", result.data)
       return result.data
     }
 
+    console.error("[SERVER] Invalid API response format:", result)
     throw new Error("Invalid response format")
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error)
+    console.error("[SERVER] Error fetching dashboard stats:", error)
     // Return default values if there's an error
     return {
       userCount: 0,

@@ -44,12 +44,32 @@ export function AdminNav({ user }: AdminNavProps) {
     async function fetchStats() {
       try {
         setLoading(true)
+
+        // Get the auth token from localStorage or cookie
+        const token = localStorage.getItem("auth_token") || ""
+
+        if (!token) {
+          console.warn("[CLIENT] No auth token found for admin stats request")
+          // Set default stats instead of failing
+          setStats({
+            userCount: 0,
+            orgCount: 0,
+            metadataCount: 0,
+            activeUsers: 0,
+            pendingApprovals: 0,
+            systemHealth: 90,
+          })
+          return
+        }
+
+        console.log("[CLIENT] Fetching admin dashboard stats")
+
         // Use the main API server endpoint
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -59,14 +79,51 @@ export function AdminNav({ user }: AdminNavProps) {
           const result = await response.json()
 
           if (result.success && result.data) {
+            console.log(
+              "[CLIENT] Successfully fetched admin stats:",
+              result.data
+            )
             setStats(result.data)
 
             // Set notification count based on pending approvals
             setNotificationCount(result.data.pendingApprovals || 0)
+          } else {
+            console.error("[CLIENT] Invalid API response format:", result)
+            // Set default stats as fallback
+            setStats({
+              userCount: 0,
+              orgCount: 0,
+              metadataCount: 0,
+              activeUsers: 0,
+              pendingApprovals: 0,
+              systemHealth: 90,
+            })
           }
+        } else {
+          console.error(
+            `[CLIENT] API error (${response.status}): ${response.statusText}`
+          )
+          // Set default stats as fallback
+          setStats({
+            userCount: 0,
+            orgCount: 0,
+            metadataCount: 0,
+            activeUsers: 0,
+            pendingApprovals: 0,
+            systemHealth: 90,
+          })
         }
       } catch (error) {
-        console.error("Error fetching admin stats:", error)
+        console.error("[CLIENT] Error fetching admin stats:", error)
+        // Set default stats as fallback
+        setStats({
+          userCount: 0,
+          orgCount: 0,
+          metadataCount: 0,
+          activeUsers: 0,
+          pendingApprovals: 0,
+          systemHealth: 90,
+        })
       } finally {
         setLoading(false)
       }
@@ -153,7 +210,7 @@ export function AdminNav({ user }: AdminNavProps) {
                   {tab.icon}
                   <span className="hidden sm:inline">{tab.label}</span>
                   {tab.badge !== undefined && (
-                    <Badge className="ml-2 bg-gray-200 text-gray-800 hover:bg-gray-300">
+                    <Badge className="ml-2 bg-gray-200 text-gray-800 hover:bg-gray-300 data-[state=active]:bg-white data-[state=active]:text-ngdi-green-700">
                       {loading ? "..." : tab.badge}
                     </Badge>
                   )}
