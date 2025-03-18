@@ -11,7 +11,6 @@ import { cookies } from "next/headers"
 import Image from "next/image"
 
 // Function to get the current user ID from the auth token
-// This is a placeholder - implement based on your auth system
 async function getCurrentUserId(): Promise<string | null> {
   const authToken = cookies().get("auth_token")?.value
 
@@ -20,22 +19,19 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 
   // In a real implementation, you would decode and validate the token
-  // For now, we'll return a placeholder user ID
-  return "placeholder-user-id"
+  return null
 }
 
 // Function to get the current user role
-// This is a placeholder - implement based on your auth system
 async function getCurrentUserRole(): Promise<string | null> {
   // In a real implementation, you would decode and validate the token
-  // For now, we'll return a placeholder role
   return "USER"
 }
 
 // Helper function to check if a URL is external
 function isExternalUrl(url: string): boolean {
   if (!url) return false
-  return url.startsWith('http://') || url.startsWith('https://')
+  return url.startsWith("http://") || url.startsWith("https://")
 }
 
 interface MetadataPageProps {
@@ -55,9 +51,11 @@ export async function generateMetadata({
     }
   }
 
+  const metadata = result.data
+
   return {
-    title: `${result.data.dataName} - Metadata Details`,
-    description: result.data.abstract.substring(0, 160),
+    title: `${metadata.title || "Metadata"} - Details`,
+    description: metadata.abstract?.substring(0, 160) || "Metadata details",
   }
 }
 
@@ -74,24 +72,27 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
   const metadata = result.data
   const canEdit = userId === metadata.userId || userRole === "ADMIN"
 
-  // Extract fundamental datasets that are true
-  const fundamentalDatasets = Object.entries(
-    metadata.fundamentalDatasets as Record<string, boolean>
-  )
-    .filter(([_, value]) => value)
-    .map(([key]) => {
-      // Convert camelCase to Title Case with spaces
-      return key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (str) => str.toUpperCase())
-        .trim()
-    })
+  // Extract categories
+  const categories = Array.isArray(metadata.categories)
+    ? metadata.categories
+    : []
+
+  // Helper function to format dates safely
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return null
+    try {
+      return format(new Date(date), "MMMM d, yyyy")
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return null
+    }
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/metadata">
+          <Link href="/search">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Search
           </Link>
@@ -110,49 +111,55 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <Badge>{metadata.dataType}</Badge>
+                  <Badge>{metadata.frameworkType}</Badge>
                   <CardTitle className="mt-2 text-2xl">
-                    {metadata.dataName}
+                    {metadata.title}
                   </CardTitle>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <span>
-                    Production Date:{" "}
-                    {format(new Date(metadata.productionDate), "MMMM d, yyyy")}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  <span>
-                    Location: {metadata.state}, {metadata.country}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <Globe className="h-4 w-4 mr-2" />
-                  <span>Coordinate System: {metadata.coordinateUnit}</span>
-                </div>
+                {metadata.dateFrom && (
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <span>
+                      Date: {formatDate(metadata.dateFrom)}
+                      {metadata.dateTo && ` - ${formatDate(metadata.dateTo)}`}
+                    </span>
+                  </div>
+                )}
+                {metadata.author && (
+                  <div className="flex items-center">
+                    <span>Author: {metadata.author}</span>
+                  </div>
+                )}
+                {metadata.organization && (
+                  <div className="flex items-center">
+                    <span>Organization: {metadata.organization}</span>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <h3 className="font-semibold mb-2">Abstract</h3>
-                <p className="text-muted-foreground">{metadata.abstract}</p>
-              </div>
+              {metadata.abstract && (
+                <div>
+                  <h3 className="font-semibold mb-2">Abstract</h3>
+                  <p className="text-muted-foreground">{metadata.abstract}</p>
+                </div>
+              )}
 
-              <div>
-                <h3 className="font-semibold mb-2">Purpose</h3>
-                <p className="text-muted-foreground">{metadata.purpose}</p>
-              </div>
+              {metadata.purpose && (
+                <div>
+                  <h3 className="font-semibold mb-2">Purpose</h3>
+                  <p className="text-muted-foreground">{metadata.purpose}</p>
+                </div>
+              )}
 
-              {fundamentalDatasets.length > 0 && (
+              {categories.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2">Categories</h3>
                   <div className="flex flex-wrap gap-2">
-                    {fundamentalDatasets.map((category) => (
+                    {categories.map((category) => (
                       <Badge key={category} variant="secondary">
                         {category}
                       </Badge>
@@ -163,101 +170,116 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
             </CardContent>
           </Card>
 
+          {/* Technical Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Spatial Information</CardTitle>
+              <CardTitle>Technical Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {metadata.coordinateSystem && (
                 <div>
-                  <h3 className="text-sm font-medium">Coordinate Unit</h3>
+                  <h3 className="text-sm font-medium">Coordinate System</h3>
                   <p className="text-muted-foreground">
-                    {metadata.coordinateUnit}
+                    {metadata.coordinateSystem}
                   </p>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium">Bounding Box</h3>
-                  <p className="text-muted-foreground">
-                    Min: {metadata.minLatitude}°, {metadata.minLongitude}°<br />
-                    Max: {metadata.maxLatitude}°, {metadata.maxLongitude}°
-                  </p>
-                </div>
-              </div>
+              )}
 
-              <div>
-                <h3 className="text-sm font-medium">Location Details</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-1">
-                  <div>
-                    <span className="text-xs text-muted-foreground">
-                      Country
-                    </span>
-                    <p>{metadata.country}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">
-                      Geopolitical Zone
-                    </span>
-                    <p>{metadata.geopoliticalZone}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">State</span>
-                    <p>{metadata.state}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">LGA</span>
-                    <p>{metadata.lga}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">
-                      Town/City
-                    </span>
-                    <p>{metadata.townCity}</p>
-                  </div>
+              {metadata.projection && (
+                <div>
+                  <h3 className="text-sm font-medium">Projection</h3>
+                  <p className="text-muted-foreground">{metadata.projection}</p>
                 </div>
-              </div>
+              )}
+
+              {metadata.scale && (
+                <div>
+                  <h3 className="text-sm font-medium">Scale</h3>
+                  <p className="text-muted-foreground">1:{metadata.scale}</p>
+                </div>
+              )}
+
+              {metadata.resolution && (
+                <div>
+                  <h3 className="text-sm font-medium">Resolution</h3>
+                  <p className="text-muted-foreground">{metadata.resolution}</p>
+                </div>
+              )}
+
+              {metadata.fileFormat && (
+                <div>
+                  <h3 className="text-sm font-medium">File Format</h3>
+                  <p className="text-muted-foreground">{metadata.fileFormat}</p>
+                </div>
+              )}
+
+              {metadata.fileSize && (
+                <div>
+                  <h3 className="text-sm font-medium">File Size</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.fileSize} bytes
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Data Quality Information */}
           <Card>
             <CardHeader>
               <CardTitle>Data Quality Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium">Assessment</h3>
-                <p className="text-muted-foreground">{metadata.assessment}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium">Update Frequency</h3>
-                <p className="text-muted-foreground">
-                  {metadata.updateFrequency}
-                </p>
-              </div>
-
-              {metadata.logicalConsistencyReport && (
+              {metadata.accuracyLevel && (
                 <div>
-                  <h3 className="text-sm font-medium">Logical Consistency</h3>
+                  <h3 className="text-sm font-medium">Accuracy Level</h3>
                   <p className="text-muted-foreground">
-                    {metadata.logicalConsistencyReport}
+                    {metadata.accuracyLevel}
                   </p>
                 </div>
               )}
 
-              {metadata.completenessReport && (
+              {metadata.completeness !== undefined && (
                 <div>
                   <h3 className="text-sm font-medium">Completeness</h3>
                   <p className="text-muted-foreground">
-                    {metadata.completenessReport}
+                    {metadata.completeness}%
                   </p>
                 </div>
               )}
 
-              {metadata.attributeAccuracyReport && (
+              {metadata.validationStatus && (
                 <div>
-                  <h3 className="text-sm font-medium">Attribute Accuracy</h3>
+                  <h3 className="text-sm font-medium">Validation Status</h3>
                   <p className="text-muted-foreground">
-                    {metadata.attributeAccuracyReport}
+                    {metadata.validationStatus}
+                  </p>
+                </div>
+              )}
+
+              {metadata.updateCycle && (
+                <div>
+                  <h3 className="text-sm font-medium">Update Cycle</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.updateCycle}
+                  </p>
+                </div>
+              )}
+
+              {metadata.lastUpdate && (
+                <div>
+                  <h3 className="text-sm font-medium">Last Update</h3>
+                  <p className="text-muted-foreground">
+                    {formatDate(metadata.lastUpdate)}
+                  </p>
+                </div>
+              )}
+
+              {metadata.nextUpdate && (
+                <div>
+                  <h3 className="text-sm font-medium">Next Update</h3>
+                  <p className="text-muted-foreground">
+                    {formatDate(metadata.nextUpdate)}
                   </p>
                 </div>
               )}
@@ -266,6 +288,7 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
         </div>
 
         <div className="space-y-6">
+          {/* Thumbnail */}
           <Card>
             <CardHeader>
               <CardTitle>Thumbnail</CardTitle>
@@ -275,7 +298,7 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
                 isExternalUrl(metadata.thumbnailUrl) ? (
                   <Image
                     src={metadata.thumbnailUrl}
-                    alt={metadata.dataName}
+                    alt={metadata.title || "Metadata thumbnail"}
                     width={800}
                     height={600}
                     className="w-full h-auto rounded-lg"
@@ -284,7 +307,7 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
                 ) : (
                   <Image
                     src={metadata.thumbnailUrl}
-                    alt={metadata.dataName}
+                    alt={metadata.title || "Metadata thumbnail"}
                     width={800}
                     height={600}
                     className="w-full h-auto rounded-lg"
@@ -298,114 +321,125 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
             </CardContent>
           </Card>
 
+          {/* Access Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Resource Constraints</CardTitle>
+              <CardTitle>Access Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium">Access Constraints</h3>
-                <p className="text-muted-foreground">
-                  {metadata.accessConstraints}
-                </p>
-              </div>
+              {metadata.distributionFormat && (
+                <div>
+                  <h3 className="text-sm font-medium">Distribution Format</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.distributionFormat}
+                  </p>
+                </div>
+              )}
 
-              <div>
-                <h3 className="text-sm font-medium">Use Constraints</h3>
-                <p className="text-muted-foreground">
-                  {metadata.useConstraints}
-                </p>
-              </div>
+              {metadata.accessMethod && (
+                <div>
+                  <h3 className="text-sm font-medium">Access Method</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.accessMethod}
+                  </p>
+                </div>
+              )}
 
-              <div>
-                <h3 className="text-sm font-medium">Other Constraints</h3>
-                <p className="text-muted-foreground">
-                  {metadata.otherConstraints}
-                </p>
-              </div>
+              {metadata.downloadUrl && (
+                <div>
+                  <h3 className="text-sm font-medium">Download URL</h3>
+                  <a
+                    href={metadata.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Download Data
+                  </a>
+                </div>
+              )}
+
+              {metadata.apiEndpoint && (
+                <div>
+                  <h3 className="text-sm font-medium">API Endpoint</h3>
+                  <p className="text-muted-foreground break-all">
+                    {metadata.apiEndpoint}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* License Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>License Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {metadata.licenseType && (
+                <div>
+                  <h3 className="text-sm font-medium">License Type</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.licenseType}
+                  </p>
+                </div>
+              )}
+
+              {metadata.usageTerms && (
+                <div>
+                  <h3 className="text-sm font-medium">Usage Terms</h3>
+                  <p className="text-muted-foreground">{metadata.usageTerms}</p>
+                </div>
+              )}
+
+              {metadata.attributionRequirements && (
+                <div>
+                  <h3 className="text-sm font-medium">
+                    Attribution Requirements
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {metadata.attributionRequirements}
+                  </p>
+                </div>
+              )}
+
+              {metadata.accessRestrictions &&
+                Array.isArray(metadata.accessRestrictions) &&
+                metadata.accessRestrictions.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium">Access Restrictions</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {metadata.accessRestrictions.map((restriction, index) => (
+                        <li key={index}>{restriction}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+
+          {/* Contact Information */}
           <Card>
             <CardHeader>
               <CardTitle>Contact Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium">Metadata Contact</h3>
-                <p className="text-muted-foreground">
-                  {metadata.metadataContactName}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.metadataContactEmail}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.metadataContactPhone}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.metadataContactAddress}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium">Distributor</h3>
-                <p className="text-muted-foreground">
-                  {metadata.distributorName}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.distributorEmail}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.distributorPhone}
-                </p>
-                <p className="text-muted-foreground">
-                  {metadata.distributorAddress}
-                </p>
-                {metadata.distributorWebLink && (
-                  <a
-                    href={metadata.distributorWebLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Website
-                  </a>
-                )}
-              </div>
-
-              {/* Show custodian info if available */}
-              {(metadata as any)?.isCustodian === false &&
-                (metadata as any)?.custodianName && (
-                  <div>
-                    <h3 className="text-sm font-medium">Custodian</h3>
-                    <p className="text-muted-foreground">
-                      {(metadata as any).custodianName}
-                    </p>
-                    {(metadata as any)?.custodianContact && (
-                      <p className="text-muted-foreground">
-                        {(metadata as any).custodianContact}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-              <div>
-                <h3 className="text-sm font-medium">Processing Times</h3>
-                <div className="grid grid-cols-2 gap-x-2">
-                  <span className="text-xs">Turnaround Time:</span>
-                  <p className="text-muted-foreground text-xs">
-                    {metadata.turnaroundTime}
+              {metadata.contactPerson && (
+                <div>
+                  <h3 className="text-sm font-medium">Contact Person</h3>
+                  <p className="text-muted-foreground">
+                    {metadata.contactPerson}
                   </p>
-                  {(metadata as any)?.maximumResponseTime && (
-                    <>
-                      <span className="text-xs">Max Response Time:</span>
-                      <p className="text-muted-foreground text-xs">
-                        {(metadata as any).maximumResponseTime}
-                      </p>
-                    </>
+                  {metadata.email && (
+                    <p className="text-muted-foreground">{metadata.email}</p>
+                  )}
+                  {metadata.department && (
+                    <p className="text-muted-foreground">
+                      {metadata.department}
+                    </p>
                   )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

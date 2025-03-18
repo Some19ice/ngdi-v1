@@ -538,7 +538,8 @@ export async function searchMetadata({
 
 export async function getMetadataById(id: string) {
   try {
-    const metadata = await prisma.nGDIMetadata.findUnique({
+    // Use direct database access with Prisma
+    const metadata = await prisma.metadata.findUnique({
       where: { id },
       include: {
         user: {
@@ -556,6 +557,7 @@ export async function getMetadataById(id: string) {
 
     return { success: true, data: metadata }
   } catch (error) {
+    console.error("Error fetching metadata:", error)
     if (error instanceof Error) {
       return { success: false, error: error.message }
     }
