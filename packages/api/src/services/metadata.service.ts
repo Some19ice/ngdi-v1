@@ -207,17 +207,23 @@ export const metadataService = {
       fileFormat,
       search,
       category,
+      frameworkType,
     } = searchQuery
 
     console.log("API searchMetadata called with:", {
       searchQuery,
-      table: "NGDIMetadata", // Log that we're using NGDIMetadata
+      table: "metadata",
     })
 
     const skip = (page - 1) * limit
 
-    // Build where conditions for NGDIMetadata table
+    // Build where conditions for metadata table
     const where: any = {}
+
+    // If frameworkType is specified, use it directly (for Vector, Raster, Table)
+    if (frameworkType) {
+      where.frameworkType = { equals: frameworkType, mode: "insensitive" }
+    }
 
     if (search) {
       // Enhanced search across all relevant fields
@@ -234,20 +240,27 @@ export const metadataService = {
     }
 
     if (category) {
-      // For NGDIMetadata, we need to adjust how categories are filtered
-      if (category === "vector") {
-        where.dataType = { equals: "Vector", mode: "insensitive" }
-      } else if (category === "raster") {
-        where.dataType = { equals: "Raster", mode: "insensitive" }
+      // For category filtering, handle special cases and normalize
+      if (category.toLowerCase() === "vector") {
+        where.frameworkType = { equals: "Vector", mode: "insensitive" }
+      } else if (category.toLowerCase() === "raster") {
+        where.frameworkType = { equals: "Raster", mode: "insensitive" }
+      } else if (category.toLowerCase() === "table") {
+        where.frameworkType = { equals: "Table", mode: "insensitive" }
       } else {
-        // Try to match category against any field
+        // For other categories, try to find it in the categories array or category-related fields
         where.OR = [
           ...(where.OR || []),
-          { dataType: { contains: category, mode: "insensitive" } },
-          { dataName: { contains: category, mode: "insensitive" } },
+          // Search in categories array
+          { categories: { has: category } },
+          // Search for dataType-related terms in various fields
+          { frameworkType: { contains: category, mode: "insensitive" } },
+          { title: { contains: category, mode: "insensitive" } },
           { abstract: { contains: category, mode: "insensitive" } },
         ]
       }
+
+      console.log(`Applied category filter: ${category}`, where)
     }
 
     if (organization) {
@@ -275,9 +288,9 @@ export const metadataService = {
         },
       })
 
-      // Execute query and count in parallel using NGDIMetadata table
+      // Execute query and count in parallel using metadata table
       const [metadata, total] = await Promise.all([
-        prisma.nGDIMetadata.findMany({
+        prisma.metadata.findMany({
           where,
           skip,
           take: limit,
@@ -287,15 +300,28 @@ export const metadataService = {
           },
           select: {
             id: true,
-            dataName: true,
-            dataType: true,
-            cloudCoverPercentage: true,
-            productionDate: true,
+            title: true,
+            author: true,
+            organization: true,
             abstract: true,
-            fundamentalDatasets: true,
+            purpose: true,
+            thumbnailUrl: true,
+            dateFrom: true,
+            dateTo: true,
+            frameworkType: true,
+            categories: true,
+            fileFormat: true,
+            createdAt: true,
+            updatedAt: true,
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
           },
         }),
-        prisma.nGDIMetadata.count({ where }),
+        prisma.metadata.count({ where }),
       ])
 
       console.log("Prisma query results:", {
@@ -304,37 +330,37 @@ export const metadataService = {
         firstItem: metadata.length > 0 ? metadata[0] : null,
       })
 
-      // Map the NGDIMetadata fields to the expected MetadataResponse structure
+      // Map the fields to the expected MetadataResponse structure
       return {
         metadata: metadata.map((item) => ({
           id: item.id,
-          title: item.dataName || "Untitled",
-          author: "NGDI", // Default author
-          organization: "NGDI", // Default organization
-          dateFrom: formatDate(item.productionDate),
-          dateTo: formatDate(item.productionDate),
+          title: item.title,
+          author: item.author,
+          organization: item.organization,
+          dateFrom: item.dateFrom,
+          dateTo: item.dateTo,
           abstract: item.abstract || "",
-          purpose: "",
-          thumbnailUrl: "",
+          purpose: item.purpose || "",
+          thumbnailUrl: item.thumbnailUrl || "",
           imageName: "",
-          frameworkType: "",
-          categories: [item.dataType || ""],
+          frameworkType: item.frameworkType || "",
+          categories: item.categories || [],
           coordinateSystem: "",
           projection: "",
           scale: 0,
           accuracyLevel: "",
-          fileFormat: "Unknown",
+          fileFormat: item.fileFormat || "Unknown",
           distributionFormat: "",
           accessMethod: "",
           licenseType: "",
           usageTerms: "",
           attributionRequirements: "",
           accessRestrictions: [],
-          contactPerson: "",
-          email: "",
+          contactPerson: item.user?.name || "",
+          email: item.user?.email || "",
           userId: "",
-          createdAt: formatDate(item.productionDate),
-          updatedAt: formatDate(item.productionDate),
+          createdAt: formatDate(item.createdAt),
+          updatedAt: formatDate(item.updatedAt),
         })),
         total,
         page,
@@ -342,7 +368,7 @@ export const metadataService = {
         totalPages: Math.ceil(total / limit),
       }
     } catch (error) {
-      console.error("Error searching NGDIMetadata:", error)
+      console.error("Error searching metadata:", error)
       throw new HTTPException(500, { message: "Failed to search metadata" })
     }
   },
@@ -458,9 +484,9 @@ export default metadataService
 function mapSortField(sortBy: string): string {
   switch (sortBy) {
     case "title":
-      return "dataName"
+      return "title"
     case "createdAt":
-      return "productionDate"
+      return "createdAt"
     default:
       return sortBy
   }

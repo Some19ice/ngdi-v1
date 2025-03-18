@@ -75,8 +75,8 @@ const searchFormSchema = z.object({
 type SearchFormValues = z.infer<typeof searchFormSchema>
 
 const dataTypes = [
-  { value: "vector", label: "Vector" },
-  { value: "raster", label: "Raster" },
+  { value: "Vector", label: "Vector" },
+  { value: "Raster", label: "Raster" },
   { value: "boundary", label: "Boundary" },
   { value: "water-bodies", label: "Water Bodies" },
   { value: "education", label: "Education" },
@@ -205,9 +205,23 @@ function SearchForm() {
     // Set up an interval to periodically check for token changes
     // Use a longer interval to reduce duplicate checks
     const tokenCheckInterval = setInterval(getToken, 10000)
-    
+
     return () => clearInterval(tokenCheckInterval)
   }, [])
+
+  // Immediately execute search on component mount
+  useEffect(() => {
+    // Run a search with empty parameters to show all results
+    fetchSearchResults(
+      {
+        keyword: "",
+        dataType: "all",
+        organization: "",
+        dateRange: undefined,
+      },
+      1
+    )
+  }, []) // Empty dependency array means this runs once on mount
 
   // Load initial results based on URL parameters
   useEffect(() => {
@@ -220,6 +234,9 @@ function SearchForm() {
       organization: searchParams?.get("organization") || "",
       dateRange: undefined as DateRange | undefined,
     }
+
+    // Debug the initial search parameters
+    console.log("Initial search parameters:", initialSearch)
 
     if (searchParams?.get("dateFrom")) {
       initialSearch.dateRange = {
@@ -251,8 +268,14 @@ function SearchForm() {
 
       // Add category filter
       if (data.dataType && data.dataType !== "all") {
+        // For Vector and Raster, include a hint to use frameworkType filter
+        if (data.dataType === "Vector" || data.dataType === "Raster") {
+          searchParams.set("frameworkType", data.dataType)
+        }
         searchParams.set("category", data.dataType)
-        console.log(`Adding category filter: ${data.dataType}`)
+        console.log(
+          `Adding category filter: ${data.dataType} (original value: ${data.dataType})`
+        )
       }
 
       // Add organization filter
@@ -287,6 +310,7 @@ function SearchForm() {
         hasAuthToken: !!currentToken,
         authTokenLength: currentToken?.length,
         params: Object.fromEntries(searchParams.entries()),
+        dataTypeValue: data.dataType,
       })
 
       // Fetch data from API with auth token if available
@@ -297,20 +321,31 @@ function SearchForm() {
       })
 
       if (!response.ok) {
+        console.error("API error response:", {
+          status: response.status,
+          statusText: response.statusText,
+        })
         throw new Error(`Search failed: ${response.statusText}`)
       }
 
       const result = await response.json()
-      console.log("Search results:", {
+      console.log("Search API response:", {
         success: result.success,
-        total: result.data?.total,
-        metadataCount: result.data?.metadata?.length,
+        total: result.data?.total || 0,
+        metadataCount: result.data?.metadata?.length || 0,
+        firstItem: result.data?.metadata?.[0]
+          ? {
+              id: result.data.metadata[0].id,
+              title: result.data.metadata[0].title,
+            }
+          : "none",
+        metadata: result.data?.metadata?.slice(0, 2) || [], // Show first 2 items for debug
       })
 
-      setSearchResults(result.data.metadata || [])
-      setTotalResults(result.data.total || 0)
-      setTotalPages(result.data.totalPages || 1)
-      setCurrentPage(result.data.currentPage || 1)
+      setSearchResults(result.data?.metadata || [])
+      setTotalResults(result.data?.total || 0)
+      setTotalPages(result.data?.totalPages || 1)
+      setCurrentPage(result.data?.currentPage || 1)
     } catch (error) {
       console.error("Search error:", error)
       setSearchResults([])

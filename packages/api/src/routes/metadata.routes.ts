@@ -279,6 +279,11 @@ metadata.delete(
  *           type: string
  *         description: Filter by category
  *       - in: query
+ *         name: frameworkType
+ *         schema:
+ *           type: string
+ *         description: Filter by framework type (Vector, Raster, Table)
+ *       - in: query
  *         name: dateFrom
  *         schema:
  *           type: string
@@ -308,6 +313,7 @@ metadata.get("/search", async (c) => {
     limit = "10",
     search,
     category,
+    frameworkType,
     dateFrom,
     dateTo,
   } = c.req.query()
@@ -317,6 +323,7 @@ metadata.get("/search", async (c) => {
     limit: parseInt(limit, 10),
     search,
     category,
+    frameworkType,
     dateFrom,
     dateTo,
     sortBy: "createdAt",

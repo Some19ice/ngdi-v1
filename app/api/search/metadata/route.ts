@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "9")
     const search = searchParams.get("search") || ""
     const category = searchParams.get("category") || ""
+    const frameworkType = searchParams.get("frameworkType") || undefined
     const dateFrom = searchParams.get("dateFrom") || undefined
     const dateTo = searchParams.get("dateTo") || undefined
 
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
       search: search ? `"${search}"` : "(empty)",
       searchLength: search?.length,
       category: category || "(none)",
+      frameworkType: frameworkType || "(none)",
       dateFrom: dateFrom || "(none)",
       dateTo: dateTo || "(none)",
     })
@@ -55,6 +57,7 @@ export async function GET(request: Request) {
       limit,
       search,
       category,
+      frameworkType,
       dateFrom,
       dateTo,
     })

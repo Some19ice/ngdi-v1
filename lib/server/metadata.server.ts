@@ -34,68 +34,40 @@ export const metadataServerService = {
       // Enhanced search across all relevant fields with wildcards for better matching
       where.OR = [
         // Main search fields with wildcard on both sides
-        { dataName: { contains: search, mode: "insensitive" } },
+        { title: { contains: search, mode: "insensitive" } },
         { abstract: { contains: search, mode: "insensitive" } },
-        { dataType: { contains: search, mode: "insensitive" } },
-
-        // Location-based searches - important for searching by place names
-        { country: { contains: search, mode: "insensitive" } },
-        { state: { contains: search, mode: "insensitive" } },
-        { lga: { contains: search, mode: "insensitive" } },
-        { townCity: { contains: search, mode: "insensitive" } },
-        { geopoliticalZone: { contains: search, mode: "insensitive" } },
+        { organization: { contains: search, mode: "insensitive" } },
+        { author: { contains: search, mode: "insensitive" } },
+        { purpose: { contains: search, mode: "insensitive" } },
 
         // ID-based search (exact start match)
         { id: { startsWith: search } },
       ]
 
-      // For PostgreSQL JSON search
-      try {
-        // Try to add a JSON path query for fundamentalDatasets
-        // Check if the field exists in any string value of the JSON
-        where.OR.push({
-          fundamentalDatasets: {
-            path: ["$.**"],
-            string_contains: search,
-          },
-        })
-      } catch (e) {
-        console.log("JSON path search not supported:", e)
-
-        // Fallback: Try a string-based search if database is SQLite or doesn't support JSON operators
-        try {
-          where.OR.push({
-            fundamentalDatasets: {
-              contains: search,
-            },
-          })
-        } catch (e2) {
-          console.log("Basic JSON contains search failed:", e2)
-        }
-      }
-
       // Debug log the search term and condition
       console.log("Search condition added:", {
         searchTerm: search,
         conditionCount: where.OR.length,
-        searchLocations: true,
-        searchJSON: true,
       })
     }
 
-    if (category) {
-      // For NGDIMetadata, we might need to adjust how categories are filtered
-      // This depends on how categories are stored in your database
-      if (category === "vector") {
-        where.dataType = { equals: "Vector", mode: "insensitive" }
-      } else if (category === "raster") {
-        where.dataType = { equals: "Raster", mode: "insensitive" }
+    if (category && category !== "all") {
+      // For category filtering, handle special cases and normalize
+      if (category.toLowerCase() === "vector") {
+        where.frameworkType = { equals: "Vector", mode: "insensitive" }
+      } else if (category.toLowerCase() === "raster") {
+        where.frameworkType = { equals: "Raster", mode: "insensitive" }
+      } else if (category.toLowerCase() === "table") {
+        where.frameworkType = { equals: "Table", mode: "insensitive" }
       } else {
-        // Try to match category against any field
+        // For other categories, try to find it in the categories array or category-related fields
         where.OR = [
           ...(where.OR || []),
-          { dataType: { contains: category, mode: "insensitive" } },
-          { dataName: { contains: category, mode: "insensitive" } },
+          // Search in categories array
+          { categories: { has: category } },
+          // Search for dataType-related terms in various fields
+          { frameworkType: { contains: category, mode: "insensitive" } },
+          { title: { contains: category, mode: "insensitive" } },
           { abstract: { contains: category, mode: "insensitive" } },
         ]
       }
@@ -103,10 +75,7 @@ export const metadataServerService = {
       // Debug log the category filter
       console.log("Category filter added:", {
         category,
-        condition:
-          category === "vector" || category === "raster"
-            ? { dataType: { equals: category, mode: "insensitive" } }
-            : { OR: where.OR },
+        condition: where.frameworkType || where.OR,
       })
     }
 
@@ -118,34 +87,37 @@ export const metadataServerService = {
         orderBy: {
           [sortBy]: sortOrder,
         },
-        table: "NGDIMetadata", // Log the table name we're querying
+        table: "metadata", // Log the table name we're querying
       })
 
       // Execute query and count in parallel
       const [metadata, total] = await Promise.all([
-        prisma.nGDIMetadata.findMany({
+        prisma.metadata.findMany({
           where,
           skip,
           take: limit,
           orderBy: {
-            // Map frontend sort fields to database fields
-            ...(sortBy === "title"
-              ? { dataName: sortOrder }
-              : sortBy === "createdAt"
-                ? { productionDate: sortOrder }
-                : { [sortBy]: sortOrder }),
+            [sortBy]: sortOrder,
           },
           select: {
             id: true,
-            dataName: true,
-            dataType: true,
-            cloudCoverPercentage: true,
-            productionDate: true,
+            title: true,
+            author: true,
+            organization: true,
+            dateFrom: true,
+            dateTo: true,
             abstract: true,
-            fundamentalDatasets: true,
+            purpose: true,
+            thumbnailUrl: true,
+            imageName: true,
+            frameworkType: true,
+            categories: true,
+            fileFormat: true,
+            createdAt: true,
+            updatedAt: true,
           },
         }),
-        prisma.nGDIMetadata.count({ where }),
+        prisma.metadata.count({ where }),
       ])
 
       console.log("Prisma query results:", {
@@ -154,21 +126,20 @@ export const metadataServerService = {
         firstItem: metadata.length > 0 ? metadata[0] : null,
       })
 
-      // Map the NGDIMetadata fields to the expected MetadataItem structure
+      // Return the metadata items directly as they already match our expected format
       return {
         metadata: metadata.map((item) => ({
           id: item.id,
-          title: item.dataName || "Untitled",
-          author: "NGDI", // Default author
-          organization: "NGDI", // Default organization
-          dateFrom: formatDate(item.productionDate),
-          dateTo: formatDate(item.productionDate),
-          cloudCoverPercentage: item.cloudCoverPercentage ?? undefined,
-          abstract: item.abstract || undefined,
-          dataType: item.dataType || undefined,
-          fundamentalDatasets: item.fundamentalDatasets
-            ? String(item.fundamentalDatasets)
-            : undefined,
+          title: item.title,
+          author: item.author,
+          organization: item.organization,
+          dateFrom: item.dateFrom || "",
+          dateTo: item.dateTo || "",
+          abstract: item.abstract || "",
+          frameworkType: item.frameworkType,
+          dataType: item.frameworkType, // Map frameworkType to dataType for UI compatibility
+          thumbnailUrl: item.thumbnailUrl,
+          categories: item.categories || [],
         })),
         total,
         currentPage: page,

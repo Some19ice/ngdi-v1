@@ -44,6 +44,14 @@ const categoryOptions = [
   { value: "demographicData", label: "Demographic Data" },
   { value: "digitalImagery", label: "Digital Imagery" },
   { value: "transportationData", label: "Transportation Data" },
+  { value: "governmentData", label: "Government Data" },
+  { value: "urbanPlanning", label: "Urban Planning" },
+  { value: "censusData", label: "Census Data" },
+  { value: "disasterManagement", label: "Disaster Management" },
+  { value: "infrastructureData", label: "Infrastructure Data" },
+  { value: "environmentData", label: "Environmental Data" },
+  { value: "agriculturalData", label: "Agricultural Data" },
+  { value: "elevation", label: "Elevation Data" },
 ]
 
 // Sort options for metadata search

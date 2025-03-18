@@ -193,6 +193,7 @@ const form3Schema = z.object({
     orderingInstructions: z
       .string()
       .min(1, "Ordering instructions are required"),
+    maximumResponseTime: z.string().optional(),
   }),
 })
 
@@ -219,123 +220,181 @@ export async function createMetadata(data: NGDIMetadataFormData) {
     // Validate the data against the schema
     const validatedData = ngdiMetadataSchema.parse(data)
 
-    // Create the metadata record in the database
-    const metadata = await prisma.nGDIMetadata.create({
-      data: {
-        // Form 1: General Information
-        dataType: validatedData.form1.dataInformation.dataType,
-        dataName: validatedData.form1.dataInformation.dataName,
-        cloudCoverPercentage:
-          validatedData.form1.dataInformation.cloudCoverPercentage,
-        productionDate: validatedData.form1.dataInformation.productionDate,
+    // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
+    // and in the consolidated Metadata table
+    const [ngdiMetadata, metadata] = await Promise.all([
+      // Create in NGDIMetadata (original table)
+      prisma.nGDIMetadata.create({
+        data: {
+          // Form 1: General Information
+          dataType: validatedData.form1.dataInformation.dataType,
+          dataName: validatedData.form1.dataInformation.dataName,
+          cloudCoverPercentage:
+            validatedData.form1.dataInformation.cloudCoverPercentage,
+          productionDate: validatedData.form1.dataInformation.productionDate,
 
-        // Fundamental Datasets (stored as JSON)
-        fundamentalDatasets: validatedData.form1.fundamentalDatasets,
+          // Fundamental Datasets (stored as JSON)
+          fundamentalDatasets: validatedData.form1.fundamentalDatasets,
 
-        // Description
-        abstract: validatedData.form1.description.abstract,
-        purpose: validatedData.form1.description.purpose,
-        thumbnailUrl: validatedData.form1.description.thumbnail,
+          // Description
+          abstract: validatedData.form1.description.abstract,
+          purpose: validatedData.form1.description.purpose,
+          thumbnailUrl: validatedData.form1.description.thumbnail,
 
-        // Spatial Domain
-        coordinateUnit: validatedData.form1.spatialDomain.coordinateUnit,
-        minLatitude: validatedData.form1.spatialDomain.minLatitude,
-        minLongitude: validatedData.form1.spatialDomain.minLongitude,
-        maxLatitude: validatedData.form1.spatialDomain.maxLatitude,
-        maxLongitude: validatedData.form1.spatialDomain.maxLongitude,
+          // Spatial Domain
+          coordinateUnit: validatedData.form1.spatialDomain.coordinateUnit,
+          minLatitude: validatedData.form1.spatialDomain.minLatitude,
+          minLongitude: validatedData.form1.spatialDomain.minLongitude,
+          maxLatitude: validatedData.form1.spatialDomain.maxLatitude,
+          maxLongitude: validatedData.form1.spatialDomain.maxLongitude,
 
-        // Location
-        country: validatedData.form1.location.country,
-        geopoliticalZone: validatedData.form1.location.geopoliticalZone,
-        state: validatedData.form1.location.state,
-        lga: validatedData.form1.location.lga,
-        townCity: validatedData.form1.location.townCity,
+          // Location
+          country: validatedData.form1.location.country,
+          geopoliticalZone: validatedData.form1.location.geopoliticalZone,
+          state: validatedData.form1.location.state,
+          lga: validatedData.form1.location.lga,
+          townCity: validatedData.form1.location.townCity,
 
-        // Data Status
-        assessment: validatedData.form1.dataStatus.assessment,
-        updateFrequency: validatedData.form1.dataStatus.updateFrequency,
+          // Data Status
+          assessment: validatedData.form1.dataStatus.assessment,
+          updateFrequency: validatedData.form1.dataStatus.updateFrequency,
 
-        // Resource Constraint
-        accessConstraints:
-          validatedData.form1.resourceConstraint.accessConstraints,
-        useConstraints: validatedData.form1.resourceConstraint.useConstraints,
-        otherConstraints:
-          validatedData.form1.resourceConstraint.otherConstraints,
+          // Resource Constraint
+          accessConstraints:
+            validatedData.form1.resourceConstraint.accessConstraints,
+          useConstraints: validatedData.form1.resourceConstraint.useConstraints,
+          otherConstraints:
+            validatedData.form1.resourceConstraint.otherConstraints,
 
-        // Metadata Reference
-        metadataCreationDate:
-          validatedData.form1.metadataReference.creationDate,
-        metadataReviewDate: validatedData.form1.metadataReference.reviewDate,
-        metadataContactName: validatedData.form1.metadataReference.contactName,
-        metadataContactAddress: validatedData.form1.metadataReference.address,
-        metadataContactEmail: validatedData.form1.metadataReference.email,
-        metadataContactPhone: validatedData.form1.metadataReference.phoneNumber,
+          // Metadata Reference
+          metadataCreationDate:
+            validatedData.form1.metadataReference.creationDate,
+          metadataReviewDate: validatedData.form1.metadataReference.reviewDate,
+          metadataContactName:
+            validatedData.form1.metadataReference.contactName,
+          metadataContactAddress: validatedData.form1.metadataReference.address,
+          metadataContactEmail: validatedData.form1.metadataReference.email,
+          metadataContactPhone:
+            validatedData.form1.metadataReference.phoneNumber,
 
-        // Form 2: Data Quality Information
-        // General Section
-        logicalConsistencyReport:
-          validatedData.form2.generalSection.logicalConsistencyReport,
-        completenessReport:
-          validatedData.form2.generalSection.completenessReport,
+          // Form 2: Data Quality Information
+          // General Section
+          logicalConsistencyReport:
+            validatedData.form2.generalSection.logicalConsistencyReport,
+          completenessReport:
+            validatedData.form2.generalSection.completenessReport,
 
-        // Attribute Accuracy
-        attributeAccuracyReport:
-          validatedData.form2.attributeAccuracy.accuracyReport,
+          // Attribute Accuracy
+          attributeAccuracyReport:
+            validatedData.form2.attributeAccuracy.accuracyReport,
 
-        // Positional Accuracy (stored as JSON)
-        positionalAccuracy: validatedData.form2.positionalAccuracy,
+          // Positional Accuracy (stored as JSON)
+          positionalAccuracy: validatedData.form2.positionalAccuracy,
 
-        // Source Information (stored as JSON)
-        sourceInformation: validatedData.form2.sourceInformation,
+          // Source Information (stored as JSON)
+          sourceInformation: validatedData.form2.sourceInformation,
 
-        // Data Processing Information
-        processingDescription:
-          validatedData.form2.dataProcessingInformation.description,
-        softwareVersion:
-          validatedData.form2.dataProcessingInformation.softwareVersion,
-        processedDate:
-          validatedData.form2.dataProcessingInformation.processedDate,
+          // Data Processing Information
+          processingDescription:
+            validatedData.form2.dataProcessingInformation.description,
+          softwareVersion:
+            validatedData.form2.dataProcessingInformation.softwareVersion,
+          processedDate:
+            validatedData.form2.dataProcessingInformation.processedDate,
 
-        // Processor Contact Information
-        processorName: validatedData.form2.processorContactInformation.name,
-        processorEmail: validatedData.form2.processorContactInformation.email,
-        processorAddress:
-          validatedData.form2.processorContactInformation.address,
+          // Processor Contact Information
+          processorName: validatedData.form2.processorContactInformation.name,
+          processorEmail: validatedData.form2.processorContactInformation.email,
+          processorAddress:
+            validatedData.form2.processorContactInformation.address,
 
-        // Form 3: Data Distribution Information
-        // Distributor Information
-        distributorName: validatedData.form3.distributorInformation.name,
-        distributorAddress: validatedData.form3.distributorInformation.address,
-        distributorEmail: validatedData.form3.distributorInformation.email,
-        distributorPhone:
-          validatedData.form3.distributorInformation.phoneNumber,
-        distributorWebLink:
-          validatedData.form3.distributorInformation.webLink || null,
-        distributorSocialMedia:
-          validatedData.form3.distributorInformation.socialMediaHandle,
+          // Form 3: Data Distribution Information
+          // Distributor Information
+          distributorName: validatedData.form3.distributorInformation.name,
+          distributorAddress:
+            validatedData.form3.distributorInformation.address,
+          distributorEmail: validatedData.form3.distributorInformation.email,
+          distributorPhone:
+            validatedData.form3.distributorInformation.phoneNumber,
+          distributorWebLink:
+            validatedData.form3.distributorInformation.webLink || null,
+          distributorSocialMedia:
+            validatedData.form3.distributorInformation.socialMediaHandle,
 
-        // Distribution Details
-        distributionLiability:
-          validatedData.form3.distributionDetails.liability,
-        customOrderProcess:
-          validatedData.form3.distributionDetails.customOrderProcess,
-        technicalPrerequisites:
-          validatedData.form3.distributionDetails.technicalPrerequisites,
+          // Distribution Details
+          distributionLiability:
+            validatedData.form3.distributionDetails.liability,
+          customOrderProcess:
+            validatedData.form3.distributionDetails.customOrderProcess,
+          technicalPrerequisites:
+            validatedData.form3.distributionDetails.technicalPrerequisites,
 
-        // Standard Order Process
-        orderFees: validatedData.form3.standardOrderProcess.fees,
-        turnaroundTime: validatedData.form3.standardOrderProcess.turnaroundTime,
-        orderingInstructions:
-          validatedData.form3.standardOrderProcess.orderingInstructions,
+          // Standard Order Process
+          fees: validatedData.form3.standardOrderProcess.fees,
+          turnaroundTime:
+            validatedData.form3.standardOrderProcess.turnaroundTime,
+          orderingInstructions:
+            validatedData.form3.standardOrderProcess.orderingInstructions,
+          maximumResponseTime:
+            validatedData.form3.standardOrderProcess.maximumResponseTime ||
+            "48 hours",
 
-        // User reference
-        userId: userId,
-      },
-    })
+          // User reference
+          userId: userId,
+        },
+      }),
+      // Create in Metadata (consolidated table)
+      prisma.metadata.create({
+        data: {
+          // Map NGDI metadata to standard metadata fields
+          title: validatedData.form1.dataInformation.dataName,
+          author: validatedData.form3.distributorInformation.name,
+          organization: validatedData.form3.distributorInformation.name,
+          dateFrom: validatedData.form1.dataInformation.productionDate,
+          dateTo: validatedData.form1.dataInformation.productionDate,
+          abstract: validatedData.form1.description.abstract,
+          purpose: validatedData.form1.description.purpose,
+          thumbnailUrl: validatedData.form1.description.thumbnail,
+          imageName: `${validatedData.form1.dataInformation.dataName.toLowerCase().replace(/\s+/g, "-")}.png`,
+          frameworkType: validatedData.form1.dataInformation.dataType,
+          categories: [validatedData.form1.dataInformation.dataType],
+          coordinateSystem: "WGS 84",
+          projection: "UTM Zone 32N",
+          scale: 50000, // Default
+          resolution: null,
+          accuracyLevel: "Medium", // Default
+          completeness: 100, // Default
+          consistencyCheck: true, // Default
+          validationStatus: "Validated", // Default
+          fileFormat: "Shapefile", // Default
+          fileSize: null,
+          distributionFormat: "Shapefile, GeoJSON", // Default
+          accessMethod: "Direct Download", // Default
+          downloadUrl: null,
+          apiEndpoint: null,
+          licenseType: "NGDI Open Data License", // Default
+          usageTerms: validatedData.form1.resourceConstraint.useConstraints,
+          attributionRequirements:
+            validatedData.form1.resourceConstraint.accessConstraints,
+          accessRestrictions: [],
+          contactPerson: validatedData.form1.metadataReference.contactName,
+          email: validatedData.form1.metadataReference.email,
+          department: validatedData.form3.distributorInformation.name,
+          updateCycle: validatedData.form1.dataStatus.updateFrequency,
+          userId: userId,
+        },
+      }),
+    ])
 
     revalidatePath("/metadata")
     revalidatePath("/search/metadata")
-    return { success: true, data: metadata }
+    return {
+      success: true,
+      data: {
+        id: ngdiMetadata.id,
+        // Other fields as needed
+      },
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -390,11 +449,24 @@ export async function searchMetadata({
 
     // Add category filter if provided
     if (category) {
-      // For the fundamentalDatasets JSON field, we need to check if the specified category is true
-      // This is a simplification - in a real app, you might need a more sophisticated approach
-      where.fundamentalDatasets = {
-        path: `$.${category}`,
-        equals: true,
+      // For category filtering, handle special cases and normalize
+      if (category.toLowerCase() === "vector") {
+        where.frameworkType = { equals: "Vector", mode: "insensitive" }
+      } else if (category.toLowerCase() === "raster") {
+        where.frameworkType = { equals: "Raster", mode: "insensitive" }
+      } else if (category.toLowerCase() === "table") {
+        where.frameworkType = { equals: "Table", mode: "insensitive" }
+      } else {
+        // For other categories, try to find it in the categories array or category-related fields
+        where.OR = [
+          ...(where.OR || []),
+          // Search in categories array
+          { categories: { has: category } },
+          // Search for dataType-related terms in various fields
+          { frameworkType: { contains: category, mode: "insensitive" } },
+          { title: { contains: category, mode: "insensitive" } },
+          { abstract: { contains: category, mode: "insensitive" } },
+        ]
       }
     }
 
@@ -414,13 +486,11 @@ export async function searchMetadata({
     }
 
     // Get total count for pagination
-    const total = await prisma.nGDIMetadata.count({ where })
-
-    // Calculate total pages
+    const total = await prisma.metadata.count({ where })
     const totalPages = Math.ceil(total / limit)
 
     // Get metadata items with pagination and sorting
-    const metadata = await prisma.nGDIMetadata.findMany({
+    const metadata = await prisma.metadata.findMany({
       where,
       skip,
       take: limit,
@@ -429,14 +499,14 @@ export async function searchMetadata({
       },
       select: {
         id: true,
-        dataName: true,
-        dataType: true,
+        title: true,
+        author: true,
+        organization: true,
         abstract: true,
         purpose: true,
         thumbnailUrl: true,
-        productionDate: true,
-        country: true,
-        state: true,
+        dateFrom: true,
+        dateTo: true,
         createdAt: true,
         updatedAt: true,
         user: {

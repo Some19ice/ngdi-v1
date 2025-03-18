@@ -50,6 +50,7 @@ export interface MetadataSearchParams {
   limit?: number
   search?: string
   category?: string
+  frameworkType?: string
   dateFrom?: string
   dateTo?: string
   sortBy?: string
@@ -74,6 +75,9 @@ export interface MetadataItem {
   cloudCoverPercentage?: string | number
   abstract?: string
   dataType?: string
+  frameworkType?: string
+  categories?: string[]
+  thumbnailUrl?: string
   dataName?: string
   productionDate?: string
   fundamentalDatasets?: string

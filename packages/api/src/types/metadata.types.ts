@@ -110,18 +110,28 @@ export interface MetadataResponse {
  * Metadata search query parameters
  */
 export const metadataSearchQuerySchema = z.object({
-  page: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
-  limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 10),
+  page: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 1)),
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 10)),
   search: z.string().optional(),
   category: z.string().optional(),
+  frameworkType: z.string().optional(),
   author: z.string().optional(),
   organization: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   fileFormat: z.string().optional(),
-  sortBy: z.enum(['title', 'author', 'organization', 'createdAt']).optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
+  sortBy: z
+    .enum(["title", "author", "organization", "createdAt"])
+    .optional()
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+})
 
 export type MetadataSearchQuery = z.infer<typeof metadataSearchQuerySchema>;
 
