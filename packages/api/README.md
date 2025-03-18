@@ -108,4 +108,70 @@ src/
 
 ## License
 
-This project is proprietary and confidential. 
+This project is proprietary and confidential.
+
+## Setup
+
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Fill in the required environment variables
+
+3. Generate Prisma client:
+   ```
+   npm run prisma:generate
+   ```
+
+4. Push database schema:
+   ```
+   npm run prisma:push
+   ```
+
+5. Seed default users:
+   ```
+   npm run seed:users
+   ```
+
+## Running the API
+
+### Development
+```
+npm run dev
+```
+
+### Production
+```
+npm run build
+npm start
+```
+
+## Database Migrations
+
+After database migrations or resets, you may need to reseed the default users:
+
+```
+npm run seed:users
+```
+
+## Default Users
+
+The seeding script creates the following default users:
+
+1. **Admin User**
+   - Email: admin@ngdi.gov.ng
+   - Password: Admin123!@#
+   - Role: ADMIN
+
+2. **Test User**
+   - Email: test@example.com
+   - Password: password123
+   - Role: USER
+
+3. **Node Officer**
+   - Email: nodeofficer@ngdi.gov.ng
+   - Password: officer123
+   - Role: NODE_OFFICER 

@@ -7,22 +7,14 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Form } from "@/components/ui/form"
 import { MetadataSearchParams } from "@/types/metadata"
+import {
+  TextSearchField,
+  SelectSearchField,
+  tooltips,
+  descriptions,
+} from "@/components/search/SearchFormBase"
 
 const formSchema = z.object({
   search: z.string().optional(),
@@ -38,6 +30,34 @@ type FormValues = z.infer<typeof formSchema>
 interface MetadataSearchFormProps {
   searchParams: MetadataSearchParams
 }
+
+// Category options for metadata search
+const categoryOptions = [
+  { value: "all", label: "All Categories" },
+  { value: "geodeticData", label: "Geodetic Data" },
+  { value: "topographicData", label: "Topographic Data" },
+  { value: "cadastralData", label: "Cadastral Data" },
+  { value: "administrativeBoundaries", label: "Administrative Boundaries" },
+  { value: "hydrographicData", label: "Hydrographic Data" },
+  { value: "landUseLandCover", label: "Land Use/Land Cover" },
+  { value: "geologicalData", label: "Geological Data" },
+  { value: "demographicData", label: "Demographic Data" },
+  { value: "digitalImagery", label: "Digital Imagery" },
+  { value: "transportationData", label: "Transportation Data" },
+]
+
+// Sort options for metadata search
+const sortByOptions = [
+  { value: "createdAt", label: "Date Created" },
+  { value: "dataName", label: "Data Name" },
+  { value: "productionDate", label: "Production Date" },
+]
+
+// Sort order options
+const sortOrderOptions = [
+  { value: "desc", label: "Descending" },
+  { value: "asc", label: "Ascending" },
+]
 
 export default function MetadataSearchForm({
   searchParams,
@@ -99,163 +119,83 @@ export default function MetadataSearchForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+              <TextSearchField
                 control={form.control}
                 name="search"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Search</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Search by name or description..."
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="Search"
+                tooltip={tooltips.keyword}
+                placeholder="E.g., flood map, soil analysis, Lagos population"
+                description={descriptions.keyword}
               />
 
-              <FormField
+              <SelectSearchField
                 control={form.control}
                 name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="geodeticData">
-                          Geodetic Data
-                        </SelectItem>
-                        <SelectItem value="topographicData">
-                          Topographic Data
-                        </SelectItem>
-                        <SelectItem value="cadastralData">
-                          Cadastral Data
-                        </SelectItem>
-                        <SelectItem value="administrativeBoundaries">
-                          Administrative Boundaries
-                        </SelectItem>
-                        <SelectItem value="hydrographicData">
-                          Hydrographic Data
-                        </SelectItem>
-                        <SelectItem value="landUseLandCover">
-                          Land Use/Land Cover
-                        </SelectItem>
-                        <SelectItem value="geologicalData">
-                          Geological Data
-                        </SelectItem>
-                        <SelectItem value="demographicData">
-                          Demographic Data
-                        </SelectItem>
-                        <SelectItem value="digitalImagery">
-                          Digital Imagery
-                        </SelectItem>
-                        <SelectItem value="transportationData">
-                          Transportation Data
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
+                label="Category"
+                tooltip={tooltips.category}
+                placeholder="Select a category"
+                description={descriptions.category}
+                options={categoryOptions}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+              <TextSearchField
                 control={form.control}
                 name="dateFrom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>From Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="From Date"
+                tooltip={tooltips.dateRange}
+                placeholder="YYYY-MM-DD"
+                description="Start date for metadata creation"
               />
 
-              <FormField
+              <TextSearchField
                 control={form.control}
                 name="dateTo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>To Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="To Date"
+                tooltip={tooltips.dateRange}
+                placeholder="YYYY-MM-DD"
+                description="End date for metadata creation"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+              <SelectSearchField
                 control={form.control}
                 name="sortBy"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sort By</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="createdAt">Date Created</SelectItem>
-                        <SelectItem value="dataName">Data Name</SelectItem>
-                        <SelectItem value="productionDate">
-                          Production Date
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
+                label="Sort By"
+                tooltip={tooltips.sortBy}
+                placeholder="Sort by"
+                description={descriptions.sortBy}
+                options={sortByOptions}
               />
 
-              <FormField
+              <SelectSearchField
                 control={form.control}
                 name="sortOrder"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sort Order</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort order" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="desc">Descending</SelectItem>
-                        <SelectItem value="asc">Ascending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
+                label="Sort Order"
+                tooltip={tooltips.sortOrder}
+                placeholder="Sort order"
+                description={descriptions.sortOrder}
+                options={sortOrderOptions}
               />
             </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={handleReset}>
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                className="w-full sm:w-auto"
+              >
                 Reset
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Searching..." : "Search"}
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="w-full sm:w-auto"
+              >
+                Search
               </Button>
             </div>
           </form>

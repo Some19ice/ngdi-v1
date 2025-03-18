@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "seed:users": "tsx src/scripts/seed-users.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",

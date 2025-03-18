@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card"
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -36,11 +37,30 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, FileIcon, MapPinIcon, TagIcon } from "lucide-react"
+import {
+  CalendarIcon,
+  FileIcon,
+  InfoIcon,
+  MapPinIcon,
+  TagIcon,
+} from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { MetadataItem } from "@/types/metadata"
 import { getCookie } from "@/lib/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  TextSearchField,
+  SelectSearchField,
+  DateRangeSearchField,
+  tooltips,
+  descriptions,
+} from "@/components/search/SearchFormBase"
 
 const searchFormSchema = z.object({
   keyword: z.string().optional(),
@@ -67,6 +87,31 @@ const dataTypes = [
   { value: "transportation", label: "Transportation" },
   { value: "utilities", label: "Utilities" },
 ]
+
+// Custom FormLabel with tooltip component
+function LabelWithTooltip({
+  label,
+  tooltip,
+}: {
+  label: string
+  tooltip: string
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <FormLabel>{label}</FormLabel>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
 
 function SearchForm() {
   const router = useRouter()
@@ -332,80 +377,40 @@ function SearchForm() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
-              <FormField
+              <TextSearchField
                 control={form.control}
                 name="keyword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Keyword Search</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Search by name, ID, type..."
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="Keyword Search"
+                tooltip={tooltips.keyword}
+                placeholder="Search by name, ID, type..."
+                description={descriptions.keyword}
               />
 
-              <FormField
+              <SelectSearchField
                 control={form.control}
                 name="dataType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select data type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
-                        {dataTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
+                label="Data Type"
+                tooltip={tooltips.dataType}
+                placeholder="Select data type"
+                description={descriptions.dataType}
+                options={[{ value: "all", label: "All types" }, ...dataTypes]}
               />
 
-              <FormField
+              <TextSearchField
                 control={form.control}
                 name="organization"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Organization</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Filter by organization..."
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="Organization"
+                tooltip={tooltips.organization}
+                placeholder="Filter by organization..."
+                description={descriptions.organization}
               />
 
-              <FormField
+              <DateRangeSearchField
                 control={form.control}
                 name="dateRange"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date Range</FormLabel>
-                    <FormControl>
-                      <DatePickerWithRange
-                        date={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="Date Range"
+                tooltip={tooltips.dateRange}
+                description={descriptions.dateRange}
               />
             </div>
 
