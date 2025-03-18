@@ -3,7 +3,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { db } from "@/lib/server/db"
+import { prisma } from "@/lib/prisma"
 import { v4 as uuidv4 } from "uuid"
 
 // Function to get the current user ID from the auth token
@@ -15,7 +15,7 @@ async function getCurrentUserId(): Promise<string | null> {
   // For development/testing purposes, we'll use a known test user ID
   try {
     // Use a single query with fallback logic to reduce database connections
-    const user = await db.user.findFirst({
+    const user = await prisma.user.findFirst({
       where: {
         OR: [{ email: "test@example.com" }, { role: "ADMIN" }],
       },
@@ -235,7 +235,7 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
     const validatedData = ngdiMetadataSchema.parse(data)
 
     // Create the metadata record in the database
-    const metadata = await db.nGDIMetadata.create({
+    const metadata = await prisma.nGDIMetadata.create({
       data: {
         id: uuidv4(),
         // Form 1: General Information
