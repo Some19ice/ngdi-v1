@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { AUTH_PATHS } from "@/lib/auth/paths"
 import { AdminNav } from "./components/admin-nav"
 import { UserRole } from "@/lib/auth/constants"
+import { AdminBreadcrumb } from "./components/admin-breadcrumb"
 
 async function getUser() {
   const headersList = headers()
@@ -32,7 +33,7 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const user = await getUser()
-  
+
   console.log("Admin Layout - User from headers:", user)
 
   if (!user.id || !user.role) {
@@ -50,9 +51,16 @@ export default async function AdminLayout({
   console.log("Admin Layout - User is admin, rendering admin layout")
 
   return (
-    <div className="container mx-auto py-8">
-      <AdminNav user={user} />
-      <main className="mt-8">{children}</main>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <AdminNav user={user} />
+        <div className="mt-6 mb-4">
+          <AdminBreadcrumb />
+        </div>
+        <main className="mt-4 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
