@@ -14,6 +14,7 @@ import {
   Bell,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react"
 
 interface AdminNavProps {
   user: {
@@ -23,49 +24,86 @@ interface AdminNavProps {
   }
 }
 
-const tabs = [
-  {
-    value: "/admin",
-    label: "Dashboard",
-    href: "/admin",
-    icon: <LayoutDashboard className="h-4 w-4 mr-2" />,
-  },
-  {
-    value: "/admin/users",
-    label: "Users",
-    href: "/admin/users",
-    icon: <Users className="h-4 w-4 mr-2" />,
-    badge: "124",
-  },
-  {
-    value: "/admin/organizations",
-    label: "Organizations",
-    href: "/admin/organizations",
-    icon: <Building2 className="h-4 w-4 mr-2" />,
-    badge: "15",
-  },
-  {
-    value: "/admin/metadata",
-    label: "All Metadata",
-    href: "/admin/metadata",
-    icon: <Database className="h-4 w-4 mr-2" />,
-  },
-  {
-    value: "/admin/analytics",
-    label: "Analytics",
-    href: "/admin/analytics",
-    icon: <BarChart4 className="h-4 w-4 mr-2" />,
-  },
-  {
-    value: "/admin/settings",
-    label: "System Settings",
-    href: "/admin/settings",
-    icon: <Settings className="h-4 w-4 mr-2" />,
-  },
-]
+interface DashboardStats {
+  userCount: number
+  orgCount: number
+  metadataCount: number
+  activeUsers: number
+  pendingApprovals: number
+  systemHealth: number
+}
 
 export function AdminNav({ user }: AdminNavProps) {
   const pathname = usePathname()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  // Fetch stats for the badges
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/admin/stats")
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data)
+
+          // Set notification count based on pending approvals
+          setNotificationCount(data.pendingApprovals || 0)
+        }
+      } catch (error) {
+        console.error("Error fetching admin stats:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
+  // Create tabs with dynamic badges from stats
+  const tabs = [
+    {
+      value: "/admin",
+      label: "Dashboard",
+      href: "/admin",
+      icon: <LayoutDashboard className="h-4 w-4 mr-2" />,
+    },
+    {
+      value: "/admin/users",
+      label: "Users",
+      href: "/admin/users",
+      icon: <Users className="h-4 w-4 mr-2" />,
+      badge: stats?.userCount,
+    },
+    {
+      value: "/admin/organizations",
+      label: "Organizations",
+      href: "/admin/organizations",
+      icon: <Building2 className="h-4 w-4 mr-2" />,
+      badge: stats?.orgCount,
+    },
+    {
+      value: "/admin/metadata",
+      label: "All Metadata",
+      href: "/admin/metadata",
+      icon: <Database className="h-4 w-4 mr-2" />,
+      badge: stats?.metadataCount,
+    },
+    {
+      value: "/admin/analytics",
+      label: "Analytics",
+      href: "/admin/analytics",
+      icon: <BarChart4 className="h-4 w-4 mr-2" />,
+    },
+    {
+      value: "/admin/settings",
+      label: "System Settings",
+      href: "/admin/settings",
+      icon: <Settings className="h-4 w-4 mr-2" />,
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -79,9 +117,11 @@ export function AdminNav({ user }: AdminNavProps) {
         <div className="relative">
           <button className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
             <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              3
-            </span>
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {notificationCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -99,9 +139,9 @@ export function AdminNav({ user }: AdminNavProps) {
                 <Link href={tab.href} className="flex items-center">
                   {tab.icon}
                   <span className="hidden sm:inline">{tab.label}</span>
-                  {tab.badge && (
+                  {tab.badge !== undefined && (
                     <Badge className="ml-2 bg-gray-200 text-gray-800 hover:bg-gray-300">
-                      {tab.badge}
+                      {loading ? "..." : tab.badge}
                     </Badge>
                   )}
                 </Link>

@@ -13,6 +13,47 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+interface DashboardStats {
+  userCount: number
+  orgCount: number
+  metadataCount: number
+  activeUsers: number
+  pendingApprovals: number
+  systemHealth: number
+}
+
+async function fetchStats(): Promise<DashboardStats> {
+  try {
+    // Using the server-side fetch to call our API endpoint
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`,
+      {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch stats")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error)
+    // Return default values if there's an error
+    return {
+      userCount: 0,
+      orgCount: 0,
+      metadataCount: 0,
+      activeUsers: 0,
+      pendingApprovals: 0,
+      systemHealth: 90,
+    }
+  }
+}
+
 export default async function AdminPage() {
   // Server-side authentication check
   const user = await requireAuth()
@@ -22,15 +63,8 @@ export default async function AdminPage() {
     throw new Error("Unauthorized: Admin access required")
   }
 
-  // Mock statistics - in a real app, these would come from database queries
-  const stats = {
-    userCount: 124,
-    orgCount: 15,
-    metadataCount: 432,
-    activeUsers: 78,
-    pendingApprovals: 5,
-    systemHealth: 98,
-  }
+  // Fetch real statistics from our API
+  const stats = await fetchStats()
 
   return (
     <div className="space-y-8">
@@ -74,7 +108,9 @@ export default async function AdminPage() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span>Health Score:</span>
-              <span className="font-semibold text-green-600">
+              <span
+                className={`font-semibold ${getHealthColor(stats.systemHealth)}`}
+              >
                 {stats.systemHealth}%
               </span>
             </div>
@@ -84,7 +120,9 @@ export default async function AdminPage() {
             </div>
             <div className="flex justify-between items-center">
               <span>Pending Approvals:</span>
-              <span className="font-semibold text-amber-600">
+              <span
+                className={`font-semibold ${stats.pendingApprovals > 0 ? "text-amber-600" : "text-green-600"}`}
+              >
                 {stats.pendingApprovals}
               </span>
             </div>
@@ -156,4 +194,11 @@ export default async function AdminPage() {
       </div>
     </div>
   )
+}
+
+// Helper function to get the appropriate color based on health score
+function getHealthColor(score: number): string {
+  if (score >= 90) return "text-green-600"
+  if (score >= 70) return "text-amber-600"
+  return "text-red-600"
 }
