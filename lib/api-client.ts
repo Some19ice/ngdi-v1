@@ -138,32 +138,42 @@ export const api = {
       refreshToken: session.refreshToken,
     }
   },
-  
+
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const session = await authClient.register(data.email, data.password, data.name)
+    const session = await authClient.register(
+      data.email,
+      data.password,
+      data.name
+    )
     return {
       user: session.user as UserProfile,
       token: session.accessToken,
       refreshToken: session.refreshToken,
     }
   },
-  
+
   logout: () => authClient.logout(),
 
   // User endpoints
-  getCurrentUser: () => apiClient.get<UserProfile>("/api/users/me"),
-  updateUser: (data: UserUpdateRequest) => apiClient.put<UserProfile>("/api/users/me", data),
-  getUsers: (params?: PaginationParams) => apiClient.get<PaginatedResponse<UserProfile>>("/api/users", params),
+  getCurrentUser: () => apiClient.get<UserProfile>("/api/users/profile"),
+  updateUser: (data: UserUpdateRequest) =>
+    apiClient.put<UserProfile>("/api/users/profile", data),
+  getUsers: (params?: PaginationParams) =>
+    apiClient.get<PaginatedResponse<UserProfile>>("/api/users", params),
 
   // Metadata endpoints
-  getMetadata: (params?: PaginationParams) => apiClient.get<PaginatedResponse<MetadataResponse>>("/api/metadata", params),
-  createMetadata: (data: MetadataRequest) => apiClient.post<MetadataResponse>("/api/metadata", data),
-  updateMetadata: (id: string, data: MetadataRequest) => apiClient.put<MetadataResponse>(`/api/metadata/${id}`, data),
+  getMetadata: (params?: PaginationParams) =>
+    apiClient.get<PaginatedResponse<MetadataResponse>>("/api/metadata", params),
+  createMetadata: (data: MetadataRequest) =>
+    apiClient.post<MetadataResponse>("/api/metadata", data),
+  updateMetadata: (id: string, data: MetadataRequest) =>
+    apiClient.put<MetadataResponse>(`/api/metadata/${id}`, data),
   deleteMetadata: (id: string) => apiClient.delete(`/api/metadata/${id}`),
 
   // Admin endpoints
   deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
-  updateUserRole: (id: string, role: string) => apiClient.put<UserProfile>(`/api/users/${id}/role`, { role }),
+  updateUserRole: (id: string, role: string) =>
+    apiClient.put<UserProfile>(`/api/users/${id}/role`, { role }),
 } as const
 
 export default api

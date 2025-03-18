@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { UserUpdateRequest } from "@/types/user"
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -63,30 +64,34 @@ export function UserProfile() {
     }
   }, [user, form])
 
-  const { mutate: updateProfile, isLoading: isUpdating } = useMutation(
-    (data: ProfileFormValues) => api.updateUser(data),
-    {
-      successMessage: "Profile updated successfully",
-      invalidateQueries: [() => api.getCurrentUser()],
-      onSuccess: () => {
-        refreshUser()
-      },
-    }
-  )
+  const { mutate: updateProfile, isLoading: isUpdating } = useMutation<
+    any,
+    [UserUpdateRequest]
+  >((data: UserUpdateRequest) => api.updateUser(data), {
+    successMessage: "Profile updated successfully",
+    invalidateQueries: [() => api.getCurrentUser()],
+    onSuccess: () => {
+      refreshUser()
+    },
+  })
 
   const onSubmit = (data: ProfileFormValues) => {
-    // Only include fields that have changed
-    const updatedData = {
-      // Always include email as it's required by the API
+    // Create update request with only the fields we need
+    const updateRequest: UserUpdateRequest = {
       email: data.email,
-    } as ProfileFormValues
+    }
 
-    if (data.name !== user?.name) updatedData.name = data.name
-    if (data.organization !== user?.organization)
-      updatedData.organization = data.organization
+    if (data.name !== user?.name) {
+      updateRequest.name = data.name
+    }
 
-    console.log("Updating profile with:", updatedData)
-    updateProfile(updatedData)
+    if (data.organization !== user?.organization) {
+      // Convert empty string to undefined to avoid validation errors
+      updateRequest.organization = data.organization || undefined
+    }
+
+    console.log("Updating profile with:", updateRequest)
+    updateProfile(updateRequest)
   }
 
   if (error) {
@@ -161,7 +166,14 @@ export function UserProfile() {
                 <FormItem>
                   <FormLabel>Organization (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your organization" {...field} />
+                    <Input
+                      placeholder="Enter your organization"
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
