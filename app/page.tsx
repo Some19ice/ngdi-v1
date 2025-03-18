@@ -61,8 +61,8 @@ export default async function HomePage() {
                     <Link href="/auth/signup">
                       <Button
                         size="lg"
-                        variant="outline"
-                        className="border-white text-white hover:bg-white/10"
+                        variant="secondary"
+                        className="bg-white/90 text-primary hover:bg-white border border-white"
                       >
                         Create Account
                       </Button>

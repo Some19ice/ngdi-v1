@@ -24,27 +24,19 @@ export function SignInContent() {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<string | null>(null)
   const returnUrl = searchParams?.get("from") || "/"
   const { login } = useAuth()
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setDebugInfo("Email and password are required")
+      toast.error("Email and password are required")
       return
     }
 
     setIsLoading(true)
-    setDebugInfo("Starting login process...")
 
     try {
-      console.log(`Attempting to sign in with email: ${email}`)
-      setDebugInfo(`Calling login with email: ${email}...`)
-
       await login(email, password)
-
-      setDebugInfo(`Sign-in successful, redirecting to ${returnUrl}`)
-      console.log("Sign-in successful, redirecting to:", returnUrl)
 
       // Show success toast
       toast.success("Signed in successfully")
@@ -52,17 +44,6 @@ export function SignInContent() {
       // Use router.push instead of window.location for client-side routing
       router.push(returnUrl)
     } catch (error: any) {
-      console.error("Login failed:", error)
-
-      // Extract and display detailed error information
-      const errorDetail = error.response?.data
-        ? JSON.stringify(error.response.data)
-        : "No response data"
-      const errorStatus = error.response?.status || "No status"
-      setDebugInfo(
-        `Login failed: ${error.message || "Unknown error"}\nStatus: ${errorStatus}\nDetails: ${errorDetail}`
-      )
-
       // Extract error message
       const errorMessage =
         error.response?.data?.message ||
@@ -77,8 +58,6 @@ export function SignInContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted")
-    setDebugInfo("Form submitted, starting login...")
     await handleLogin()
   }
 
@@ -140,12 +119,6 @@ export function SignInContent() {
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>
-
-            {debugInfo && (
-              <div className="mt-4 p-2 bg-gray-100 text-xs text-gray-800 rounded overflow-auto max-h-32">
-                <pre>{debugInfo}</pre>
-              </div>
-            )}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
