@@ -59,18 +59,42 @@ export default function NewUserPage() {
     setIsSubmitting(true)
 
     try {
-      // Update user profile with complete data
-      const updateData = {
-        // Include name from the session to satisfy API requirements
-        name: session?.user?.name || "",
-        organization: data.organization,
-        department: data.department,
-        phone: data.phone,
+      // Try a direct fetch call to avoid any middleware issues
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+
+      // Get token from session - safer than localStorage
+      const token = session?.accessToken
+
+      console.log("Using direct fetch with token available:", !!token)
+
+      const response = await fetch(`${apiUrl}/api/users/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: session?.user?.name || "",
+          email: session?.user?.email || "",
+          organization: data.organization,
+          department: data.department || undefined,
+          phone: data.phone || undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Profile update failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        })
+        throw new Error(
+          `Failed to update profile: ${response.statusText} - ${errorText}`
+        )
       }
 
-      console.log("Sending update request:", updateData)
-
-      await api.updateUser(updateData)
+      await response.json() // Consume the response
 
       // Refresh the session to get updated user data
       await refreshSession()
@@ -86,7 +110,8 @@ export default function NewUserPage() {
       console.error("Error updating profile:", error)
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description:
+          error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       })
     } finally {

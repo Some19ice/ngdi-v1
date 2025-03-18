@@ -65,12 +65,18 @@ class ApiClient {
             data: error.response.data,
             url: originalRequest.url,
             method: originalRequest.method,
-            requestData: originalRequest.data,
+            requestData: JSON.parse(originalRequest.data || "{}"),
           })
 
           // Enhance error message with server details if available
-          if (error.response.data && error.response.data.message) {
-            error.message = `${error.message}: ${error.response.data.message}`
+          if (error.response.data) {
+            if (error.response.data.message) {
+              error.message = `${error.message}: ${error.response.data.message}`
+            } else if (typeof error.response.data === "object") {
+              // Log the full error data object
+              const errorData = JSON.stringify(error.response.data)
+              error.message = `${error.message}: ${errorData}`
+            }
           }
         }
 
@@ -191,6 +197,9 @@ export const api = {
   deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
   updateUserRole: (id: string, role: string) =>
     apiClient.put<UserProfile>(`/api/users/${id}/role`, { role }),
+
+  // Auth token helper
+  getAuthToken: () => authClient.getAccessToken(),
 } as const
 
 export default api

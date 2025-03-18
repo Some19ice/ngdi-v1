@@ -75,21 +75,58 @@ export function UserProfile() {
     },
   })
 
-  const onSubmit = (data: ProfileFormValues) => {
-    // Create update request with all required fields
-    const updateRequest: UserUpdateRequest = {
-      // Always include name and email - name is required by the API
-      name: data.name,
-      email: data.email,
-    }
+  const onSubmit = async (data: ProfileFormValues) => {
+    try {
+      // Use direct fetch for more control
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
-    // Include organization if present, otherwise undefined
-    if (data.organization) {
-      updateRequest.organization = data.organization
-    }
+      // Get the auth token from the auth client
+      let token
+      try {
+        token = await api.getAuthToken()
+      } catch (err) {
+        console.error("Failed to get auth token:", err)
+      }
 
-    console.log("Updating profile with:", updateRequest)
-    updateProfile(updateRequest)
+      const updateData = {
+        name: data.name,
+        email: data.email,
+        organization: data.organization || undefined, // Send undefined instead of empty string
+      }
+
+      console.log("Updating profile with:", updateData)
+
+      const response = await fetch(`${apiUrl}/api/users/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(updateData),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Profile update failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        })
+        throw new Error(
+          `Failed to update profile: ${response.statusText} - ${errorText}`
+        )
+      }
+
+      // On success
+      await response.json() // Consume the response
+      refreshUser()
+
+      // Show success message
+      alert("Profile updated successfully")
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      alert(error.message || "Failed to update profile")
+    }
   }
 
   if (error) {
