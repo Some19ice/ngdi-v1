@@ -16,7 +16,6 @@ import {
   FileText,
   MessageSquare,
 } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { useSession, useAuth } from "@/lib/auth-context"
 import { UserRole } from "@/lib/auth/constants"
 import {
@@ -284,8 +283,6 @@ export function Header() {
             </div>
 
             <div className="flex items-center gap-4">
-              <ThemeToggle />
-
               {/* Mobile Navigation */}
               <Sheet>
                 <SheetTrigger asChild className="lg:hidden">
