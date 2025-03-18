@@ -6,7 +6,7 @@ import { ApiError } from "../middleware/error-handler"
 import { standardRateLimit, authRateLimit } from "../middleware/rate-limit"
 import { config } from "../config"
 import auth from "./auth/index"
-import { userRouter, adminRouter as usersAdminRouter } from "./user.routes.new"
+import { userRouter } from "./user.routes.new"
 import { app as api } from "../config/swagger"
 import { z } from "zod"
 import adminRouter from "./admin.routes"
@@ -79,17 +79,12 @@ console.log(
   "[DEBUG] Admin router routes:",
   adminRouter.routes.map((r) => `${r.method} ${r.path}`)
 )
-console.log(
-  "[DEBUG] Users admin router routes:",
-  usersAdminRouter.routes.map((r) => `${r.method} ${r.path}`)
-)
 
 // Register routes
 api.route("/auth", auth)
 api.route("/users", userRouter)
 api.route("/metadata", metadataRouter)
 api.route("/admin", adminRouter)
-api.route("/admin/users", usersAdminRouter)
 api.route("/search", searchRouter)
 
 // Print all registered routes for debugging
@@ -102,6 +97,17 @@ console.log(
 const healthCheckResponse = z.object({
   success: z.boolean(),
   message: z.string(),
+})
+
+// Debug endpoint to view all routes
+api.get("/api/debug/routes", (c) => {
+  return c.json({
+    success: true,
+    routes: api.routes.map((r) => ({
+      method: r.method,
+      path: r.path,
+    })),
+  })
 })
 
 api.openapi(

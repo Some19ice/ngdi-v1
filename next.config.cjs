@@ -141,8 +141,6 @@ module.exports = {
   serverRuntimeConfig: {
     // Auth pages should use Node.js runtime
     authPagesRuntime: "nodejs",
-    // Make server API key available to server components
-    SERVER_API_KEY: process.env.SERVER_API_KEY,
   },
   // Configure build settings
   onDemandEntries: {

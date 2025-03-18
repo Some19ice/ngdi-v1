@@ -45,21 +45,8 @@ export function AdminNav({ user }: AdminNavProps) {
       try {
         setLoading(true)
 
-        // Get auth token from cookies for better security (falls back to localStorage for backward compatibility)
-        const getCookie = (name: string) => {
-          const cookies = document.cookie.split(";")
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim()
-            if (cookie.startsWith(name + "=")) {
-              return cookie.substring(name.length + 1)
-            }
-          }
-          return null
-        }
-
-        // First try cookie, then localStorage
-        const token =
-          getCookie("auth_token") || localStorage.getItem("auth_token") || ""
+        // Get the auth token from localStorage or cookie
+        const token = localStorage.getItem("auth_token") || ""
 
         if (!token) {
           console.warn("[CLIENT] No auth token found for admin stats request")
@@ -77,7 +64,7 @@ export function AdminNav({ user }: AdminNavProps) {
 
         console.log("[CLIENT] Fetching admin dashboard stats")
 
-        // Use the main API server endpoint
+        // Use the main API server endpoint with the user's auth token
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
           {

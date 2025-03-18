@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+Description: General Guidelines
+Globs: *
+---
+
+# General Coding Guidelines
+- Use TypeScript for all frontend components.
+- Always provide concise comments explaining complex logic.
+- Prioritize readability and maintainability.

@@ -395,4 +395,58 @@ exports.adminRouter.delete("/metadata/:id", (0, zod_validator_1.zValidator)("par
         message: "Metadata deleted successfully",
     });
 });
+/**
+ * @openapi
+ * /api/admin/dashboard-stats:
+ *   get:
+ *     summary: Get comprehensive dashboard statistics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userCount:
+ *                       type: number
+ *                     orgCount:
+ *                       type: number
+ *                     metadataCount:
+ *                       type: number
+ *                     activeUsers:
+ *                       type: number
+ *                     pendingApprovals:
+ *                       type: number
+ *                     systemHealth:
+ *                       type: number
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+exports.adminRouter.get("/dashboard-stats", async (c) => {
+    try {
+        const stats = await admin_service_1.adminService.getAdminDashboardStats();
+        return c.json({
+            success: true,
+            data: stats,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        return c.json({
+            success: false,
+            message: "Failed to fetch dashboard statistics",
+        }, 500);
+    }
+});
 exports.default = exports.adminRouter;

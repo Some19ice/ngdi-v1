@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+Description: General Guidelines
+Globs: **/*.tsx
+---
+ # Frontend Guidelines
+- Use functional React components instead of class components.
+- Apply Tailwind CSS for styling; avoid inline styles.
+- Components should be modular and reusable.
+- Maintain a consistent and clear component structure.

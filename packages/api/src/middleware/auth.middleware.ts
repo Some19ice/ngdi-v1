@@ -3,12 +3,12 @@ import { verify } from "jsonwebtoken"
 import { prisma } from "../lib/prisma"
 import { HTTPException } from "hono/http-exception"
 import { UserRole } from "@prisma/client"
-import { config } from "../config"
 
 interface JWTPayload {
   userId: string
   email: string
-  role: UserRole
+  role: UserRole | string
+  [key: string]: any // Allow for additional fields
 }
 
 export async function authMiddleware(c: Context, next: Next) {
@@ -20,43 +20,59 @@ export async function authMiddleware(c: Context, next: Next) {
 
     const token = authHeader.split(" ")[1]
 
-    // Check if this is a server API key
-    if (token === process.env.SERVER_API_KEY) {
-      console.log("[DEBUG] Server API key authentication successful")
+    console.log(
+      "[API DEBUG] Verifying token with JWT_SECRET:",
+      process.env.JWT_SECRET ? "present" : "missing"
+    )
 
-      // For server API key, set an admin user context
-      c.set("user", {
-        id: "server",
-        email: "server@system",
-        role: UserRole.ADMIN,
+    try {
+      const decoded = verify(token, process.env.JWT_SECRET!) as JWTPayload
+      console.log("[API DEBUG] Decoded token:", decoded)
+
+      // If the role is already in the expected format (string), convert it to UserRole enum
+      let userRole: UserRole
+      if (typeof decoded.role === "string") {
+        // Convert string role to UserRole enum
+        userRole = decoded.role as UserRole
+      } else {
+        userRole = decoded.role
+      }
+
+      // If this is a server-generated token without a DB lookup
+      if (userRole === UserRole.ADMIN) {
+        c.set("user", {
+          id: decoded.userId,
+          email: decoded.email,
+          role: UserRole.ADMIN,
+        })
+        return await next()
+      }
+
+      // Otherwise, look up the user in the database to confirm
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+        },
       })
 
+      if (!user) {
+        console.log("[API DEBUG] User not found for ID:", decoded.userId)
+        throw new HTTPException(401, { message: "User not found" })
+      }
+
+      // Add user info to context
+      c.set("user", user)
+      console.log("[DEBUG] Set user in middleware:", user, "using c.set()")
       await next()
-      return
+    } catch (jwtError) {
+      console.error("[API DEBUG] JWT verification error:", jwtError)
+      throw new HTTPException(401, { message: "Invalid token" })
     }
-
-    // Normal JWT authentication flow
-    const decoded = verify(token, process.env.JWT_SECRET!) as JWTPayload
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    })
-
-    if (!user) {
-      throw new HTTPException(401, { message: "User not found" })
-    }
-
-    // Add user info to context
-    c.set("user", user)
-    // Also log how the value is being set for debugging
-    console.log("[DEBUG] Set user in middleware:", user, "using c.set()")
-    await next()
   } catch (error) {
+    console.error("[API DEBUG] Auth middleware error:", error)
     throw new HTTPException(401, { message: "Invalid token" })
   }
 }

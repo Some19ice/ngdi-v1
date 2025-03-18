@@ -5,6 +5,7 @@ const user_repository_1 = require("../db/repositories/user.repository");
 const metadata_repository_1 = require("../db/repositories/metadata.repository");
 const error_handler_1 = require("../middleware/error-handler");
 const role_mapper_1 = require("../utils/role-mapper");
+const client_1 = require("../db/client");
 /**
  * Admin service for administrative operations
  */
@@ -26,6 +27,65 @@ exports.adminService = {
             newUsersLast30Days,
             newMetadataLast30Days,
             usersByRole,
+        };
+    },
+    /**
+     * Get enhanced admin dashboard statistics
+     */
+    getAdminDashboardStats: async () => {
+        // Get active time period (30 days ago)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        // Fetch all the statistics in parallel for better performance
+        const [userCount, organizations, metadataCount, activeUsers, pendingCount] = await Promise.all([
+            // Total number of users
+            client_1.prisma.user.count(),
+            // Get unique organizations
+            client_1.prisma.user.groupBy({
+                by: ["organization"],
+                where: {
+                    organization: {
+                        not: null,
+                    },
+                },
+            }),
+            // Total metadata entries
+            client_1.prisma.metadata.count(),
+            // Active users (users with activity in the last 30 days)
+            client_1.prisma.user.count({
+                where: {
+                    metadata: {
+                        some: {
+                            updatedAt: {
+                                gte: thirtyDaysAgo,
+                            },
+                        },
+                    },
+                },
+            }),
+            // Pending approvals (metadata with 'validationStatus' that is not 'Validated')
+            client_1.prisma.metadata.count({
+                where: {
+                    validationStatus: {
+                        not: "Validated",
+                    },
+                },
+            }),
+        ]);
+        // Filter out null organizations and get the count
+        const orgCount = organizations.filter((org) => org.organization !== null).length;
+        // Calculate system health based on actual metrics
+        const metadataRatio = metadataCount > 0 ? Math.min(metadataCount / 1000, 1) : 0;
+        const userRatio = userCount > 0 ? Math.min(userCount / 200, 1) : 0;
+        const activeRatio = userCount > 0 ? activeUsers / userCount : 0;
+        // Weight the factors (adjust as needed)
+        const systemHealth = Math.round((metadataRatio * 0.3 + userRatio * 0.3 + activeRatio * 0.4) * 100);
+        return {
+            userCount,
+            orgCount,
+            metadataCount,
+            activeUsers,
+            pendingApprovals: pendingCount,
+            systemHealth,
         };
     },
     /**

@@ -24,52 +24,53 @@ interface DashboardStats {
 
 async function fetchStats(): Promise<DashboardStats> {
   try {
-    console.log("[SERVER] Fetching admin dashboard stats from API")
-    console.log("[SERVER] API URL:", process.env.NEXT_PUBLIC_API_URL)
+    // Get the current authenticated user from requireAuth
+    const user = await requireAuth()
+
+    // If the user is an admin, we can directly use their JWT token to call the API
+    // First, we need to get a fresh JWT token for the current user
+    const jwt = await getJWT(user)
+
+    if (!jwt) {
+      throw new Error("Failed to get authentication token")
+    }
+
+    console.log("[SERVER] Successfully obtained admin JWT token")
     console.log(
-      "[SERVER] SERVER_API_KEY present:",
-      process.env.SERVER_API_KEY ? "Yes" : "No"
+      "[SERVER] Fetching stats from:",
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`
     )
 
-    // Using the server-side fetch to call the main API server endpoint
+    // Use the JWT token to call the admin dashboard stats API
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
       {
         cache: "no-store",
-        next: { revalidate: 60 }, // Revalidate every minute
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
+          Authorization: `Bearer ${jwt}`,
         },
       }
     )
 
     if (!response.ok) {
-      console.error(
-        `[SERVER] API error (${response.status}): ${response.statusText}`
+      const errorText = await response.text()
+      throw new Error(
+        `Failed to fetch stats: ${response.status} - ${errorText}`
       )
-      // Log response body for debugging
-      try {
-        const errorText = await response.text()
-        console.error("[SERVER] Error response body:", errorText)
-      } catch (err) {
-        console.error("[SERVER] Could not read error response body")
-      }
-      throw new Error(`Failed to fetch stats: ${response.statusText}`)
     }
 
     const result = await response.json()
 
     // Check the structure of the response and extract data
     if (result.success && result.data) {
-      console.log("[SERVER] Successfully fetched dashboard stats:", result.data)
+      console.log("[SERVER] Successfully fetched admin stats")
       return result.data
     }
 
-    console.error("[SERVER] Invalid API response format:", result)
     throw new Error("Invalid response format")
   } catch (error) {
-    console.error("[SERVER] Error fetching dashboard stats:", error)
+    console.error("Error fetching dashboard stats:", error)
     // Return default values if there's an error
     return {
       userCount: 0,
@@ -79,6 +80,32 @@ async function fetchStats(): Promise<DashboardStats> {
       pendingApprovals: 0,
       systemHealth: 90,
     }
+  }
+}
+
+// Helper function to generate a JWT token for the current user
+async function getJWT(user: any): Promise<string | null> {
+  try {
+    // Create a JWT token for the authenticated admin user
+    const { SignJWT } = await import("jose")
+    const jwtSecret = process.env.JWT_SECRET || ""
+    const secret = new TextEncoder().encode(jwtSecret)
+
+    // Ensure the role is in the correct format for the API auth middleware
+    const token = await new SignJWT({
+      userId: user.id,
+      email: user.email,
+      role: "ADMIN", // Make sure this matches the UserRole enum in the API
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("1h")
+      .sign(secret)
+
+    return token
+  } catch (error) {
+    console.error("Error generating JWT token:", error)
+    return null
   }
 }
 

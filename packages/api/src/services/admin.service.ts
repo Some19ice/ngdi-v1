@@ -212,6 +212,91 @@ export const adminService = {
   },
 
   /**
+   * Get detailed user information
+   */
+  getUserDetails: async (
+    userId: string
+  ): Promise<{
+    id: string
+    email: string
+    name: string
+    role: UserRole
+    emailVerified: boolean
+    organization?: string
+    department?: string
+    phone?: string
+    image?: string
+    createdAt: string
+    updatedAt: string
+    metadataCount: number
+    recentActivity: Array<{
+      id: string
+      title: string
+      updatedAt: string
+    }>
+  }> => {
+    // Try exact match first
+    let user = await userRepository.findById(userId)
+
+    // If not found, try case-insensitive search
+    if (!user) {
+      const allUsers = await prisma.user.findMany({
+        take: 100,
+        select: { id: true },
+      })
+
+      const matchedUser = allUsers.find(
+        (u) => u.id.toLowerCase() === userId.toLowerCase()
+      )
+
+      if (matchedUser) {
+        user = await userRepository.findById(matchedUser.id)
+      }
+    }
+
+    if (!user) {
+      throw new ApiError("User not found", 404, ErrorCode.RESOURCE_NOT_FOUND)
+    }
+
+    // Get metadata count and recent activity
+    const [metadataCount, recentMetadata] = await Promise.all([
+      prisma.metadata.count({
+        where: { userId: user.id },
+      }),
+      prisma.metadata.findMany({
+        where: { userId: user.id },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          title: true,
+          updatedAt: true,
+        },
+      }),
+    ])
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name || "",
+      role: mapPrismaRoleToAppRole(user.role),
+      emailVerified: user.emailVerified !== null,
+      organization: user.organization || undefined,
+      department: user.department || undefined,
+      phone: user.phone || undefined,
+      image: user.image || undefined,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+      metadataCount,
+      recentActivity: recentMetadata.map((m) => ({
+        id: m.id,
+        title: m.title,
+        updatedAt: m.updatedAt.toISOString(),
+      })),
+    }
+  },
+
+  /**
    * Get all metadata with pagination and filtering
    */
   getAllMetadata: async (

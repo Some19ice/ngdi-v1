@@ -29,56 +29,24 @@ A modern web application built with Next.js 14, TypeScript, and Hono.
 └── types/                # TypeScript type definitions
 ```
 
-## Environment Setup
+## Getting Started
 
-### Frontend (.env.local in project root)
-```
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET="3EmsMe5QHrzZ9dTlmEXSofSk3PB9XwsGEEtJkwylsqqncAxn6W2MAtaVJsw="
-NEXT_PUBLIC_API_URL=http://localhost:3001
-SERVER_API_KEY="admin-api-secret-token-for-server-requests"
-```
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-### API Server (.env.local in packages/api)
-```
-# API Server Configuration
-PORT=3001
-HOST=localhost
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   cd packages/api && cp .env.example .env
+   ```
 
-# Database Configuration
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ngdi_db"
-
-# JWT Configuration
-JWT_SECRET="3EmsMe5QHrzZ9dTlmEXSofSk3PB9XwsGEEtJkwylsqqncAxn6W2MAtaVJsw="
-JWT_EXPIRES_IN=86400  # 24 hours
-
-# CORS Configuration
-CORS_ORIGINS="http://localhost:3000"
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=60000  # 1 minute
-RATE_LIMIT_MAX_REQUESTS=100
-
-# Server-to-server authentication
-SERVER_API_KEY="admin-api-secret-token-for-server-requests"
-```
-
-## Development
-
-### Starting the development server
-```bash
-npm run dev
-```
-
-This will start both the Next.js frontend and the API server.
-
-## Authentication
-
-The system uses two authentication methods:
-1. JWT tokens for user authentication
-2. SERVER_API_KEY for server-to-server API calls
-
-Make sure the SERVER_API_KEY matches in both .env files.
+3. Start the development servers:
+   ```bash
+   npm run dev
+   ```
+   This will start both the Next.js frontend and Hono API server.
 
 ## Available Scripts
 

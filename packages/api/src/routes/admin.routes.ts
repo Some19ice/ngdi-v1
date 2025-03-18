@@ -6,6 +6,7 @@ import { UserRole } from "../types/auth.types"
 import { UserIdParamSchema } from "../types/user.types"
 import { MetadataIdParamSchema } from "../types/metadata.types"
 import { Context } from "../types/hono.types"
+import { ApiError } from "../middleware/error-handler"
 
 // Define the user type based on the auth middleware
 interface User {
@@ -231,12 +232,143 @@ adminRouter.put(
       )
     }
 
-    const updatedUser = await adminService.updateUserRole(id, role as UserRole)
+    try {
+      const user = await adminService.updateUserRole(id, role as UserRole)
 
-    return c.json({
-      success: true,
-      data: updatedUser,
-    })
+      return c.json({
+        success: true,
+        message: "User role updated successfully",
+        data: user,
+      })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return c.json(
+          {
+            success: false,
+            message: error.message,
+          },
+          404
+        )
+      }
+
+      console.error("Error updating user role:", error)
+      return c.json(
+        {
+          success: false,
+          message: "Failed to update user role",
+        },
+        500
+      )
+    }
+  }
+)
+
+/**
+ * @openapi
+ * /api/admin/users/{id}:
+ *   get:
+ *     summary: Get detailed user information
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Detailed user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     emailVerified:
+ *                       type: boolean
+ *                     organization:
+ *                       type: string
+ *                     department:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     image:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                     updatedAt:
+ *                       type: string
+ *                     metadataCount:
+ *                       type: number
+ *                     recentActivity:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           updatedAt:
+ *                             type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+adminRouter.get(
+  "/users/:id",
+  zValidator("param", UserIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+
+    try {
+      console.log(`[API] Fetching details for user ${id}`)
+      const userDetails = await adminService.getUserDetails(id)
+
+      return c.json({
+        success: true,
+        data: userDetails,
+      })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return c.json(
+          {
+            success: false,
+            message: "User not found",
+          },
+          404
+        )
+      }
+
+      console.error("Error fetching user details:", error)
+      return c.json(
+        {
+          success: false,
+          message: "Failed to fetch user details",
+        },
+        500
+      )
+    }
   }
 )
 
@@ -244,7 +376,7 @@ adminRouter.put(
  * @openapi
  * /api/admin/users/{id}:
  *   delete:
- *     summary: Delete user
+ *     summary: Delete a user
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -513,10 +645,6 @@ adminRouter.delete(
  */
 adminRouter.get("/dashboard-stats", async (c) => {
   try {
-    // Log authentication info for debugging
-    console.log("[DEBUG] Dashboard stats request received")
-    console.log("[DEBUG] User in context:", c.get("user"))
-
     const stats = await adminService.getAdminDashboardStats()
 
     return c.json({
