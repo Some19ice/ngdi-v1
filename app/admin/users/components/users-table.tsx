@@ -109,16 +109,17 @@ export function UsersTable({
           params.append("role", role)
         }
 
+        // Build full URL for debugging
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`
+        console.log("[DEBUG] Fetching users from:", url)
+
         // Call API server directly
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        )
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        })
 
         if (!response.ok) {
           console.error(

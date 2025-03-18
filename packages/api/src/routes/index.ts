@@ -6,7 +6,7 @@ import { ApiError } from "../middleware/error-handler"
 import { standardRateLimit, authRateLimit } from "../middleware/rate-limit"
 import { config } from "../config"
 import auth from "./auth/index"
-import { userRouter } from "./user.routes.new"
+import { userRouter, adminRouter as usersAdminRouter } from "./user.routes.new"
 import { app as api } from "../config/swagger"
 import { z } from "zod"
 import adminRouter from "./admin.routes"
@@ -17,6 +17,15 @@ import searchRouter from "./search.routes"
 api.use("*", logger())
 api.use("*", prettyJSON())
 api.use("*", secureHeaders())
+
+// Debug middleware to log all requests
+api.use("*", async (c, next) => {
+  console.log(`[DEBUG] Received request: ${c.req.method} ${c.req.path}`)
+  await next()
+  console.log(
+    `[DEBUG] Responded to request: ${c.req.method} ${c.req.path} with status ${c.res.status}`
+  )
+})
 
 // Apply CORS
 api.use(
@@ -34,7 +43,7 @@ api.use("/auth/*", authRateLimit)
 
 // Set up error handling
 api.onError((err, c) => {
-  console.error("API Error:", err)
+  console.error(`[ERROR] API Error on ${c.req.method} ${c.req.path}:`, err)
 
   if (err instanceof ApiError) {
     return c.json(
@@ -65,12 +74,29 @@ api.onError((err, c) => {
   )
 })
 
+// Print all registered routes for debugging
+console.log(
+  "[DEBUG] Admin router routes:",
+  adminRouter.routes.map((r) => `${r.method} ${r.path}`)
+)
+console.log(
+  "[DEBUG] Users admin router routes:",
+  usersAdminRouter.routes.map((r) => `${r.method} ${r.path}`)
+)
+
 // Register routes
 api.route("/auth", auth)
 api.route("/users", userRouter)
 api.route("/metadata", metadataRouter)
 api.route("/admin", adminRouter)
+api.route("/admin/users", usersAdminRouter)
 api.route("/search", searchRouter)
+
+// Print all registered routes for debugging
+console.log(
+  "[DEBUG] API server registered routes:",
+  api.routes.map((r) => `${r.method} ${r.path}`)
+)
 
 // Health check route
 const healthCheckResponse = z.object({

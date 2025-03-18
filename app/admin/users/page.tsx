@@ -26,17 +26,22 @@ interface User {
 
 async function fetchUsers(): Promise<{ users: User[]; total: number }> {
   try {
-    // Using the server-side fetch to call the API server
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`,
-      {
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
-        },
-      }
+    // Build full URL for debugging
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`
+    console.log("[SERVER] Fetching users from:", url)
+    console.log(
+      "[SERVER] Using API key:",
+      process.env.SERVER_API_KEY ? "Set" : "Not set"
     )
+
+    // Using the server-side fetch to call the API server
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
+      },
+    })
 
     if (!response.ok) {
       console.error(`API error (${response.status}): ${response.statusText}`)
