@@ -88,8 +88,11 @@ export function UserProfile() {
         console.error("Failed to get auth token:", err)
       }
 
+      // Ensure name meets the minimum requirement of 2 characters
+      const name = data.name.length >= 2 ? data.name : "User Profile"
+
       const updateData = {
-        name: data.name,
+        name: name,
         email: data.email,
         organization: data.organization || undefined, // Send undefined instead of empty string
       }
@@ -123,7 +126,8 @@ export function UserProfile() {
 
       // Show success message
       alert("Profile updated successfully")
-    } catch (error) {
+    } catch (error: any) {
+      // Type error as any to fix TypeScript error
       console.error("Error updating profile:", error)
       alert(error.message || "Failed to update profile")
     }

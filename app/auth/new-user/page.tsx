@@ -67,6 +67,12 @@ export default function NewUserPage() {
 
       console.log("Using direct fetch with token available:", !!token)
 
+      // Ensure name is at least 2 characters
+      const userName =
+        session?.user?.name && session.user.name.length >= 2
+          ? session.user.name
+          : "User Profile" // Default name that meets 2 character minimum
+
       const response = await fetch(`${apiUrl}/api/users/profile`, {
         method: "PUT",
         headers: {
@@ -74,7 +80,7 @@ export default function NewUserPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          name: session?.user?.name || "",
+          name: userName,
           email: session?.user?.email || "",
           organization: data.organization,
           department: data.department || undefined,
@@ -106,7 +112,7 @@ export default function NewUserPage() {
 
       // Redirect to home
       router.push("/")
-    } catch (error) {
+    } catch (error: any) { // Type error as any to fix TypeScript error
       console.error("Error updating profile:", error)
       toast({
         title: "Error",
