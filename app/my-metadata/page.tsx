@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Metadata } from "next"
 import { requireNodeOfficer } from "@/lib/auth"
 import { api } from "@/lib/api-client"
-import { MetadataList } from "@/components/metadata/metadata-list"
+import { MetadataListWrapper } from "@/components/metadata/metadata-list-wrapper"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { cookies } from "next/headers"
 import { MetadataItem } from "@/types/metadata"
@@ -251,7 +251,7 @@ export default async function MyMetadataPage() {
 
           <Suspense fallback={<LoadingSpinner />}>
             {metadataItems.length > 0 ? (
-              <MetadataList
+              <MetadataListWrapper
                 initialMetadata={metadataItems}
                 initialTotal={metadataItems.length}
               />
