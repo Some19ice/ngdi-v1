@@ -57,24 +57,41 @@ class ApiClient {
       async (error) => {
         const originalRequest = error.config
 
+        // Log detailed error information
+        if (error.response) {
+          console.error("API Error Response:", {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: originalRequest.url,
+            method: originalRequest.method,
+            requestData: originalRequest.data,
+          })
+
+          // Enhance error message with server details if available
+          if (error.response.data && error.response.data.message) {
+            error.message = `${error.message}: ${error.response.data.message}`
+          }
+        }
+
         // If the error is due to an expired token and we haven't tried to refresh yet
         if (
           error.response?.status === 401 &&
           !originalRequest._retry &&
-          await authClient.isAuthenticated()
+          (await authClient.isAuthenticated())
         ) {
           originalRequest._retry = true
 
           try {
             // Refresh the token
             await authClient.refreshToken()
-            
+
             // Update the authorization header
             const newToken = authClient.getAccessToken()
             if (newToken) {
               originalRequest.headers.Authorization = `Bearer ${newToken}`
             }
-            
+
             // Retry the original request
             return this.axiosInstance(originalRequest)
           } catch (refreshError) {

@@ -59,12 +59,18 @@ export default function NewUserPage() {
     setIsSubmitting(true)
 
     try {
-      // Update user profile - use the existing name from session
-      await api.updateUser({
+      // Update user profile with complete data
+      const updateData = {
+        // Include name from the session to satisfy API requirements
+        name: session?.user?.name || "",
         organization: data.organization,
         department: data.department,
         phone: data.phone,
-      })
+      }
+
+      console.log("Sending update request:", updateData)
+
+      await api.updateUser(updateData)
 
       // Refresh the session to get updated user data
       await refreshSession()

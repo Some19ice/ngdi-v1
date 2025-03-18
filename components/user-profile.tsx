@@ -76,18 +76,16 @@ export function UserProfile() {
   })
 
   const onSubmit = (data: ProfileFormValues) => {
-    // Create update request with only the fields we need
+    // Create update request with all required fields
     const updateRequest: UserUpdateRequest = {
+      // Always include name and email - name is required by the API
+      name: data.name,
       email: data.email,
     }
 
-    if (data.name !== user?.name) {
-      updateRequest.name = data.name
-    }
-
-    if (data.organization !== user?.organization) {
-      // Convert empty string to undefined to avoid validation errors
-      updateRequest.organization = data.organization || undefined
+    // Include organization if present, otherwise undefined
+    if (data.organization) {
+      updateRequest.organization = data.organization
     }
 
     console.log("Updating profile with:", updateRequest)
