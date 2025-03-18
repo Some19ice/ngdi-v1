@@ -22,7 +22,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  organization: z.string().min(2, "Organization must be at least 2 characters"),
+  organization: z
+    .string()
+    .min(2, "Organization must be at least 2 characters")
+    .optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -50,6 +53,7 @@ export function UserProfile() {
 
   useEffect(() => {
     if (user) {
+      console.log("User data:", user)
       form.reset({
         name: user.name || "",
         email: user.email,
@@ -70,7 +74,18 @@ export function UserProfile() {
   )
 
   const onSubmit = (data: ProfileFormValues) => {
-    updateProfile(data)
+    // Only include fields that have changed
+    const updatedData = {
+      // Always include email as it's required by the API
+      email: data.email,
+    } as ProfileFormValues
+
+    if (data.name !== user?.name) updatedData.name = data.name
+    if (data.organization !== user?.organization)
+      updatedData.organization = data.organization
+
+    console.log("Updating profile with:", updatedData)
+    updateProfile(updatedData)
   }
 
   if (error) {
@@ -143,7 +158,7 @@ export function UserProfile() {
               name="organization"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organization</FormLabel>
+                  <FormLabel>Organization (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter your organization" {...field} />
                   </FormControl>

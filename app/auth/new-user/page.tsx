@@ -112,6 +112,9 @@ export default function NewUserPage() {
                     <FormControl>
                       <Input placeholder="John Doe" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Pre-filled from your registration, modify if needed
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

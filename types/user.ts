@@ -8,6 +8,7 @@ export interface UserProfile {
   emailVerified: string | null
   createdAt: string
   updatedAt: string
+  organization?: string | null
 }
 
 export interface UserUpdateRequest {
