@@ -1,24 +1,28 @@
 import { Check } from "lucide-react";
 
 interface StepsProps {
-  currentStep: number;
+  currentStep: number
+  totalSteps?: number
 }
 
-const steps = [
+const defaultSteps = [
   { id: 1, name: "General Information And Description" },
   { id: 2, name: "Data Quality Information" },
   { id: 3, name: "Data Distribution Information" },
 ]
 
-export function Steps({ currentStep }: StepsProps) {
+export function Steps({ currentStep, totalSteps = 3 }: StepsProps) {
+  const steps =
+    totalSteps === 3 ? defaultSteps : defaultSteps.slice(0, totalSteps)
+
   return (
-    <nav aria-label="Progress">
-      <ol role="list" className="flex items-center">
+    <nav aria-label="Progress" className="w-full overflow-x-auto pb-2">
+      <ol role="list" className="flex items-center min-w-max">
         {steps.map((step, stepIdx) => (
           <li
             key={step.name}
             className={`${
-              stepIdx !== steps.length - 1 ? "pr-8 sm:pr-20" : ""
+              stepIdx !== steps.length - 1 ? "pr-6 md:pr-20" : ""
             } relative`}
           >
             <div className="flex items-center">
@@ -46,7 +50,7 @@ export function Steps({ currentStep }: StepsProps) {
                   step.id <= currentStep
                     ? "text-foreground font-medium"
                     : "text-muted-foreground"
-                } ml-4 text-sm`}
+                } ml-3 text-sm whitespace-nowrap`}
               >
                 {step.name}
               </span>

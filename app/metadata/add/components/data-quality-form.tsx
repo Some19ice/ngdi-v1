@@ -162,10 +162,19 @@ export default function DataQualityForm({
         address: "",
       },
     },
+    mode: "onSubmit", // Only validate on submit
   })
 
   function onSubmit(data: Form2Data) {
     onNext(data)
+  }
+
+  // Get current data and continue
+  const handleContinue = () => {
+    // Get current form values
+    const currentData = form.getValues()
+    // Pass the data to the next step
+    onNext(currentData)
   }
 
   return (
@@ -731,16 +740,11 @@ export default function DataQualityForm({
         </div>
 
         <div className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onBack}
-            className="border-primary/20 hover:bg-primary/5"
-          >
+          <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>
-          <Button type="submit" className="bg-primary hover:bg-primary/90">
-            Next
+          <Button type="button" onClick={handleContinue}>
+            Continue
           </Button>
         </div>
       </form>

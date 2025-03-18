@@ -156,13 +156,25 @@ export default function DistributionInfoForm({
         fees: "",
         turnaroundTime: "",
         orderingInstructions: "",
-        maximumResponseTime: "48 hours",
+        maximumResponseTime: "",
       },
     },
+    mode: "onSubmit", // Only validate on submit
   })
+
+  // Set up a watch for the isCustodian field
+  const watchIsCustodian = form.watch("distributorInformation.isCustodian")
 
   function onSubmit(data: Form3Data) {
     onSave(data)
+  }
+
+  // Get current data and save
+  const handleSave = () => {
+    // Get current form values
+    const currentData = form.getValues()
+    // Save the data
+    onSave(currentData)
   }
 
   return (
@@ -323,7 +335,7 @@ export default function DistributionInfoForm({
             )}
           />
 
-          {!form.watch("distributorInformation.isCustodian") && (
+          {!watchIsCustodian && (
             <>
               <FormField
                 control={form.control}
@@ -541,19 +553,10 @@ export default function DistributionInfoForm({
         </div>
 
         <div className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onBack}
-            className="border-primary/20 hover:bg-primary/5"
-          >
+          <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-primary hover:bg-primary/90"
-          >
+          <Button type="button" onClick={handleSave} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Save"}
           </Button>
         </div>
