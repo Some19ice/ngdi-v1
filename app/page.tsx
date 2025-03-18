@@ -284,59 +284,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="bg-background px-4 py-16 sm:px-6 lg:px-8">
-        <div className="container mx-auto max-w-6xl">
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-8 shadow-xl sm:p-12">
-            <div className="relative">
-              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-secondary/20 blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-secondary/20 blur-3xl"></div>
-              <div className="relative mx-auto max-w-3xl text-center">
-                <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  Ready to get started?
-                </h2>
-                <p className="mb-8 text-lg text-primary-foreground/90">
-                  Join government agencies, research institutions, and private
-                  organizations already using the NGDI Portal.
-                </p>
-                <div className="flex flex-wrap justify-center gap-4">
-                  {isAuthenticated ? (
-                    <Link href="/metadata">
-                      <Button
-                        size="lg"
-                        className="bg-white text-primary hover:bg-white/90"
-                      >
-                        Go to Dashboard
-                      </Button>
-                    </Link>
-                  ) : (
-                    <>
-                      <Link href="/auth/signin">
-                        <Button
-                          size="lg"
-                          className="bg-white text-primary hover:bg-white/90"
-                        >
-                          Sign In
-                        </Button>
-                      </Link>
-                      <Link href="/auth/signup">
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="border-white text-white hover:bg-white/10"
-                        >
-                          Create Account
-                        </Button>
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

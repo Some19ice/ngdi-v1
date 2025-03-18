@@ -19,10 +19,10 @@ export const metadata: Metadata = {
 
 export default function CommitteePage() {
   return (
-    <div className="py-24 sm:py-32 bg-gradient-to-b from-background to-muted/20">
+    <div className="py-8 sm:py-12 bg-gradient-to-b from-background to-muted/20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
-          <div className="space-y-2 mb-12">
+        <div className="mx-auto">
+          <div className="space-y-2 mb-6">
             <Badge variant="outline" className="mb-2">
               Governance
             </Badge>
@@ -35,7 +35,7 @@ export default function CommitteePage() {
           </div>
 
           <div className="prose dark:prose-invert max-w-none">
-            <div className="bg-card rounded-lg p-6 border shadow-sm mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-card rounded-lg p-5 border shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <p className="lead text-lg">
                 The NGDI committee, hosted by NASRDA, is a multidisciplinary
                 body that oversees the development and implementation of
@@ -46,7 +46,7 @@ export default function CommitteePage() {
               </p>
             </div>
 
-            <Tabs defaultValue="structure" className="mb-12">
+            <Tabs defaultValue="structure" className="mb-6">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="structure">Structure</TabsTrigger>
                 <TabsTrigger value="composition">Composition</TabsTrigger>
@@ -54,9 +54,10 @@ export default function CommitteePage() {
                   Responsibilities
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="structure" className="mt-6">
+
+              <TabsContent value="structure" className="mt-4">
                 <Card>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <CardTitle className="flex items-center">
                       <Users className="h-5 w-5 mr-2 text-primary" />
                       Committee Structure
@@ -72,7 +73,7 @@ export default function CommitteePage() {
                       comprehensive oversight of geospatial data management in
                       Nigeria.
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                       <StatCard
                         icon={<Building className="h-5 w-5 text-blue-500" />}
                         title="Government"
@@ -94,67 +95,83 @@ export default function CommitteePage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              <TabsContent value="composition" className="mt-6 space-y-6">
-                <CompositionCard
-                  icon={<Building className="h-5 w-5 text-primary" />}
-                  title="Coordinating Agency"
-                  description="Representatives from NASRDA"
-                  items={[
-                    "Two persons fully employed by the coordinating agency (NASRDA) whose rank is not less than a directorate cadre or its equivalent",
-                  ]}
-                />
 
-                <CompositionCard
-                  icon={<GraduationCap className="h-5 w-5 text-primary" />}
-                  title="Academic Institutions"
-                  description="Representatives from universities and polytechnics"
-                  items={[
-                    "Two persons not below the rank of senior lecturer from the relevant academic departments of universities, with the universities selected in rotation",
-                    "Two persons not below the rank of principal lecturer from the relevant academic departments of polytechnics and monotechnics, with the institutions selected in rotation",
-                  ]}
-                />
+              <TabsContent value="composition" className="mt-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <CompositionCard
+                      icon={<Building className="h-5 w-5 text-primary" />}
+                      title="Coordinating Agency"
+                      description="Representatives from NASRDA"
+                      items={[
+                        "Two persons fully employed by the coordinating agency (NASRDA) whose rank is not less than a directorate cadre or its equivalent",
+                      ]}
+                    />
 
-                <CompositionCard
-                  icon={<MapPin className="h-5 w-5 text-primary" />}
-                  title="Geopolitical Representation"
-                  description="Representatives from the six geopolitical zones"
-                  items={[
-                    "One person from each of the six geopolitical zones chosen from any of the states nodal agencies and whose rank is not less than that of a directorate cadre or its equivalent (The states shall be selected in rotation)",
-                  ]}
-                />
+                    <div className="mt-4">
+                      <CompositionCard
+                        icon={
+                          <GraduationCap className="h-5 w-5 text-primary" />
+                        }
+                        title="Academic Institutions"
+                        description="Representatives from universities and polytechnics"
+                        items={[
+                          "Two persons not below the rank of senior lecturer from the relevant academic departments of universities, with the universities selected in rotation",
+                          "Two persons not below the rank of principal lecturer from the relevant academic departments of polytechnics and monotechnics, with the institutions selected in rotation",
+                        ]}
+                      />
+                    </div>
 
-                <CompositionCard
-                  icon={<Briefcase className="h-5 w-5 text-primary" />}
-                  title="Private Sector & NGOs"
-                  description="Representatives from private organizations"
-                  items={[
-                    "Four persons chosen from GI related private sector, inter-governmental and non-governmental organizations",
-                  ]}
-                />
+                    <div className="mt-4">
+                      <CompositionCard
+                        icon={<MapPin className="h-5 w-5 text-primary" />}
+                        title="Geopolitical Representation"
+                        description="Representatives from the six geopolitical zones"
+                        items={[
+                          "One person from each of the six geopolitical zones chosen from any of the states nodal agencies and whose rank is not less than that of a directorate cadre or its equivalent (The states shall be selected in rotation)",
+                        ]}
+                      />
+                    </div>
+                  </div>
 
-                <CompositionCard
-                  icon={<LandPlot className="h-5 w-5 text-primary" />}
-                  title="Federal Ministries and Agencies"
-                  description="Representatives from key government bodies"
-                  items={[
-                    "Ministry of Defense (Armed Forces)",
-                    "Office of the Surveyor-General of the Federation",
-                    "Ministry of Agriculture and Water Resources",
-                    "Ministry of Mines and Steel Development",
-                    "National Planning Commission",
-                    "Federal Capital Development Authority",
-                    "Nigeria National Petroleum Corporation",
-                    "Ministry of Environment and Housing",
-                    "Ministry of Transport",
-                    "Ministry of Finance",
-                    "National Population Commission",
-                  ]}
-                  columns={2}
-                />
+                  <div>
+                    <CompositionCard
+                      icon={<Briefcase className="h-5 w-5 text-primary" />}
+                      title="Private Sector & NGOs"
+                      description="Representatives from private organizations"
+                      items={[
+                        "Four persons chosen from GI related private sector, inter-governmental and non-governmental organizations",
+                      ]}
+                    />
+
+                    <div className="mt-4">
+                      <CompositionCard
+                        icon={<LandPlot className="h-5 w-5 text-primary" />}
+                        title="Federal Ministries and Agencies"
+                        description="Representatives from key government bodies"
+                        items={[
+                          "Ministry of Defense (Armed Forces)",
+                          "Office of the Surveyor-General of the Federation",
+                          "Ministry of Agriculture and Water Resources",
+                          "Ministry of Mines and Steel Development",
+                          "National Planning Commission",
+                          "Federal Capital Development Authority",
+                          "Nigeria National Petroleum Corporation",
+                          "Ministry of Environment and Housing",
+                          "Ministry of Transport",
+                          "Ministry of Finance",
+                          "National Population Commission",
+                        ]}
+                        columns={2}
+                      />
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
-              <TabsContent value="responsibilities" className="mt-6">
+
+              <TabsContent value="responsibilities" className="mt-4">
                 <Card>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <CardTitle>Key Responsibilities</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -243,7 +260,7 @@ function CompositionCard({
 }) {
   return (
     <Card className="animate-in fade-in-50 duration-500">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center text-lg">
           <div className="mr-2">{icon}</div>
           {title}
@@ -252,11 +269,11 @@ function CompositionCard({
       </CardHeader>
       <CardContent>
         <ul
-          className={`space-y-2 ${columns === 2 ? "grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2" : ""}`}
+          className={`space-y-1.5 ${columns === 2 ? "grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1.5" : ""}`}
         >
           {items.map((item, index) => (
             <li key={index} className="flex items-start">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
                 <span className="text-xs font-bold text-primary">
                   {index + 1}
                 </span>

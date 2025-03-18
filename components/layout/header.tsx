@@ -58,7 +58,6 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 // Public navigation items
 const publicNavItems = [
-  { name: "Home", href: "/" },
   { name: "About NGDI", href: "/about" },
   { name: "NGDI Committee", href: "/committee" },
   { name: "Publications", href: "/publications" },

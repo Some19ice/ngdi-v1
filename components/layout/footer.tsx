@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 const footerNavigation = {
   main: [
     { name: "Home", href: "/" },
-    { name: "Explore", href: "/explore" },
+    { name: "Explore", href: "/search" },
     { name: "Contact Us", href: "/contact" },
     { name: "About", href: "/about" },
   ],

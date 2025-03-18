@@ -8,17 +8,17 @@ export const landingImages = [
   {
     src: "/images/landing/Director1.jpeg",
     alt: "Director Stakeholder",
-    caption: "Director of Space Applications of Nigeria",
+    caption: "Director of Space Applications NASRDA",
   },
   {
     src: "/images/landing/Dr-I-Bello-1.jpeg",
     alt: "Dr. I. Bello",
-    caption: "Dr. Innocent E. Bello, Head of SDI Unit",
+    caption: "Dr. Innocent E. Bello, Head of SDI Unit NASRDA",
   },
   {
     src: "/images/landing/Group-image.jpeg",
     alt: "Stakeholders Group Image",
-    caption: "Collaboration Among Key Geospatial Data Stakeholders",
+    caption: "Geospatial Data Stakeholders",
   },
   {
     src: "/images/landing/Vips.jpeg",
@@ -26,8 +26,8 @@ export const landingImages = [
     caption: "High-Level Officials Supporting the Initiative",
   },
   {
-    src: "/images/landing/stakeholders.gif",
-    alt: "Stakeholders Animation",
-    caption: "Stakeholders in the Geospatial Data Infrastructure",
+    src: "/images/landing/DG-Directors.jpeg",
+    alt: "DG, Directors and Stakeholders",
+    caption: "DG, Directors and Stakeholders",
   },
 ]
