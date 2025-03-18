@@ -24,13 +24,14 @@ interface DashboardStats {
 
 async function fetchStats(): Promise<DashboardStats> {
   try {
-    // Using the server-side fetch to call our API endpoint
+    // Using the server-side fetch to call the main API server endpoint
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/stats`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
       {
         cache: "no-store",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
         },
       }
     )
@@ -39,7 +40,14 @@ async function fetchStats(): Promise<DashboardStats> {
       throw new Error("Failed to fetch stats")
     }
 
-    return await response.json()
+    const result = await response.json()
+
+    // Check the structure of the response and extract data
+    if (result.success && result.data) {
+      return result.data
+    }
+
+    throw new Error("Invalid response format")
   } catch (error) {
     console.error("Error fetching dashboard stats:", error)
     // Return default values if there's an error

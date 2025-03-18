@@ -454,4 +454,62 @@ adminRouter.delete(
   }
 )
 
+/**
+ * @openapi
+ * /api/admin/dashboard-stats:
+ *   get:
+ *     summary: Get comprehensive dashboard statistics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userCount:
+ *                       type: number
+ *                     orgCount:
+ *                       type: number
+ *                     metadataCount:
+ *                       type: number
+ *                     activeUsers:
+ *                       type: number
+ *                     pendingApprovals:
+ *                       type: number
+ *                     systemHealth:
+ *                       type: number
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+adminRouter.get("/dashboard-stats", async (c) => {
+  try {
+    const stats = await adminService.getAdminDashboardStats()
+    
+    return c.json({
+      success: true,
+      data: stats,
+    })
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error)
+    return c.json(
+      {
+        success: false,
+        message: "Failed to fetch dashboard statistics",
+      },
+      500
+    )
+  }
+})
+
 export default adminRouter

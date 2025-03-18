@@ -44,13 +44,26 @@ export function AdminNav({ user }: AdminNavProps) {
     async function fetchStats() {
       try {
         setLoading(true)
-        const response = await fetch("/api/admin/stats")
-        if (response.ok) {
-          const data = await response.json()
-          setStats(data)
+        // Use the main API server endpoint
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+              "Content-Type": "application/json",
+            },
+          }
+        )
 
-          // Set notification count based on pending approvals
-          setNotificationCount(data.pendingApprovals || 0)
+        if (response.ok) {
+          const result = await response.json()
+
+          if (result.success && result.data) {
+            setStats(result.data)
+
+            // Set notification count based on pending approvals
+            setNotificationCount(result.data.pendingApprovals || 0)
+          }
         }
       } catch (error) {
         console.error("Error fetching admin stats:", error)
