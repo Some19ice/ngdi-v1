@@ -20,24 +20,19 @@ export async function authMiddleware(c: Context, next: Next) {
 
     const token = authHeader.split(" ")[1]
 
-    // Check if this is a server API key request
-    if (config.serverApiKey && token === config.serverApiKey) {
+    // Check if this is a server API key
+    if (token === process.env.SERVER_API_KEY) {
       console.log("[DEBUG] Server API key authentication successful")
-      // Set an admin user context for server requests
+
+      // For server API key, set an admin user context
       c.set("user", {
         id: "server",
-        email: "server@system.local",
+        email: "server@system",
         role: UserRole.ADMIN,
       })
+
       await next()
       return
-    }
-
-    // Additional logging for debugging
-    if (token === process.env.SERVER_API_KEY) {
-      console.log(
-        "[DEBUG] Token matches process.env.SERVER_API_KEY but not config.serverApiKey"
-      )
     }
 
     // Normal JWT authentication flow
@@ -58,10 +53,10 @@ export async function authMiddleware(c: Context, next: Next) {
 
     // Add user info to context
     c.set("user", user)
-    console.log("[DEBUG] User authentication successful:", user.email)
+    // Also log how the value is being set for debugging
+    console.log("[DEBUG] Set user in middleware:", user, "using c.set()")
     await next()
   } catch (error) {
-    console.error("[ERROR] Authentication failed:", error)
     throw new HTTPException(401, { message: "Invalid token" })
   }
 }

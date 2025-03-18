@@ -1,11 +1,18 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { adminService } from "../services/admin.service"
-import { authMiddleware } from "../middleware/auth"
+import { authMiddleware } from "../middleware/auth.middleware"
 import { UserRole } from "../types/auth.types"
 import { UserIdParamSchema } from "../types/user.types"
 import { MetadataIdParamSchema } from "../types/metadata.types"
 import { Context } from "../types/hono.types"
+
+// Define the user type based on the auth middleware
+interface User {
+  id: string
+  email: string
+  role: UserRole
+}
 
 /**
  * Admin routes
@@ -16,25 +23,37 @@ export const adminRouter = new Hono<{
     userEmail: string
     userRole: UserRole
     secureHeadersNonce?: string
+    user: User
   }
 }>()
   // Apply authentication middleware to all routes
   .use("*", authMiddleware)
   // Check if user is admin
   .use("*", async (c, next) => {
-    const userRole = c.var.userRole
+    try {
+      const user = c.get("user")
 
-    if (userRole !== UserRole.ADMIN) {
+      if (!user || user.role !== UserRole.ADMIN) {
+        return c.json(
+          {
+            success: false,
+            message: "Unauthorized. Admin access required.",
+          },
+          403
+        )
+      }
+
+      await next()
+    } catch (error) {
+      console.error("Admin authorization error:", error)
       return c.json(
         {
           success: false,
-          message: "Unauthorized. Admin access required.",
+          message: "Error checking admin permissions",
         },
-        403
+        500
       )
     }
-
-    await next()
   })
 
 /**
@@ -494,8 +513,12 @@ adminRouter.delete(
  */
 adminRouter.get("/dashboard-stats", async (c) => {
   try {
+    // Log authentication info for debugging
+    console.log("[DEBUG] Dashboard stats request received")
+    console.log("[DEBUG] User in context:", c.get("user"))
+
     const stats = await adminService.getAdminDashboardStats()
-    
+
     return c.json({
       success: true,
       data: stats,
