@@ -322,6 +322,12 @@ model NGDIMetadata {
   distributorWebLink      String?
   /// Social media handle of the distributor
   distributorSocialMedia  String?
+  /// Indicates if distributor is also the custodian
+  isCustodian             Boolean @default(true)
+  /// Name of the custodian if different from distributor
+  custodianName           String?
+  /// Contact information for the custodian if different from distributor
+  custodianContact        String?
   
   // Distribution Details
   /// Statement of liability
@@ -333,11 +339,13 @@ model NGDIMetadata {
   
   // Standard Order Process
   /// Fees for obtaining the dataset
-  orderFees               String
+  fees                    String
   /// Typical time between order and delivery
   turnaroundTime          String
   /// Instructions for ordering the dataset
   orderingInstructions    String  @db.Text
+  /// Maximum time for response about dataset availability
+  maximumResponseTime     String
   
   // User reference
   /// Reference to the user who created this entry

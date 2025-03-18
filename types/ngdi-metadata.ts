@@ -116,6 +116,9 @@ export interface DistributorInformation {
   phoneNumber: string // Required
   webLink?: string
   socialMediaHandle?: string
+  isCustodian: boolean // Required - Indicates if the distributor is also the custodian
+  custodianName?: string // Required if isCustodian is false
+  custodianContact?: string // Required if isCustodian is false
 }
 
 export interface DistributionDetails {
@@ -128,6 +131,7 @@ export interface StandardOrderProcess {
   fees: string // Required
   turnaroundTime: string // Required
   orderingInstructions: string // Required
+  maximumResponseTime: string // Required - Maximum time for dataset availability response
 }
 
 export interface Form1Data {

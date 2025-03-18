@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -40,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { InfoIcon } from "lucide-react"
+import { getStatesAsOptions, getLGAsByState } from "@/lib/nigeria-states-lga"
 
 // Define validation schema using Zod
 const formSchema = z.object({
@@ -99,7 +101,15 @@ const formSchema = z.object({
       required_error: "Assessment is required",
     }),
     updateFrequency: z.enum(
-      ["Monthly", "Quarterly", "Bi-Annually", "Annually"],
+      [
+        "Monthly",
+        "Quarterly",
+        "Bi-Annually",
+        "Annually",
+        "Daily",
+        "Weekly",
+        "Others",
+      ],
       {
         required_error: "Update frequency is required",
       }
@@ -165,6 +175,7 @@ export default function GeneralInfoForm({
   onNext,
   initialData,
 }: GeneralInfoFormProps) {
+  const [selectedState, setSelectedState] = useState<string>("")
   const form = useForm<Form1Data>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {
@@ -226,6 +237,13 @@ export default function GeneralInfoForm({
       },
     },
   })
+
+  const handleStateChange = (stateId: string) => {
+    setSelectedState(stateId)
+    form.setValue("location.state", stateId)
+    // Reset LGA when state changes
+    form.setValue("location.lga", "")
+  }
 
   function onSubmit(data: Form1Data) {
     onNext(data)
@@ -875,9 +893,23 @@ export default function GeneralInfoForm({
             render={({ field }) => (
               <FormItem>
                 <RequiredFormLabel>State</RequiredFormLabel>
-                <FormControl>
-                  <Input placeholder="Enter state" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={handleStateChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="border-primary/20 focus:ring-primary/20">
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {getStatesAsOptions().map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormDescriptionWithTooltip tooltip="The primary administrative division within the country">
                   The primary administrative division within the country
                 </FormDescriptionWithTooltip>
@@ -892,9 +924,24 @@ export default function GeneralInfoForm({
             render={({ field }) => (
               <FormItem>
                 <RequiredFormLabel>LGA</RequiredFormLabel>
-                <FormControl>
-                  <Input placeholder="Enter Local Government Area" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  disabled={!selectedState}
+                >
+                  <FormControl>
+                    <SelectTrigger className="border-primary/20 focus:ring-primary/20">
+                      <SelectValue placeholder="Select Local Government Area" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {getLGAsByState(selectedState).map((lga) => (
+                      <SelectItem key={lga.id} value={lga.id}>
+                        {lga.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormDescriptionWithTooltip tooltip="The local administrative division within a state">
                   The local administrative division within a state
                 </FormDescriptionWithTooltip>
@@ -974,6 +1021,9 @@ export default function GeneralInfoForm({
                     <SelectItem value="Quarterly">Quarterly</SelectItem>
                     <SelectItem value="Bi-Annually">Bi-Annually</SelectItem>
                     <SelectItem value="Annually">Annually</SelectItem>
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Others">Others</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescriptionWithTooltip tooltip="The established schedule for reviewing and refreshing the dataset">
@@ -1126,7 +1176,7 @@ export default function GeneralInfoForm({
                           <span>Pick a date</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
+                      </Button>
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">

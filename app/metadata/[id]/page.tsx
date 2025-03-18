@@ -372,6 +372,40 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
                   </a>
                 )}
               </div>
+
+              {/* Show custodian info if available */}
+              {(metadata as any)?.isCustodian === false &&
+                (metadata as any)?.custodianName && (
+                  <div>
+                    <h3 className="text-sm font-medium">Custodian</h3>
+                    <p className="text-muted-foreground">
+                      {(metadata as any).custodianName}
+                    </p>
+                    {(metadata as any)?.custodianContact && (
+                      <p className="text-muted-foreground">
+                        {(metadata as any).custodianContact}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+              <div>
+                <h3 className="text-sm font-medium">Processing Times</h3>
+                <div className="grid grid-cols-2 gap-x-2">
+                  <span className="text-xs">Turnaround Time:</span>
+                  <p className="text-muted-foreground text-xs">
+                    {metadata.turnaroundTime}
+                  </p>
+                  {(metadata as any)?.maximumResponseTime && (
+                    <>
+                      <span className="text-xs">Max Response Time:</span>
+                      <p className="text-muted-foreground text-xs">
+                        {(metadata as any).maximumResponseTime}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

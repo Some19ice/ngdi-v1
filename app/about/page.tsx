@@ -166,17 +166,31 @@ export default function AboutPage() {
                     "Administrative boundaries",
                     "Topography and elevation",
                     "Land use and land cover",
-                    "Population distribution",
                     "Transportation networks",
-                    "Environmental data",
+                    "Satellite imageries and image maps",
+                    "Hydrological data (rivers, lakes, watersheds)",
+                    "Population demographics and distribution",
+                    "Cadastral information and land registry",
+                    "Infrastructure and utilities networks",
+                    "Soil and geological data",
+                    "Environmental and ecological zones",
+                    "Climate and meteorological data",
+                    "Natural resources and mineral deposits",
+                    "Cultural and heritage sites",
+                    "Emergency management and disaster risk zones",
                   ]}
                 />
 
                 <ComponentSection
                   title="Capacity Building and Public Awareness"
                   items={[
-                    "Training programs to equip stakeholders with skills in geospatial data production and analysis",
-                    "Public awareness campaigns to highlight the importance of geospatial data in daily life",
+                    "Training programs for nodal agencies to enhance technical expertise in geospatial data management and analysis",
+                    "Specialized workshops for NGDI Committee members on policy development and implementation strategies",
+                    "Technical skills development for government officials across federal, state, and local levels",
+                    "Academic collaborations to integrate geospatial education into university curricula",
+                    "End-user training sessions for public and private sector stakeholders",
+                    "Public awareness campaigns to highlight the importance of geospatial data in daily life and national development",
+                    "Regular knowledge sharing forums to exchange best practices and innovations in geospatial technologies",
                   ]}
                 />
               </div>

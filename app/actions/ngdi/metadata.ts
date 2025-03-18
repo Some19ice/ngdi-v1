@@ -3,7 +3,8 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/server/db"
+import { v4 as uuidv4 } from "uuid"
 
 // Function to get the current user ID from the auth token
 // This is a placeholder - implement based on your auth system
@@ -14,7 +15,7 @@ async function getCurrentUserId(): Promise<string | null> {
   // For development/testing purposes, we'll use a known test user ID
   try {
     // Use a single query with fallback logic to reduce database connections
-    const user = await prisma.user.findFirst({
+    const user = await db.user.findFirst({
       where: {
         OR: [{ email: "test@example.com" }, { role: "ADMIN" }],
       },
@@ -185,6 +186,9 @@ const form3Schema = z.object({
     phoneNumber: z.string().min(1, "Phone number is required"),
     webLink: z.string().url().optional().or(z.literal("")),
     socialMediaHandle: z.string().optional(),
+    isCustodian: z.boolean().default(true),
+    custodianName: z.string().optional(),
+    custodianContact: z.string().optional(),
   }),
 
   // Distribution Details
@@ -203,6 +207,7 @@ const form3Schema = z.object({
     orderingInstructions: z
       .string()
       .min(1, "Ordering instructions are required"),
+    maximumResponseTime: z.string().min(1, "Maximum response time is required"),
   }),
 })
 
@@ -230,17 +235,18 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
     const validatedData = ngdiMetadataSchema.parse(data)
 
     // Create the metadata record in the database
-    // Note: This assumes you have a ngdiMetadata model in your Prisma schema
-    const metadata = await prisma.nGDIMetadata.create({
+    const metadata = await db.nGDIMetadata.create({
       data: {
+        id: uuidv4(),
         // Form 1: General Information
+        // Data Information
         dataType: validatedData.form1.dataInformation.dataType,
         dataName: validatedData.form1.dataInformation.dataName,
         cloudCoverPercentage:
-          validatedData.form1.dataInformation.cloudCoverPercentage,
+          validatedData.form1.dataInformation.cloudCoverPercentage || null,
         productionDate: validatedData.form1.dataInformation.productionDate,
 
-        // Fundamental Datasets (stored as JSON)
+        // Fundamental Datasets
         fundamentalDatasets: validatedData.form1.fundamentalDatasets,
 
         // Description
@@ -285,18 +291,18 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
         // Form 2: Data Quality Information
         // General Section
         logicalConsistencyReport:
-          validatedData.form2.generalSection.logicalConsistencyReport,
+          validatedData.form2.generalSection.logicalConsistencyReport || null,
         completenessReport:
-          validatedData.form2.generalSection.completenessReport,
+          validatedData.form2.generalSection.completenessReport || null,
 
         // Attribute Accuracy
         attributeAccuracyReport:
-          validatedData.form2.attributeAccuracy.accuracyReport,
+          validatedData.form2.attributeAccuracy.accuracyReport || null,
 
-        // Positional Accuracy (stored as JSON)
+        // Positional Accuracy
         positionalAccuracy: validatedData.form2.positionalAccuracy,
 
-        // Source Information (stored as JSON)
+        // Source Information
         sourceInformation: validatedData.form2.sourceInformation,
 
         // Data Processing Information
@@ -323,7 +329,12 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
         distributorWebLink:
           validatedData.form3.distributorInformation.webLink || null,
         distributorSocialMedia:
-          validatedData.form3.distributorInformation.socialMediaHandle,
+          validatedData.form3.distributorInformation.socialMediaHandle || null,
+        isCustodian: validatedData.form3.distributorInformation.isCustodian,
+        custodianName:
+          validatedData.form3.distributorInformation.custodianName || null,
+        custodianContact:
+          validatedData.form3.distributorInformation.custodianContact || null,
 
         // Distribution Details
         distributionLiability:
@@ -334,13 +345,15 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
           validatedData.form3.distributionDetails.technicalPrerequisites,
 
         // Standard Order Process
-        orderFees: validatedData.form3.standardOrderProcess.fees,
+        fees: validatedData.form3.standardOrderProcess.fees,
         turnaroundTime: validatedData.form3.standardOrderProcess.turnaroundTime,
         orderingInstructions:
           validatedData.form3.standardOrderProcess.orderingInstructions,
+        maximumResponseTime:
+          validatedData.form3.standardOrderProcess.maximumResponseTime,
 
         // User reference
-        userId: userId,
+        userId,
       },
     })
 

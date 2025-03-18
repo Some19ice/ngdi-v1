@@ -23,6 +23,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { InfoIcon } from "lucide-react"
+import { DurationPicker } from "@/components/ui/duration-picker"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Define validation schema using Zod
 const formSchema = z.object({
@@ -33,6 +35,21 @@ const formSchema = z.object({
     phoneNumber: z.string().min(1, "Phone number is required"),
     webLink: z.string().url().optional().or(z.literal("")),
     socialMediaHandle: z.string().optional(),
+    isCustodian: z.boolean().default(true),
+    custodianName: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || val.length > 0,
+        "Custodian name is required when distributor is not the custodian"
+      ),
+    custodianContact: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || val.length > 0,
+        "Custodian contact is required when distributor is not the custodian"
+      ),
   }),
   distributionDetails: z.object({
     liability: z.string().min(1, "Liability statement is required"),
@@ -43,10 +60,27 @@ const formSchema = z.object({
   }),
   standardOrderProcess: z.object({
     fees: z.string().min(1, "Fees information is required"),
-    turnaroundTime: z.string().min(1, "Turnaround time is required"),
+    turnaroundTime: z
+      .string()
+      .min(1, "Turnaround time is required")
+      .regex(
+        /^\d+\s+(minutes|hours|days|weeks|months)$/,
+        "Invalid duration format"
+      ),
     orderingInstructions: z
       .string()
       .min(1, "Ordering instructions are required"),
+    maximumResponseTime: z
+      .string()
+      .min(1, "Maximum response time is required")
+      .regex(/^\d+\s+(hours|days|weeks|months)$/, "Invalid duration format")
+      .refine((val) => {
+        const [amount, unit] = val.split(" ")
+        const numAmount = parseInt(amount, 10)
+        if (unit === "hours" && numAmount < 48) return false
+        if (unit === "days" && numAmount < 2) return false
+        return true
+      }, "Maximum response time must be at least 48 hours"),
   }),
 })
 
@@ -109,6 +143,9 @@ export default function DistributionInfoForm({
         phoneNumber: "",
         webLink: "",
         socialMediaHandle: "",
+        isCustodian: true,
+        custodianName: "",
+        custodianContact: "",
       },
       distributionDetails: {
         liability: "",
@@ -119,6 +156,7 @@ export default function DistributionInfoForm({
         fees: "",
         turnaroundTime: "",
         orderingInstructions: "",
+        maximumResponseTime: "48 hours",
       },
     },
   })
@@ -138,12 +176,32 @@ export default function DistributionInfoForm({
 
           <FormField
             control={form.control}
+            name="distributorInformation.isCustodian"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Distributor is also the Custodian</FormLabel>
+                  <FormDescriptionWithTooltip tooltip="Check this box if the distributor is also the custodian of the dataset. If not, you'll need to provide custodian details.">
+                    Check this box if the distributor is also the custodian of
+                    the dataset
+                  </FormDescriptionWithTooltip>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="distributorInformation.name"
             render={({ field }) => (
               <FormItem>
-                <RequiredFormLabel>
-                  Distributor/Custodian Name
-                </RequiredFormLabel>
+                <RequiredFormLabel>Distributor Name</RequiredFormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter distributor name"
@@ -264,6 +322,53 @@ export default function DistributionInfoForm({
               </FormItem>
             )}
           />
+
+          {!form.watch("distributorInformation.isCustodian") && (
+            <>
+              <FormField
+                control={form.control}
+                name="distributorInformation.custodianName"
+                render={({ field }) => (
+                  <FormItem>
+                    <RequiredFormLabel>Custodian Name</RequiredFormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter custodian name"
+                        className="border-primary/20 focus:ring-primary/20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescriptionWithTooltip tooltip="The name of the entity that maintains and is responsible for the dataset.">
+                      The name of the entity that maintains and is responsible
+                      for the dataset
+                    </FormDescriptionWithTooltip>
+                    <FormMessage className="text-destructive text-xs" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="distributorInformation.custodianContact"
+                render={({ field }) => (
+                  <FormItem>
+                    <RequiredFormLabel>Custodian Contact</RequiredFormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter custodian contact information"
+                        className="border-primary/20 focus:ring-primary/20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescriptionWithTooltip tooltip="Contact information for the custodian including email or phone number.">
+                      Contact information for the custodian
+                    </FormDescriptionWithTooltip>
+                    <FormMessage className="text-destructive text-xs" />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
         </div>
 
         {/* Distribution Details Section */}
@@ -375,10 +480,10 @@ export default function DistributionInfoForm({
               <FormItem>
                 <RequiredFormLabel>Turnaround Time</RequiredFormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter turnaround time"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
+                  <DurationPicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select turnaround time"
                   />
                 </FormControl>
                 <FormDescriptionWithTooltip tooltip="The typical time period between ordering the dataset and receiving it.">
@@ -406,6 +511,28 @@ export default function DistributionInfoForm({
                 <FormDescriptionWithTooltip tooltip="Detailed instructions on the procedures for ordering or requesting the dataset.">
                   Detailed instructions on the procedures for ordering or
                   requesting the dataset
+                </FormDescriptionWithTooltip>
+                <FormMessage className="text-destructive text-xs" />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="standardOrderProcess.maximumResponseTime"
+            render={({ field }) => (
+              <FormItem>
+                <RequiredFormLabel>Maximum Response Time</RequiredFormLabel>
+                <FormControl>
+                  <DurationPicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select maximum response time"
+                  />
+                </FormControl>
+                <FormDescriptionWithTooltip tooltip="The maximum time users should expect for receiving a response about dataset availability. Must be at least 48 hours.">
+                  The maximum time users should expect for receiving a response
+                  about dataset availability (minimum 48 hours)
                 </FormDescriptionWithTooltip>
                 <FormMessage className="text-destructive text-xs" />
               </FormItem>
