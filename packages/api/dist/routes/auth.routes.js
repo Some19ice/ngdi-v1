@@ -50,6 +50,17 @@ auth.post("/login", (0, zod_validator_1.zValidator)("json", loginSchema), async 
         console.log("Login data:", { email: data.email });
         const result = await auth_service_1.AuthService.login(data);
         console.log("Login successful");
+        // Set cookies for authentication
+        const cookieOptions = {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
+        };
+        c.header("Set-Cookie", `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        c.header("Set-Cookie", `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
         return c.json(result);
     }
     catch (error) {
@@ -70,6 +81,17 @@ auth.post("/register", (0, zod_validator_1.zValidator)("json", registerSchema), 
     try {
         const data = await c.req.json();
         const result = await auth_service_1.AuthService.register(data);
+        // Set cookies for authentication
+        const cookieOptions = {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
+        };
+        c.header("Set-Cookie", `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        c.header("Set-Cookie", `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
         return c.json(result);
     }
     catch (error) {
@@ -123,7 +145,20 @@ auth.get("/verify-email", (0, zod_validator_1.zValidator)("query", verifyEmailSc
 // Refresh token route
 auth.post("/refresh-token", async (c) => {
     try {
-        const refreshToken = c.req.header("Authorization")?.replace("Bearer ", "");
+        // Get refresh token from Authorization header or cookies
+        let refreshToken = c.req.header("Authorization")?.replace("Bearer ", "");
+        // If not in header, try to get from cookies
+        if (!refreshToken) {
+            const cookieHeader = c.req.raw.headers.get("cookie");
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(";");
+                const refreshTokenCookie = cookies.find((c) => c.trim().startsWith("refresh_token="));
+                if (refreshTokenCookie) {
+                    refreshToken = refreshTokenCookie.split("=")[1];
+                }
+            }
+        }
+        // Check if we have a refresh token
         if (!refreshToken) {
             throw new error_handler_1.ApiError("Refresh token is required", 400, error_handler_1.ErrorCode.BAD_REQUEST);
         }
@@ -135,11 +170,29 @@ auth.post("/refresh-token", async (c) => {
             email: decoded.email,
             role: decoded.role,
         });
+        // Generate new refresh token
+        const newRefreshToken = await (0, jwt_1.generateRefreshToken)({
+            userId: decoded.userId,
+            email: decoded.email,
+            role: decoded.role,
+        });
+        // Set cookies for authentication
+        const cookieOptions = {
+            path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
+        };
+        c.header("Set-Cookie", `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        c.header("Set-Cookie", `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
         return c.json({
             success: true,
             message: "Token refreshed",
             data: {
-                token: accessToken,
+                accessToken,
+                refreshToken: newRefreshToken,
             },
         }, 200);
     }
@@ -231,7 +284,20 @@ auth.post("/reset-password", (0, zod_validator_1.zValidator)("json", resetPasswo
 });
 // Logout route
 auth.post("/logout", async (c) => {
-    return c.json({ message: "Logged out successfully" });
+    try {
+        // Clear authentication cookies with the same domain as set in login
+        const domain = process.env.NODE_ENV === "production" ? "vercel.app" : "localhost";
+        c.header("Set-Cookie", `auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`);
+        c.header("Set-Cookie", `refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`);
+        return c.json({
+            success: true,
+            message: "Logged out successfully",
+        });
+    }
+    catch (error) {
+        console.error("Logout error:", error);
+        throw new http_exception_1.HTTPException(500, { message: "Logout failed" });
+    }
 });
 // Get current user (me) endpoint
 auth.get("/me", async (c) => {

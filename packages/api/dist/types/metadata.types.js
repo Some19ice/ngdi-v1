@@ -58,15 +58,25 @@ exports.MetadataRequestSchema = exports.metadataSchema;
  * Metadata search query parameters
  */
 exports.metadataSearchQuerySchema = zod_1.z.object({
-    page: zod_1.z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
-    limit: zod_1.z.string().optional().transform(val => val ? parseInt(val, 10) : 10),
+    page: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 1)),
+    limit: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 10)),
     search: zod_1.z.string().optional(),
     category: zod_1.z.string().optional(),
+    frameworkType: zod_1.z.string().optional(),
     author: zod_1.z.string().optional(),
     organization: zod_1.z.string().optional(),
     dateFrom: zod_1.z.string().optional(),
     dateTo: zod_1.z.string().optional(),
     fileFormat: zod_1.z.string().optional(),
-    sortBy: zod_1.z.enum(['title', 'author', 'organization', 'createdAt']).optional().default('createdAt'),
-    sortOrder: zod_1.z.enum(['asc', 'desc']).optional().default('desc'),
+    sortBy: zod_1.z
+        .enum(["title", "author", "organization", "createdAt"])
+        .optional()
+        .default("createdAt"),
+    sortOrder: zod_1.z.enum(["asc", "desc"]).optional().default("desc"),
 });

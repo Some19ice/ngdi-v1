@@ -252,6 +252,11 @@ metadata.delete("/:id", (0, zod_validator_1.zValidator)("param", metadata_types_
  *           type: string
  *         description: Filter by category
  *       - in: query
+ *         name: frameworkType
+ *         schema:
+ *           type: string
+ *         description: Filter by framework type (Vector, Raster, Table)
+ *       - in: query
  *         name: dateFrom
  *         schema:
  *           type: string
@@ -276,12 +281,13 @@ metadata.delete("/:id", (0, zod_validator_1.zValidator)("param", metadata_types_
  *         $ref: '#/components/responses/InternalServerError'
  */
 metadata.get("/search", async (c) => {
-    const { page = "1", limit = "10", search, category, dateFrom, dateTo, } = c.req.query();
+    const { page = "1", limit = "10", search, category, frameworkType, dateFrom, dateTo, } = c.req.query();
     const result = await metadata_service_1.metadataService.searchMetadata({
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
         search,
         category,
+        frameworkType,
         dateFrom,
         dateTo,
         sortBy: "createdAt",

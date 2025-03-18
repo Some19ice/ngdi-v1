@@ -13,6 +13,7 @@ const swagger_ui_1 = require("@hono/swagger-ui");
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const metadata_routes_1 = __importDefault(require("./routes/metadata.routes"));
+const search_routes_1 = __importDefault(require("./routes/search.routes"));
 const error_handler_1 = require("./middleware/error-handler");
 const rate_limit_1 = require("./middleware/rate-limit");
 const node_server_1 = require("@hono/node-server");
@@ -32,6 +33,7 @@ const apiRouter = new zod_openapi_1.OpenAPIHono();
 apiRouter.route("/auth", auth_routes_1.default);
 apiRouter.route("/users", user_routes_1.default);
 apiRouter.route("/metadata", metadata_routes_1.default);
+apiRouter.route("/search", search_routes_1.default);
 // Mount API router
 app.route("/api", apiRouter);
 // Swagger UI

@@ -93,7 +93,7 @@ export function MetadataList({
     }
 
     setPage(1)
-  }, [debouncedSearch, debouncedCategory])
+  }, [debouncedSearch, debouncedCategory, manuallyFetched])
 
   // Fetch metadata directly if we have filters or need to refresh
   const fetchMetadata = useCallback(

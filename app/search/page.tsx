@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -133,6 +133,116 @@ function SearchForm() {
     },
   })
 
+  // Define fetchSearchResults before using it in useEffect
+  const fetchSearchResults = useCallback(
+    async (data: SearchFormValues, page: number = 1) => {
+      setIsLoading(true)
+
+      try {
+        // Prepare search parameters
+        const searchParams = new URLSearchParams()
+        searchParams.set("page", page.toString())
+        searchParams.set("limit", "9") // Show 9 items per page
+
+        // Add search term and ensure it's properly formatted
+        if (data.keyword && data.keyword.trim()) {
+          const cleanKeyword = data.keyword.trim()
+          searchParams.set("search", cleanKeyword)
+          console.log(`Adding search term: "${cleanKeyword}"`)
+        }
+
+        // Add category filter
+        if (data.dataType && data.dataType !== "all") {
+          // For Vector and Raster, include a hint to use frameworkType filter
+          if (data.dataType === "Vector" || data.dataType === "Raster") {
+            searchParams.set("frameworkType", data.dataType)
+          }
+          searchParams.set("category", data.dataType)
+          console.log(
+            `Adding category filter: ${data.dataType} (original value: ${data.dataType})`
+          )
+        }
+
+        // Add organization filter
+        if (data.organization && data.organization.trim()) {
+          searchParams.set("organization", data.organization.trim())
+          console.log(`Adding organization filter: ${data.organization}`)
+        }
+
+        // Add date filters
+        if (data.dateRange?.from) {
+          const dateFrom = data.dateRange.from.toISOString()
+          searchParams.set("dateFrom", dateFrom)
+          console.log(`Adding date from: ${dateFrom}`)
+        }
+
+        if (data.dateRange?.to) {
+          const dateTo = data.dateRange.to.toISOString()
+          searchParams.set("dateTo", dateTo)
+          console.log(`Adding date to: ${dateTo}`)
+        }
+
+        const apiUrl = `/api/search/metadata?${searchParams.toString()}`
+
+        // Get the latest token before making the request
+        const currentToken =
+          getCookie("auth_token") ||
+          localStorage.getItem("auth_token") ||
+          authToken
+
+        console.log("Fetching search results:", {
+          url: apiUrl,
+          hasAuthToken: !!currentToken,
+          authTokenLength: currentToken?.length,
+          params: Object.fromEntries(searchParams.entries()),
+          dataTypeValue: data.dataType,
+        })
+
+        // Fetch data from API with auth token if available
+        const response = await fetch(apiUrl, {
+          headers: currentToken
+            ? { Authorization: `Bearer ${currentToken}` }
+            : undefined,
+        })
+
+        if (!response.ok) {
+          console.error("API error response:", {
+            status: response.status,
+            statusText: response.statusText,
+          })
+          throw new Error(`Search failed: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        console.log("Search API response:", {
+          success: result.success,
+          total: result.data?.total || 0,
+          metadataCount: result.data?.metadata?.length || 0,
+          firstItem: result.data?.metadata?.[0]
+            ? {
+                id: result.data.metadata[0].id,
+                title: result.data.metadata[0].title,
+              }
+            : "none",
+          metadata: result.data?.metadata?.slice(0, 2) || [], // Show first 2 items for debug
+        })
+
+        setSearchResults(result.data?.metadata || [])
+        setTotalResults(result.data?.total || 0)
+        setTotalPages(result.data?.totalPages || 1)
+        setCurrentPage(result.data?.currentPage || 1)
+      } catch (error) {
+        console.error("Search error:", error)
+        setSearchResults([])
+        setTotalResults(0)
+        setTotalPages(1)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [authToken]
+  )
+
   // Get auth token on component mount
   useEffect(() => {
     const getToken = () => {
@@ -221,7 +331,7 @@ function SearchForm() {
       },
       1
     )
-  }, []) // Empty dependency array means this runs once on mount
+  }, [fetchSearchResults])
 
   // Load initial results based on URL parameters
   useEffect(() => {
@@ -248,113 +358,7 @@ function SearchForm() {
     }
 
     fetchSearchResults(initialSearch, page)
-  }, [searchParams])
-
-  async function fetchSearchResults(data: SearchFormValues, page: number = 1) {
-    setIsLoading(true)
-
-    try {
-      // Prepare search parameters
-      const searchParams = new URLSearchParams()
-      searchParams.set("page", page.toString())
-      searchParams.set("limit", "9") // Show 9 items per page
-
-      // Add search term and ensure it's properly formatted
-      if (data.keyword && data.keyword.trim()) {
-        const cleanKeyword = data.keyword.trim()
-        searchParams.set("search", cleanKeyword)
-        console.log(`Adding search term: "${cleanKeyword}"`)
-      }
-
-      // Add category filter
-      if (data.dataType && data.dataType !== "all") {
-        // For Vector and Raster, include a hint to use frameworkType filter
-        if (data.dataType === "Vector" || data.dataType === "Raster") {
-          searchParams.set("frameworkType", data.dataType)
-        }
-        searchParams.set("category", data.dataType)
-        console.log(
-          `Adding category filter: ${data.dataType} (original value: ${data.dataType})`
-        )
-      }
-
-      // Add organization filter
-      if (data.organization && data.organization.trim()) {
-        searchParams.set("organization", data.organization.trim())
-        console.log(`Adding organization filter: ${data.organization}`)
-      }
-
-      // Add date filters
-      if (data.dateRange?.from) {
-        const dateFrom = data.dateRange.from.toISOString()
-        searchParams.set("dateFrom", dateFrom)
-        console.log(`Adding date from: ${dateFrom}`)
-      }
-
-      if (data.dateRange?.to) {
-        const dateTo = data.dateRange.to.toISOString()
-        searchParams.set("dateTo", dateTo)
-        console.log(`Adding date to: ${dateTo}`)
-      }
-
-      const apiUrl = `/api/search/metadata?${searchParams.toString()}`
-
-      // Get the latest token before making the request
-      const currentToken =
-        getCookie("auth_token") ||
-        localStorage.getItem("auth_token") ||
-        authToken
-
-      console.log("Fetching search results:", {
-        url: apiUrl,
-        hasAuthToken: !!currentToken,
-        authTokenLength: currentToken?.length,
-        params: Object.fromEntries(searchParams.entries()),
-        dataTypeValue: data.dataType,
-      })
-
-      // Fetch data from API with auth token if available
-      const response = await fetch(apiUrl, {
-        headers: currentToken
-          ? { Authorization: `Bearer ${currentToken}` }
-          : undefined,
-      })
-
-      if (!response.ok) {
-        console.error("API error response:", {
-          status: response.status,
-          statusText: response.statusText,
-        })
-        throw new Error(`Search failed: ${response.statusText}`)
-      }
-
-      const result = await response.json()
-      console.log("Search API response:", {
-        success: result.success,
-        total: result.data?.total || 0,
-        metadataCount: result.data?.metadata?.length || 0,
-        firstItem: result.data?.metadata?.[0]
-          ? {
-              id: result.data.metadata[0].id,
-              title: result.data.metadata[0].title,
-            }
-          : "none",
-        metadata: result.data?.metadata?.slice(0, 2) || [], // Show first 2 items for debug
-      })
-
-      setSearchResults(result.data?.metadata || [])
-      setTotalResults(result.data?.total || 0)
-      setTotalPages(result.data?.totalPages || 1)
-      setCurrentPage(result.data?.currentPage || 1)
-    } catch (error) {
-      console.error("Search error:", error)
-      setSearchResults([])
-      setTotalResults(0)
-      setTotalPages(1)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [searchParams, fetchSearchResults])
 
   async function onSubmit(data: SearchFormValues) {
     // Debug log

@@ -42,7 +42,7 @@ export function ImageCarousel({ images, interval = 5000 }: ImageCarouselProps) {
     }, interval)
 
     return () => clearInterval(timer)
-  }, [images.length, interval, failedImages])
+  }, [images, images.length, interval, failedImages])
 
   const goToNext = () => {
     let nextIndex = (currentIndex + 1) % images.length

@@ -104,97 +104,159 @@ exports.metadataService = {
      * Search metadata
      */
     searchMetadata: async (searchQuery) => {
-        const { page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", organization, author, dateFrom, dateTo, fileFormat, search, category, } = searchQuery;
+        const { page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", organization, author, dateFrom, dateTo, fileFormat, search, category, frameworkType, } = searchQuery;
+        console.log("API searchMetadata called with:", {
+            searchQuery,
+            table: "metadata",
+        });
         const skip = (page - 1) * limit;
-        const conditions = [];
-        if (organization) {
-            conditions.push({ organization: { contains: organization } });
-        }
-        if (author) {
-            conditions.push({ author: { contains: author } });
-        }
-        if (dateFrom) {
-            conditions.push({ dateFrom: { gte: dateFrom } });
-        }
-        if (dateTo) {
-            conditions.push({ dateTo: { lte: dateTo } });
-        }
-        if (fileFormat) {
-            conditions.push({ fileFormat });
-        }
-        if (category) {
-            conditions.push({ categories: { has: category } });
+        // Build where conditions for metadata table
+        const where = {};
+        // If frameworkType is specified, use it directly (for Vector, Raster, Table)
+        if (frameworkType) {
+            where.frameworkType = { equals: frameworkType, mode: "insensitive" };
         }
         if (search) {
-            conditions.push({
-                OR: [
-                    { title: { contains: search } },
-                    { abstract: { contains: search } },
-                    { purpose: { contains: search } },
-                ],
-            });
+            // Enhanced search across all relevant fields
+            where.OR = [
+                { dataName: { contains: search, mode: "insensitive" } },
+                { abstract: { contains: search, mode: "insensitive" } },
+                { dataType: { contains: search, mode: "insensitive" } },
+                // Remove fundamentalDatasets search as it's causing Prisma validation errors
+                // fundamentalDatasets is likely not a string field that supports text search
+                // { fundamentalDatasets: { contains: search, mode: "insensitive" } },
+                // Add a search for IDs that start with the search term
+                { id: { startsWith: search } },
+            ];
         }
-        const where = conditions.length > 0 ? { AND: conditions } : {};
-        const [metadata, total] = await Promise.all([
-            prisma_1.prisma.metadata.findMany({
+        if (category) {
+            // For category filtering, handle special cases and normalize
+            if (category.toLowerCase() === "vector") {
+                where.frameworkType = { equals: "Vector", mode: "insensitive" };
+            }
+            else if (category.toLowerCase() === "raster") {
+                where.frameworkType = { equals: "Raster", mode: "insensitive" };
+            }
+            else if (category.toLowerCase() === "table") {
+                where.frameworkType = { equals: "Table", mode: "insensitive" };
+            }
+            else {
+                // For other categories, try to find it in the categories array or category-related fields
+                where.OR = [
+                    ...(where.OR || []),
+                    // Search in categories array
+                    { categories: { has: category } },
+                    // Search for dataType-related terms in various fields
+                    { frameworkType: { contains: category, mode: "insensitive" } },
+                    { title: { contains: category, mode: "insensitive" } },
+                    { abstract: { contains: category, mode: "insensitive" } },
+                ];
+            }
+            console.log(`Applied category filter: ${category}`, where);
+        }
+        if (organization) {
+            where.organization = { contains: organization, mode: "insensitive" };
+        }
+        if (dateFrom) {
+            where.productionDate = { gte: new Date(dateFrom) };
+        }
+        if (dateTo) {
+            where.productionDate = {
+                ...(where.productionDate || {}),
+                lte: new Date(dateTo),
+            };
+        }
+        try {
+            console.log("Executing Prisma query with:", {
                 where,
                 skip,
                 take: limit,
                 orderBy: {
-                    [sortBy]: sortOrder,
+                    [mapSortField(sortBy)]: sortOrder,
                 },
-            }),
-            prisma_1.prisma.metadata.count({ where }),
-        ]);
-        return {
-            metadata: metadata.map((item) => ({
-                id: item.id,
-                title: item.title,
-                author: item.author,
-                organization: item.organization,
-                dateFrom: item.dateFrom,
-                dateTo: item.dateTo,
-                abstract: item.abstract,
-                purpose: item.purpose,
-                thumbnailUrl: item.thumbnailUrl,
-                imageName: item.imageName,
-                frameworkType: item.frameworkType,
-                categories: item.categories,
-                coordinateSystem: item.coordinateSystem,
-                projection: item.projection,
-                scale: item.scale,
-                resolution: item.resolution || undefined,
-                accuracyLevel: item.accuracyLevel,
-                completeness: item.completeness || undefined,
-                consistencyCheck: item.consistencyCheck || undefined,
-                validationStatus: item.validationStatus || undefined,
-                fileFormat: item.fileFormat,
-                fileSize: item.fileSize || undefined,
-                numFeatures: item.numFeatures || undefined,
-                softwareReqs: item.softwareReqs || undefined,
-                updateCycle: item.updateCycle || undefined,
-                lastUpdate: item.lastUpdate?.toISOString() || undefined,
-                nextUpdate: item.nextUpdate?.toISOString() || undefined,
-                distributionFormat: item.distributionFormat,
-                accessMethod: item.accessMethod,
-                downloadUrl: item.downloadUrl || undefined,
-                apiEndpoint: item.apiEndpoint || undefined,
-                licenseType: item.licenseType,
-                usageTerms: item.usageTerms,
-                attributionRequirements: item.attributionRequirements,
-                accessRestrictions: item.accessRestrictions,
-                contactPerson: item.contactPerson,
-                email: item.email,
-                department: item.department || undefined,
-                userId: item.userId,
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString(),
-            })),
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-        };
+            });
+            // Execute query and count in parallel using metadata table
+            const [metadata, total] = await Promise.all([
+                prisma_1.prisma.metadata.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: {
+                        // Map frontend sort fields to database fields
+                        [mapSortField(sortBy)]: sortOrder,
+                    },
+                    select: {
+                        id: true,
+                        title: true,
+                        author: true,
+                        organization: true,
+                        abstract: true,
+                        purpose: true,
+                        thumbnailUrl: true,
+                        dateFrom: true,
+                        dateTo: true,
+                        frameworkType: true,
+                        categories: true,
+                        fileFormat: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        user: {
+                            select: {
+                                name: true,
+                                email: true,
+                            },
+                        },
+                    },
+                }),
+                prisma_1.prisma.metadata.count({ where }),
+            ]);
+            console.log("Prisma query results:", {
+                metadataCount: metadata.length,
+                total,
+                firstItem: metadata.length > 0 ? metadata[0] : null,
+            });
+            // Map the fields to the expected MetadataResponse structure
+            return {
+                metadata: metadata.map((item) => ({
+                    id: item.id,
+                    title: item.title,
+                    author: item.author,
+                    organization: item.organization,
+                    dateFrom: item.dateFrom,
+                    dateTo: item.dateTo,
+                    abstract: item.abstract || "",
+                    purpose: item.purpose || "",
+                    thumbnailUrl: item.thumbnailUrl || "",
+                    imageName: "",
+                    frameworkType: item.frameworkType || "",
+                    categories: item.categories || [],
+                    coordinateSystem: "",
+                    projection: "",
+                    scale: 0,
+                    accuracyLevel: "",
+                    fileFormat: item.fileFormat || "Unknown",
+                    distributionFormat: "",
+                    accessMethod: "",
+                    licenseType: "",
+                    usageTerms: "",
+                    attributionRequirements: "",
+                    accessRestrictions: [],
+                    contactPerson: item.user?.name || "",
+                    email: item.user?.email || "",
+                    userId: "",
+                    createdAt: formatDate(item.createdAt),
+                    updatedAt: formatDate(item.updatedAt),
+                })),
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            };
+        }
+        catch (error) {
+            console.error("Error searching metadata:", error);
+            throw new http_exception_1.HTTPException(500, { message: "Failed to search metadata" });
+        }
     },
     /**
      * Get user's metadata
@@ -280,3 +342,23 @@ exports.metadataService = {
     },
 };
 exports.default = exports.metadataService;
+// Helper function to map sort fields from frontend to database fields
+function mapSortField(sortBy) {
+    switch (sortBy) {
+        case "title":
+            return "title";
+        case "createdAt":
+            return "createdAt";
+        default:
+            return sortBy;
+    }
+}
+// Helper function to format dates
+function formatDate(date) {
+    if (!date)
+        return new Date().toISOString();
+    if (date instanceof Date) {
+        return date.toISOString();
+    }
+    return date;
+}

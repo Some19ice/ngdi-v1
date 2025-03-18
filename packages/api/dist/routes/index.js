@@ -14,6 +14,14 @@ const index_1 = __importDefault(require("./auth/index"));
 const user_routes_new_1 = require("./user.routes.new");
 const swagger_1 = require("../config/swagger");
 const zod_1 = require("zod");
+const hono_1 = require("hono");
+const user_routes_1 = require("./user.routes");
+const auth_routes_1 = require("./auth.routes");
+const metadata_routes_1 = require("./metadata.routes");
+const admin_routes_1 = require("./admin.routes");
+const rate_limit_middleware_1 = require("../middleware/rate-limit.middleware");
+const error_handler_middleware_1 = require("../middleware/error-handler.middleware");
+const search_routes_1 = __importDefault(require("./search.routes"));
 // Global middlewares
 swagger_1.app.use("*", (0, logger_1.logger)());
 swagger_1.app.use("*", (0, pretty_json_1.prettyJSON)());
@@ -53,6 +61,9 @@ swagger_1.app.onError((err, c) => {
 swagger_1.app.route("/auth", index_1.default);
 swagger_1.app.route("/users", user_routes_new_1.userRouter);
 swagger_1.app.route("/admin/users", user_routes_new_1.adminRouter);
+swagger_1.app.route("/metadata", metadata_routes_1.metadataRoutes);
+swagger_1.app.route("/admin", admin_routes_1.adminRoutes);
+swagger_1.app.route("/search", search_routes_1.default);
 // Health check route
 const healthCheckResponse = zod_1.z.object({
     success: zod_1.z.boolean(),
@@ -78,4 +89,49 @@ swagger_1.app.openapi({
     success: true,
     message: "Backend is running",
 }));
-exports.default = swagger_1.app;
+// Create the main Hono app
+const app = new hono_1.Hono();
+// Apply global middleware
+app.use("*", (0, cors_1.cors)());
+app.use("*", (0, logger_1.logger)());
+app.use("*", (0, pretty_json_1.prettyJSON)());
+app.use("*", (0, secure_headers_1.secureHeaders)());
+app.use("*", (0, rate_limit_middleware_1.rateLimit)());
+app.use("*", (0, error_handler_middleware_1.errorHandler)());
+// Health check endpoint
+app.get("/", (c) => {
+    return c.json({
+        status: "ok",
+        message: "NGDI API is running",
+        version: "1.0.0",
+        timestamp: new Date().toISOString(),
+    });
+});
+// Mount the routes
+app.route("/auth", auth_routes_1.authRoutes);
+app.route("/users", user_routes_1.userRoutes);
+app.route("/metadata", metadata_routes_1.metadataRoutes);
+app.route("/admin", admin_routes_1.adminRoutes);
+app.route("/search", search_routes_1.default);
+// Add a route for /search/metadata that maps to /metadata/search
+app.get("/search/metadata", async (c) => {
+    // Forward the request to /metadata/search
+    const url = new URL(c.req.url);
+    const searchParams = url.searchParams;
+    // Create a new URL for the internal endpoint
+    const internalUrl = new URL(url.origin);
+    internalUrl.pathname = "/metadata/search";
+    // Copy all search parameters
+    searchParams.forEach((value, key) => {
+        internalUrl.searchParams.append(key, value);
+    });
+    // Forward the request
+    const response = await fetch(internalUrl.toString(), {
+        method: "GET",
+        headers: c.req.headers,
+    });
+    // Return the response
+    const data = await response.json();
+    return c.json(data);
+});
+exports.default = app;
