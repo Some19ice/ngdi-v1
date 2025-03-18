@@ -23,20 +23,31 @@ async function hasCompletedOnboarding(userId: string) {
   // Check if user has completed onboarding
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/${userId}/profile`,
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/profile`,
       {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Don't include auth headers here as we're making this call server-side in middleware
+        },
       }
     )
 
-    if (!response.ok) return false
+    if (!response.ok) {
+      console.log(`Failed to check onboarding status: ${response.status}`)
+      // If we can't verify, assume onboarding is completed to prevent loops
+      return true
+    }
 
     const userData = await response.json()
+    console.log(
+      `Onboarding check: user has organization? ${!!userData.organization}`
+    )
     return !!userData.organization // Check if organization is set
   } catch (error) {
     console.error("Error checking onboarding status:", error)
-    return false
+    // If there's an error, assume onboarding is completed to prevent loops
+    return true
   }
 }
 
@@ -117,11 +128,32 @@ export async function middleware(request: NextRequest) {
       // Check if user is a node officer who hasn't completed onboarding
       const tokenData = await validateJwtToken(authToken)
       if (tokenData.isValid && role === UserRole.NODE_OFFICER) {
-        const hasOnboarded = await hasCompletedOnboarding(userId)
+        // Check if already on new-user page or coming from new-user page to avoid loops
+        if (path.startsWith("/auth/new-user")) {
+          // Allow access to the new-user page
+          return NextResponse.next()
+        }
 
-        // If they haven't completed onboarding and aren't already on the onboarding page
-        if (!hasOnboarded && !path.startsWith("/auth/new-user")) {
-          return NextResponse.redirect(new URL("/auth/new-user", request.url))
+        // Check if the onboarding_complete flag is set in cookies
+        const onboardingComplete =
+          request.cookies.get("onboarding_complete")?.value === "true"
+        if (onboardingComplete) {
+          // If flag is set, skip the onboarding check
+          return NextResponse.next()
+        }
+
+        // Check if the path is for root/home, as these are the likely redirect targets after onboarding
+        if (path === "/" || path === "/home") {
+          // For root paths, check if actually onboarded
+          const hasOnboarded = await hasCompletedOnboarding(userId)
+
+          // If not onboarded, redirect to onboarding
+          if (!hasOnboarded) {
+            console.log(
+              "Node officer needs to complete onboarding, redirecting"
+            )
+            return NextResponse.redirect(new URL("/auth/new-user", request.url))
+          }
         }
       }
     } catch (error) {

@@ -104,14 +104,20 @@ export default function NewUserPage() {
 
       // Refresh the session to get updated user data
       await refreshSession()
-
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       })
 
-      // Redirect to home
-      router.push("/")
+      // Set a cookie to indicate onboarding is complete
+      document.cookie = "onboarding_complete=true; path=/; max-age=86400" // Valid for 24 hours
+
+      // Small delay to ensure cookie and session update is processed
+      setTimeout(() => {
+        // Redirect to home
+        router.push("/")
+      }, 500)
     } catch (error: any) { // Type error as any to fix TypeScript error
       console.error("Error updating profile:", error)
       toast({
