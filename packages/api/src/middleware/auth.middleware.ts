@@ -15,11 +15,16 @@ export async function authMiddleware(c: Context, next: Next) {
   try {
     const authHeader = c.req.header("Authorization")
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[API DEBUG] No Authorization header or not Bearer token")
       throw new HTTPException(401, { message: "Unauthorized" })
     }
 
     const token = authHeader.split(" ")[1]
 
+    console.log(
+      "[API DEBUG] Received auth token:",
+      token ? `${token.substring(0, 10)}...` : "none"
+    )
     console.log(
       "[API DEBUG] Verifying token with JWT_SECRET:",
       process.env.JWT_SECRET ? "present" : "missing"
@@ -27,46 +32,50 @@ export async function authMiddleware(c: Context, next: Next) {
 
     try {
       const decoded = verify(token, process.env.JWT_SECRET!) as JWTPayload
-      console.log("[API DEBUG] Decoded token:", decoded)
+      console.log("[API DEBUG] Decoded token:", {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+      })
 
       // If the role is already in the expected format (string), convert it to UserRole enum
       let userRole: UserRole
       if (typeof decoded.role === "string") {
+        // Normalize role value to handle case differences
+        const normalizedRole = decoded.role.toUpperCase()
+
         // Convert string role to UserRole enum
-        userRole = decoded.role as UserRole
+        if (normalizedRole === "ADMIN") {
+          userRole = UserRole.ADMIN
+        } else if (normalizedRole === "NODE_OFFICER") {
+          userRole = UserRole.NODE_OFFICER
+        } else {
+          userRole = UserRole.USER
+        }
+
+        console.log("[API DEBUG] Normalized role:", {
+          original: decoded.role,
+          normalized: normalizedRole,
+          final: userRole,
+        })
       } else {
         userRole = decoded.role
       }
 
-      // If this is a server-generated token without a DB lookup
-      if (userRole === UserRole.ADMIN) {
-        c.set("user", {
-          id: decoded.userId,
-          email: decoded.email,
-          role: UserRole.ADMIN,
-        })
-        return await next()
-      }
-
-      // Otherwise, look up the user in the database to confirm
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-        },
+      // Set user in context
+      c.set("user", {
+        id: decoded.userId,
+        email: decoded.email,
+        role: userRole,
       })
 
-      if (!user) {
-        console.log("[API DEBUG] User not found for ID:", decoded.userId)
-        throw new HTTPException(401, { message: "User not found" })
-      }
+      console.log("[API DEBUG] User set in context:", {
+        id: decoded.userId,
+        email: decoded.email,
+        role: userRole,
+      })
 
-      // Add user info to context
-      c.set("user", user)
-      console.log("[DEBUG] Set user in middleware:", user, "using c.set()")
-      await next()
+      return await next()
     } catch (jwtError) {
       console.error("[API DEBUG] JWT verification error:", jwtError)
       throw new HTTPException(401, { message: "Invalid token" })
@@ -79,6 +88,11 @@ export async function authMiddleware(c: Context, next: Next) {
 
 export async function adminMiddleware(c: Context, next: Next) {
   const user = c.get("user")
+  console.log("[API DEBUG] Admin middleware check:", {
+    userRole: user.role,
+    isAdmin: user.role === UserRole.ADMIN,
+  })
+
   if (user.role !== UserRole.ADMIN) {
     throw new HTTPException(403, { message: "Forbidden" })
   }

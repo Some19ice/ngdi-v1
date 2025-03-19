@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
+import { getCookie } from "cookies-next"
 
 interface AdminNavProps {
   user: {
@@ -24,13 +25,19 @@ interface AdminNavProps {
   }
 }
 
+interface UserRoleDistribution {
+  _count: { id: number }
+  role: string
+}
+
 interface DashboardStats {
-  userCount: number
-  orgCount: number
-  metadataCount: number
-  activeUsers: number
-  pendingApprovals: number
-  systemHealth: number
+  totalUsers: number
+  totalMetadata: number
+  userRoleDistribution: UserRoleDistribution[]
+  recentMetadataCount: number
+  userGrowthPoints: number
+  metadataByFrameworkCount: number
+  topOrganizationsCount: number
 }
 
 export function AdminNav({ user }: AdminNavProps) {
@@ -38,12 +45,20 @@ export function AdminNav({ user }: AdminNavProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [notificationCount, setNotificationCount] = useState(0)
-  const [authToken, setAuthToken] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch stats for the badges
   useEffect(() => {
     async function fetchStats() {
       try {
+        setLoading(true)
+        setError(null)
+
+        const authToken = getCookie("auth_token")
+        if (!authToken) {
+          throw new Error("No authentication token found")
+        }
+
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
           {
@@ -54,35 +69,49 @@ export function AdminNav({ user }: AdminNavProps) {
         )
 
         if (!response.ok) {
-          throw new Error("Failed to fetch stats")
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || "Failed to fetch stats")
         }
 
         const result = await response.json()
-        if (result.success && result.data) {
-          setStats(result.data)
-          setNotificationCount(result.data.pendingApprovals || 0)
+        console.log("API Response:", result) // Debug log to see the response
+
+        // The API doesn't wrap the response in a success/data object
+        // It directly returns the stats object
+        if (result && result.totalUsers !== undefined) {
+          setStats(result)
+          // Calculate total pending approvals from user role distribution
+          const pendingApprovals = result.userRoleDistribution.reduce(
+            (acc: number, curr: UserRoleDistribution) => acc + curr._count.id,
+            0
+          )
+          setNotificationCount(pendingApprovals)
+        } else {
+          throw new Error("Invalid response format")
         }
       } catch (error) {
         console.error("Error fetching stats:", error)
+        setError(
+          error instanceof Error ? error.message : "Failed to fetch stats"
+        )
         // Set default values if there's an error
         setStats({
-          userCount: 0,
-          orgCount: 0,
-          metadataCount: 0,
-          activeUsers: 0,
-          pendingApprovals: 0,
-          systemHealth: 90,
+          totalUsers: 0,
+          totalMetadata: 0,
+          userRoleDistribution: [],
+          recentMetadataCount: 0,
+          userGrowthPoints: 0,
+          metadataByFrameworkCount: 0,
+          topOrganizationsCount: 0,
         })
         setNotificationCount(0)
+      } finally {
+        setLoading(false)
       }
     }
 
-    if (authToken) {
-      fetchStats()
-    } else {
-      console.warn("No auth token available, stats will not be fetched")
-    }
-  }, [authToken])
+    fetchStats()
+  }, []) // Only run once on mount
 
   // Create tabs with dynamic badges from stats
   const tabs = [
@@ -97,21 +126,21 @@ export function AdminNav({ user }: AdminNavProps) {
       label: "Users",
       href: "/admin/users",
       icon: <Users className="h-4 w-4 mr-2" />,
-      badge: stats?.userCount,
+      badge: stats?.totalUsers,
     },
     {
       value: "/admin/organizations",
       label: "Organizations",
       href: "/admin/organizations",
       icon: <Building2 className="h-4 w-4 mr-2" />,
-      badge: stats?.orgCount,
+      badge: stats?.topOrganizationsCount,
     },
     {
       value: "/admin/metadata",
       label: "All Metadata",
       href: "/admin/metadata",
       icon: <Database className="h-4 w-4 mr-2" />,
-      badge: stats?.metadataCount,
+      badge: stats?.totalMetadata,
     },
     {
       value: "/admin/analytics",
@@ -147,6 +176,12 @@ export function AdminNav({ user }: AdminNavProps) {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-md text-sm">
+          {error}
+        </div>
+      )}
 
       <Card className="p-6 bg-white/50 backdrop-blur-sm border-gray-100 shadow-sm">
         <Tabs value={pathname || ""} className="space-y-6">

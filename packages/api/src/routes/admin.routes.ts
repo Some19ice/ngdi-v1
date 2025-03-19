@@ -7,6 +7,10 @@ import { UserIdParamSchema } from "../types/user.types"
 import { MetadataIdParamSchema } from "../types/metadata.types"
 import { Context } from "../types/hono.types"
 import { ApiError } from "../middleware/error-handler"
+import { prisma } from "../lib/prisma"
+import { logger } from "../lib/logger"
+import { adminMiddleware } from "../middleware/auth.middleware"
+import { UserRole as PrismaUserRole } from "@prisma/client"
 
 // Define the user type based on the auth middleware
 interface User {
@@ -560,7 +564,7 @@ adminRouter.delete(
  * @openapi
  * /api/admin/dashboard-stats:
  *   get:
- *     summary: Get comprehensive dashboard statistics
+ *     summary: Get admin dashboard statistics
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -589,27 +593,141 @@ adminRouter.delete(
  *                       type: number
  *                     systemHealth:
  *                       type: number
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       500:
- *         $ref: '#/components/responses/ServerError'
+ *         $ref: '#/components/responses/InternalServerError'
  */
 adminRouter.get("/dashboard-stats", async (c) => {
   try {
-    const stats = await adminService.getAdminDashboardStats()
+    const user = c.get("user")
+    if (!user) {
+      throw new ApiError("Unauthorized", 401)
+    }
 
-    return c.json({
-      success: true,
-      data: stats,
+    logger.info("Fetching dashboard stats", {
+      userId: user.id,
+      email: user.email,
     })
+
+    // Get total users
+    const totalUsers = await prisma.user.count()
+    logger.debug("Total users count", { totalUsers })
+
+    // Get total metadata entries
+    const totalMetadata = await prisma.metadata.count()
+    logger.debug("Total metadata count", { totalMetadata })
+
+    // Get user role distribution
+    const userRoleDistribution = await prisma.user.groupBy({
+      by: ["role"],
+      _count: {
+        id: true,
+      },
+    })
+    logger.debug("User role distribution", {
+      distribution: userRoleDistribution,
+    })
+
+    // Get recent metadata entries
+    const recentMetadata = await prisma.metadata.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    })
+    logger.debug("Recent metadata count", { count: recentMetadata.length })
+
+    // Get user growth
+    const userGrowth = await prisma.user.groupBy({
+      by: ["createdAt"],
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 30,
+    })
+    logger.debug("User growth data points", { count: userGrowth.length })
+
+    // Get metadata by framework type
+    const metadataByFramework = await prisma.metadata.groupBy({
+      by: ["frameworkType"],
+      _count: {
+        id: true,
+      },
+    })
+    logger.debug("Metadata by framework", { distribution: metadataByFramework })
+
+    // Get top organizations
+    const topOrganizations = await prisma.metadata.groupBy({
+      by: ["organization"],
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        _count: {
+          id: "desc",
+        },
+      },
+      take: 5,
+    })
+    logger.debug("Top organizations count", { count: topOrganizations.length })
+
+    const stats = {
+      totalUsers,
+      totalMetadata,
+      userRoleDistribution,
+      recentMetadata,
+      userGrowth,
+      metadataByFramework,
+      topOrganizations,
+    }
+
+    logger.info("Dashboard stats fetched successfully", {
+      userId: user.id,
+      stats: {
+        totalUsers,
+        totalMetadata,
+        userRoleDistribution,
+        recentMetadataCount: recentMetadata.length,
+        userGrowthPoints: userGrowth.length,
+        metadataByFrameworkCount: metadataByFramework.length,
+        topOrganizationsCount: topOrganizations.length,
+      },
+    })
+
+    return c.json(stats)
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error)
+    logger.error("Error fetching dashboard stats", {
+      error,
+      userId: c.get("user")?.id,
+      email: c.get("user")?.email,
+    })
+
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status as any)
+    }
+
     return c.json(
       {
-        success: false,
-        message: "Failed to fetch dashboard statistics",
+        error: "Failed to fetch dashboard statistics",
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
       },
-      500
+      500 as any
     )
   }
 })

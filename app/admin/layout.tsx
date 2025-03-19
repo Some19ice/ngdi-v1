@@ -1,16 +1,37 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { AUTH_PATHS } from "@/lib/auth/paths"
-import { AdminNav } from "./components/admin-nav"
+import { AdminNavWrapper } from "./components/admin-nav-wrapper"
 import { UserRole } from "@/lib/auth/constants"
-import { AdminBreadcrumb } from "./components/admin-breadcrumb"
+import { AdminBreadcrumbWrapper } from "./components/admin-breadcrumb-wrapper"
+import { cookies } from "next/headers"
 
 async function getUser() {
-  const headersList = headers()
-  return {
-    id: headersList.get("x-user-id"),
-    email: headersList.get("x-user-email"),
-    role: headersList.get("x-user-role"),
+  try {
+    const headersList = headers()
+    const user = {
+      id: headersList.get("x-user-id"),
+      email: headersList.get("x-user-email"),
+      role: headersList.get("x-user-role"),
+    }
+
+    // Also check cookies for debugging
+    const authToken = cookies().get("auth_token")?.value
+
+    console.log("Admin Layout - Auth info:", {
+      hasAuthCookie: !!authToken,
+      authCookieLength: authToken ? authToken.length : 0,
+      userFromHeaders: user,
+    })
+
+    return user
+  } catch (error) {
+    console.error("Error getting user from headers:", error)
+    return {
+      id: null,
+      email: null,
+      role: null,
+    }
   }
 }
 
@@ -53,9 +74,9 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <AdminNav user={user} />
+        <AdminNavWrapper user={user} />
         <div className="mt-6 mb-4">
-          <AdminBreadcrumb />
+          <AdminBreadcrumbWrapper />
         </div>
         <main className="mt-4 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           {children}

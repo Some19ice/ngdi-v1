@@ -13,13 +13,19 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+interface UserRoleDistribution {
+  _count: { id: number }
+  role: string
+}
+
 interface DashboardStats {
-  userCount: number
-  orgCount: number
-  metadataCount: number
-  activeUsers: number
-  pendingApprovals: number
-  systemHealth: number
+  totalUsers: number
+  totalMetadata: number
+  userRoleDistribution: UserRoleDistribution[]
+  recentMetadataCount: number
+  userGrowthPoints: number
+  metadataByFrameworkCount: number
+  topOrganizationsCount: number
 }
 
 async function fetchStats(): Promise<DashboardStats> {
@@ -27,15 +33,25 @@ async function fetchStats(): Promise<DashboardStats> {
     // Get the current authenticated user from requireAuth
     const user = await requireAuth()
 
+    console.log("[SERVER] Admin user:", {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    })
+
     // If the user is an admin, we can directly use their JWT token to call the API
     // First, we need to get a fresh JWT token for the current user
     const jwt = await getJWT(user)
 
     if (!jwt) {
+      console.log("[SERVER] Failed to generate JWT token")
       throw new Error("Failed to get authentication token")
     }
 
-    console.log("[SERVER] Successfully obtained admin JWT token")
+    console.log(
+      "[SERVER] Successfully obtained admin JWT token, length:",
+      jwt.length
+    )
     console.log(
       "[SERVER] Fetching stats from:",
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`
@@ -55,17 +71,19 @@ async function fetchStats(): Promise<DashboardStats> {
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.log("[SERVER] Error fetching stats:", response.status, errorText)
       throw new Error(
         `Failed to fetch stats: ${response.status} - ${errorText}`
       )
     }
 
     const result = await response.json()
+    console.log("[SERVER] Dashboard stats API response:", result)
 
-    // Check the structure of the response and extract data
-    if (result.success && result.data) {
+    // The API returns the stats object directly
+    if (result && result.totalUsers !== undefined) {
       console.log("[SERVER] Successfully fetched admin stats")
-      return result.data
+      return result
     }
 
     throw new Error("Invalid response format")
@@ -73,12 +91,13 @@ async function fetchStats(): Promise<DashboardStats> {
     console.error("Error fetching dashboard stats:", error)
     // Return default values if there's an error
     return {
-      userCount: 0,
-      orgCount: 0,
-      metadataCount: 0,
-      activeUsers: 0,
-      pendingApprovals: 0,
-      systemHealth: 90,
+      totalUsers: 0,
+      totalMetadata: 0,
+      userRoleDistribution: [],
+      recentMetadataCount: 0,
+      userGrowthPoints: 0,
+      metadataByFrameworkCount: 0,
+      topOrganizationsCount: 0,
     }
   }
 }
@@ -95,7 +114,7 @@ async function getJWT(user: any): Promise<string | null> {
     const token = await new SignJWT({
       userId: user.id,
       email: user.email,
-      role: "ADMIN", // Make sure this matches the UserRole enum in the API
+      role: user.role, // Use the user's actual role from the auth context
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
@@ -120,6 +139,16 @@ export default async function AdminPage() {
 
   // Fetch real statistics from our API
   const stats = await fetchStats()
+
+  // Calculate derived stats
+  const activeUsers = stats.userRoleDistribution.reduce(
+    (sum, item) => sum + item._count.id,
+    0
+  )
+
+  const pendingApprovals = 0 // Update this if you have a pending approvals field
+
+  const systemHealth = 90 // Default health score
 
   return (
     <div className="space-y-8">
@@ -163,22 +192,20 @@ export default async function AdminPage() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span>Health Score:</span>
-              <span
-                className={`font-semibold ${getHealthColor(stats.systemHealth)}`}
-              >
-                {stats.systemHealth}%
+              <span className={`font-semibold ${getHealthColor(systemHealth)}`}>
+                {systemHealth}%
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span>Active Users:</span>
-              <span className="font-semibold">{stats.activeUsers}</span>
+              <span className="font-semibold">{activeUsers}</span>
             </div>
             <div className="flex justify-between items-center">
               <span>Pending Approvals:</span>
               <span
-                className={`font-semibold ${stats.pendingApprovals > 0 ? "text-amber-600" : "text-green-600"}`}
+                className={`font-semibold ${pendingApprovals > 0 ? "text-amber-600" : "text-green-600"}`}
               >
-                {stats.pendingApprovals}
+                {pendingApprovals}
               </span>
             </div>
           </div>
@@ -197,7 +224,7 @@ export default async function AdminPage() {
             <p className="text-sm font-medium text-muted-foreground">
               Total Users
             </p>
-            <h3 className="text-2xl font-bold">{stats.userCount}</h3>
+            <h3 className="text-2xl font-bold">{stats.totalUsers}</h3>
           </div>
         </Card>
 
@@ -209,7 +236,9 @@ export default async function AdminPage() {
             <p className="text-sm font-medium text-muted-foreground">
               Organizations
             </p>
-            <h3 className="text-2xl font-bold">{stats.orgCount}</h3>
+            <h3 className="text-2xl font-bold">
+              {stats.topOrganizationsCount}
+            </h3>
           </div>
         </Card>
 
@@ -221,7 +250,7 @@ export default async function AdminPage() {
             <p className="text-sm font-medium text-muted-foreground">
               Metadata Entries
             </p>
-            <h3 className="text-2xl font-bold">{stats.metadataCount}</h3>
+            <h3 className="text-2xl font-bold">{stats.totalMetadata}</h3>
           </div>
         </Card>
 
@@ -233,7 +262,7 @@ export default async function AdminPage() {
             <p className="text-sm font-medium text-muted-foreground">
               User Activity
             </p>
-            <h3 className="text-2xl font-bold">{stats.activeUsers}</h3>
+            <h3 className="text-2xl font-bold">{activeUsers}</h3>
           </div>
         </Card>
       </div>
@@ -251,7 +280,6 @@ export default async function AdminPage() {
   )
 }
 
-// Helper function to get the appropriate color based on health score
 function getHealthColor(score: number): string {
   if (score >= 90) return "text-green-600"
   if (score >= 70) return "text-amber-600"
