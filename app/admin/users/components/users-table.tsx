@@ -123,12 +123,11 @@ export function UsersTable({
           params.append("role", role)
         }
 
-        // Use Next.js proxy route instead of direct API call
-        const apiUrl = `/api/admin/users?${params.toString()}`
+        // Call the main API server directly
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`
         console.log("[CLIENT] Fetching users from:", apiUrl)
         console.log("[CLIENT] Auth token present:", !!authToken)
 
-        // Call API server via proxy
         const response = await fetch(apiUrl, {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -199,17 +198,25 @@ export function UsersTable({
   const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ role: newRole }),
-      })
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}/role`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ role: newRole }),
+        }
+      )
 
       if (!response.ok) {
-        console.error(`API error (${response.status}): ${response.statusText}`)
+        const errorText = await response.text()
+        console.error("[CLIENT] API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        })
         throw new Error(`Error updating role: ${response.statusText}`)
       }
 
@@ -223,11 +230,11 @@ export function UsersTable({
         )
         toast.success("User role updated successfully")
       } else {
-        console.error("Invalid API response format:", result)
+        console.error("[CLIENT] Invalid API response format:", result)
         throw new Error(result.message || "Failed to update user role")
       }
     } catch (error) {
-      console.error("Error updating user role:", error)
+      console.error("[CLIENT] Error updating user role:", error)
       toast.error("Failed to update user role")
     } finally {
       setLoading(false)

@@ -35,11 +35,11 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
       throw new Error("Authentication required")
     }
 
-    // Use our proxy route instead of direct API call
-    const url = `/api/admin/users?page=1&limit=10`
-    console.log("[SERVER] Fetching users from proxy:", url)
+    // Call the main API server directly
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`
+    console.log("[SERVER] Fetching users from:", url)
 
-    // Using the server-side fetch to call our proxy route
+    // Using the server-side fetch to call the API server
     const response = await fetch(url, {
       cache: "no-store",
       headers: {
