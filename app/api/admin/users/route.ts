@@ -20,11 +20,22 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Forward the request to the main API server
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users${apiParams ? `?${apiParams}` : ""}`
-    console.log("[PROXY] Forwarding request to:", apiUrl)
+    // Get the API URL from environment variables
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    if (!apiUrl) {
+      console.error("[PROXY] NEXT_PUBLIC_API_URL is not configured")
+      return NextResponse.json(
+        { success: false, message: "API URL not configured" },
+        { status: 500 }
+      )
+    }
 
-    const response = await fetch(apiUrl, {
+    // Forward the request to the main API server
+    const fullApiUrl = `${apiUrl}/api/admin/users${apiParams ? `?${apiParams}` : ""}`
+    console.log("[PROXY] Forwarding request to:", fullApiUrl)
+    console.log("[PROXY] Using API URL from env:", apiUrl)
+
+    const response = await fetch(fullApiUrl, {
       headers: {
         "Content-Type": "application/json",
         Authorization: authHeader,
@@ -45,6 +56,7 @@ export async function GET(request: NextRequest) {
         status: response.status,
         statusText: response.statusText,
         body: errorText,
+        url: fullApiUrl,
       })
       return NextResponse.json(
         {
