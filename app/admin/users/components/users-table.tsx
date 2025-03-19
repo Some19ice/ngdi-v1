@@ -123,11 +123,11 @@ export function UsersTable({
           params.append("role", role)
         }
 
-        // Use the main API server directly
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users?${params.toString()}`
+        // Use Next.js proxy route instead of direct API call
+        const apiUrl = `/api/admin/users?${params.toString()}`
         console.log("[DEBUG] Fetching users from:", apiUrl)
 
-        // Call API server
+        // Call API server via proxy
         const response = await fetch(apiUrl, {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -193,17 +193,14 @@ export function UsersTable({
   const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       setLoading(true)
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users/${userId}/role`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ role: newRole }),
-        }
-      )
+      const response = await fetch(`/api/admin/users/${userId}/role`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      })
 
       if (!response.ok) {
         console.error(`API error (${response.status}): ${response.statusText}`)
