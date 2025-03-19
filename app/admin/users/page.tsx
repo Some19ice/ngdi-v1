@@ -26,20 +26,25 @@ interface User {
 
 async function fetchUsers(): Promise<{ users: User[]; total: number }> {
   try {
+    // Get auth token from cookies
+    const cookieStore = cookies()
+    const authToken = cookieStore.get("auth_token")?.value
+
+    if (!authToken) {
+      console.error("No auth token found in cookies")
+      throw new Error("Authentication required")
+    }
+
     // Build full URL for debugging
     const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`
     console.log("[SERVER] Fetching users from:", url)
-    console.log(
-      "[SERVER] Using API key:",
-      process.env.SERVER_API_KEY ? "Set" : "Not set"
-    )
 
     // Using the server-side fetch to call the API server
     const response = await fetch(url, {
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.SERVER_API_KEY}`,
+        Authorization: `Bearer ${authToken}`,
       },
     })
 
@@ -80,6 +85,17 @@ export default async function UsersPage() {
   // Get auth token to pass to client for subsequent requests
   const cookieStore = cookies()
   const authToken = cookieStore.get("auth_token")?.value || ""
+
+  // Log auth token for debugging
+  console.log(
+    "[SERVER] Auth token from cookies:",
+    authToken ? "Present" : "Missing"
+  )
+  if (!authToken) {
+    console.warn(
+      "[SERVER] No auth token in cookies, client authentication will fail"
+    )
+  }
 
   return (
     <div className="space-y-6">

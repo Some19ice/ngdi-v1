@@ -90,9 +90,23 @@ export function UsersTable({
     totalPages: Math.ceil(initialTotal / 10),
   })
 
+  // Log auth token status for debugging
+  useEffect(() => {
+    console.log("[CLIENT] Auth token provided:", authToken ? "Yes" : "No")
+    if (!authToken) {
+      console.warn("[CLIENT] Missing auth token, authentication may fail")
+    }
+  }, [authToken])
+
   // Fetch users from API
   const fetchUsers = useCallback(
     async (page = 1, search = "", role: string = "all") => {
+      if (!authToken) {
+        console.error("[CLIENT] Cannot fetch users: No auth token available")
+        toast.error("Authentication error. Please try signing in again.")
+        return
+      }
+
       setLoading(true)
       try {
         // Build query params
