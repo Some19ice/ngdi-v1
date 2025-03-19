@@ -31,13 +31,11 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
     const authToken = cookieStore.get("auth_token")?.value
 
     if (!authToken) {
-      console.error("[SERVER] No auth token found in cookies")
       throw new Error("Authentication required")
     }
 
     // Call the main API server directly
     const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`
-    console.log("[SERVER] Fetching users from:", url)
 
     // Using the server-side fetch to call the API server
     const response = await fetch(url, {
@@ -50,16 +48,10 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error("[SERVER] API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText,
-      })
       throw new Error(`Failed to fetch users: ${response.statusText}`)
     }
 
     const result = await response.json()
-    console.log("[SERVER] API response:", JSON.stringify(result, null, 2))
 
     if (result.success && result.data) {
       return {
@@ -68,10 +60,8 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
       }
     }
 
-    console.error("[SERVER] Invalid API response format:", result)
     throw new Error("Invalid response format")
   } catch (error) {
-    console.error("[SERVER] Error fetching users:", error)
     return { users: [], total: 0 }
   }
 }
@@ -91,17 +81,6 @@ export default async function UsersPage() {
   // Get auth token to pass to client for subsequent requests
   const cookieStore = cookies()
   const authToken = cookieStore.get("auth_token")?.value || ""
-
-  // Log auth token for debugging
-  console.log(
-    "[SERVER] Auth token from cookies:",
-    authToken ? "Present" : "Missing"
-  )
-  if (!authToken) {
-    console.warn(
-      "[SERVER] No auth token in cookies, client authentication will fail"
-    )
-  }
 
   return (
     <div className="space-y-6">

@@ -90,19 +90,10 @@ export function UsersTable({
     totalPages: Math.ceil(initialTotal / 10),
   })
 
-  // Log auth token status for debugging
-  useEffect(() => {
-    console.log("[CLIENT] Auth token provided:", authToken ? "Yes" : "No")
-    if (!authToken) {
-      console.warn("[CLIENT] Missing auth token, authentication may fail")
-    }
-  }, [authToken])
-
   // Fetch users from API
   const fetchUsers = useCallback(
     async (page = 1, search = "", role: string = "all") => {
       if (!authToken) {
-        console.error("[CLIENT] Cannot fetch users: No auth token available")
         toast.error("Authentication error. Please try signing in again.")
         return
       }
@@ -125,8 +116,6 @@ export function UsersTable({
 
         // Call the main API server directly
         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`
-        console.log("[CLIENT] Fetching users from:", apiUrl)
-        console.log("[CLIENT] Auth token present:", !!authToken)
 
         const response = await fetch(apiUrl, {
           headers: {
@@ -137,16 +126,10 @@ export function UsersTable({
 
         if (!response.ok) {
           const errorText = await response.text()
-          console.error("[CLIENT] API error:", {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText,
-          })
           throw new Error(`Error fetching users: ${response.statusText}`)
         }
 
         const result = await response.json()
-        console.log("[CLIENT] API response:", JSON.stringify(result, null, 2))
 
         if (result.success && result.data) {
           setUsers(result.data.users)
@@ -157,11 +140,9 @@ export function UsersTable({
             totalPages: result.data.totalPages,
           })
         } else {
-          console.error("[CLIENT] Invalid API response format:", result)
           throw new Error("Invalid response format")
         }
       } catch (error) {
-        console.error("[CLIENT] Error fetching users:", error)
         toast.error("Failed to fetch users")
       } finally {
         setLoading(false)
@@ -212,16 +193,10 @@ export function UsersTable({
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error("[CLIENT] API error:", {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        })
         throw new Error(`Error updating role: ${response.statusText}`)
       }
 
       const result = await response.json()
-      console.log("[CLIENT] API response:", JSON.stringify(result, null, 2))
       if (result.success) {
         // Update local state
         setUsers((prevUsers) =>
@@ -231,11 +206,9 @@ export function UsersTable({
         )
         toast.success("User role updated successfully")
       } else {
-        console.error("[CLIENT] Invalid API response format:", result)
         throw new Error(result.message || "Failed to update user role")
       }
     } catch (error) {
-      console.error("[CLIENT] Error updating user role:", error)
       toast.error("Failed to update user role")
     } finally {
       setLoading(false)
