@@ -38,84 +38,33 @@ export function AdminNav({ user }: AdminNavProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [authToken, setAuthToken] = useState<string | null>(null)
 
   // Fetch stats for the badges
   useEffect(() => {
     async function fetchStats() {
       try {
-        setLoading(true)
-
-        // Get the auth token from localStorage or cookie
-        const token = localStorage.getItem("auth_token") || ""
-
-        if (!token) {
-          console.warn("[CLIENT] No auth token found for admin stats request")
-          // Set default stats instead of failing
-          setStats({
-            userCount: 0,
-            orgCount: 0,
-            metadataCount: 0,
-            activeUsers: 0,
-            pendingApprovals: 0,
-            systemHealth: 90,
-          })
-          return
-        }
-
-        console.log("[CLIENT] Fetching admin dashboard stats")
-
-        // Use the main API server endpoint with the user's auth token
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
             },
           }
         )
 
-        if (response.ok) {
-          const result = await response.json()
+        if (!response.ok) {
+          throw new Error("Failed to fetch stats")
+        }
 
-          if (result.success && result.data) {
-            console.log(
-              "[CLIENT] Successfully fetched admin stats:",
-              result.data
-            )
-            setStats(result.data)
-
-            // Set notification count based on pending approvals
-            setNotificationCount(result.data.pendingApprovals || 0)
-          } else {
-            console.error("[CLIENT] Invalid API response format:", result)
-            // Set default stats as fallback
-            setStats({
-              userCount: 0,
-              orgCount: 0,
-              metadataCount: 0,
-              activeUsers: 0,
-              pendingApprovals: 0,
-              systemHealth: 90,
-            })
-          }
-        } else {
-          console.error(
-            `[CLIENT] API error (${response.status}): ${response.statusText}`
-          )
-          // Set default stats as fallback
-          setStats({
-            userCount: 0,
-            orgCount: 0,
-            metadataCount: 0,
-            activeUsers: 0,
-            pendingApprovals: 0,
-            systemHealth: 90,
-          })
+        const result = await response.json()
+        if (result.success && result.data) {
+          setStats(result.data)
+          setNotificationCount(result.data.pendingApprovals || 0)
         }
       } catch (error) {
-        console.error("[CLIENT] Error fetching admin stats:", error)
-        // Set default stats as fallback
+        console.error("Error fetching stats:", error)
+        // Set default values if there's an error
         setStats({
           userCount: 0,
           orgCount: 0,
@@ -124,13 +73,16 @@ export function AdminNav({ user }: AdminNavProps) {
           pendingApprovals: 0,
           systemHealth: 90,
         })
-      } finally {
-        setLoading(false)
+        setNotificationCount(0)
       }
     }
 
-    fetchStats()
-  }, [])
+    if (authToken) {
+      fetchStats()
+    } else {
+      console.warn("No auth token available, stats will not be fetched")
+    }
+  }, [authToken])
 
   // Create tabs with dynamic badges from stats
   const tabs = [
@@ -203,7 +155,7 @@ export function AdminNav({ user }: AdminNavProps) {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="data-[state=active]:bg-ngdi-green-500 data-[state=active]:text-white hover:bg-gray-100 data-[state=active]:hover:bg-ngdi-green-500/90 rounded-md px-4 py-2 transition-colors relative flex items-center justify-center"
+                className="text-gray-600 hover:text-ngdi-green-500 data-[state=active]:bg-ngdi-green-500 data-[state=active]:text-white hover:bg-gray-100 data-[state=active]:hover:bg-ngdi-green-500/90 rounded-md px-4 py-2 transition-colors relative flex items-center justify-center"
                 asChild
               >
                 <Link href={tab.href} className="flex items-center">

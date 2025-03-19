@@ -22,38 +22,6 @@ import { prisma } from "../db/client"
  */
 export const adminService = {
   /**
-   * Get system statistics
-   */
-  getSystemStats: async (): Promise<{
-    totalUsers: number
-    totalMetadata: number
-    newUsersLast30Days: number
-    newMetadataLast30Days: number
-    usersByRole: Record<UserRole, number>
-  }> => {
-    const totalUsers = await userRepository.count()
-    const totalMetadata = await metadataRepository.count()
-
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const newUsersLast30Days =
-      await userRepository.countCreatedAfter(thirtyDaysAgo)
-    const newMetadataLast30Days =
-      await metadataRepository.countCreatedAfter(thirtyDaysAgo)
-
-    const usersByRole = await userRepository.countByRole()
-
-    return {
-      totalUsers,
-      totalMetadata,
-      newUsersLast30Days,
-      newMetadataLast30Days,
-      usersByRole,
-    }
-  },
-
-  /**
    * Get enhanced admin dashboard statistics
    */
   getAdminDashboardStats: async (): Promise<{

@@ -59,55 +59,6 @@ export const adminRouter = new Hono<{
 
 /**
  * @openapi
- * /api/admin/stats:
- *   get:
- *     summary: Get system statistics
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: System statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     totalUsers:
- *                       type: number
- *                     totalMetadata:
- *                       type: number
- *                     newUsersLast30Days:
- *                       type: number
- *                     newMetadataLast30Days:
- *                       type: number
- *                     usersByRole:
- *                       type: object
- *                       additionalProperties:
- *                         type: number
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-adminRouter.get("/stats", async (c) => {
-  const stats = await adminService.getSystemStats()
-
-  return c.json({
-    success: true,
-    data: stats,
-  })
-})
-
-/**
- * @openapi
  * /api/admin/users:
  *   get:
  *     summary: Get all users
