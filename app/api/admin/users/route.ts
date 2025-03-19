@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 
 // Proxy route to forward requests to the main API server
 export async function GET(request: NextRequest) {
+  console.log("[PROXY] Received GET request to /api/admin/users")
+
   try {
     // Get the URL parameters
     const searchParams = request.nextUrl.searchParams
@@ -76,4 +78,17 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Add OPTIONS handler for CORS
+export async function OPTIONS(request: NextRequest) {
+  console.log("[PROXY] Received OPTIONS request to /api/admin/users")
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }

@@ -125,7 +125,8 @@ export function UsersTable({
 
         // Use Next.js proxy route instead of direct API call
         const apiUrl = `/api/admin/users?${params.toString()}`
-        console.log("[DEBUG] Fetching users from:", apiUrl)
+        console.log("[CLIENT] Fetching users from:", apiUrl)
+        console.log("[CLIENT] Auth token present:", !!authToken)
 
         // Call API server via proxy
         const response = await fetch(apiUrl, {
@@ -136,13 +137,18 @@ export function UsersTable({
         })
 
         if (!response.ok) {
-          console.error(
-            `API error (${response.status}): ${response.statusText}`
-          )
+          const errorText = await response.text()
+          console.error("[CLIENT] API error:", {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+          })
           throw new Error(`Error fetching users: ${response.statusText}`)
         }
 
         const result = await response.json()
+        console.log("[CLIENT] API response:", result)
+
         if (result.success && result.data) {
           setUsers(result.data.users)
           setPagination({
@@ -152,11 +158,11 @@ export function UsersTable({
             totalPages: result.data.totalPages,
           })
         } else {
-          console.error("Invalid API response format:", result)
+          console.error("[CLIENT] Invalid API response format:", result)
           throw new Error("Invalid response format")
         }
       } catch (error) {
-        console.error("Error fetching users:", error)
+        console.error("[CLIENT] Error fetching users:", error)
         toast.error("Failed to fetch users")
       } finally {
         setLoading(false)
