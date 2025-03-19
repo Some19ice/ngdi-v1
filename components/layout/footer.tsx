@@ -23,7 +23,7 @@ const footerNavigation = {
     { name: "Cookie Policy", href: "/cookies" },
   ],
   resources: [
-    { name: "Documentation", href: "/docs" },
+    { name: "Documentation", href: "/documentation" },
     { name: "FAQ", href: "/faq" },
     { name: "Help Center", href: "/help" },
   ],

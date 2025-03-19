@@ -109,12 +109,12 @@ export function UsersTable({
           params.append("role", role)
         }
 
-        // Build full URL for debugging
-        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params.toString()}`
-        console.log("[DEBUG] Fetching users from:", url)
+        // Use the main API server directly
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users?${params.toString()}`
+        console.log("[DEBUG] Fetching users from:", apiUrl)
 
-        // Call API server directly
-        const response = await fetch(url, {
+        // Call API server
+        const response = await fetch(apiUrl, {
           headers: {
             Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
@@ -180,7 +180,7 @@ export function UsersTable({
     try {
       setLoading(true)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}/role`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users/${userId}/role`,
         {
           method: "PUT",
           headers: {
