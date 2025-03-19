@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("authorization")
 
     if (!authHeader) {
+      console.error("[PROXY] No authorization header found")
       return NextResponse.json(
         { success: false, message: "Authentication required" },
         { status: 401 }
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
 
     // Forward the request to the main API server
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://ngdi-api.vercel.app"}/api/admin/users${apiParams ? `?${apiParams}` : ""}`
+    console.log("[PROXY] Forwarding request to:", apiUrl)
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -27,13 +29,50 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Return the response data
+    // Log response status and headers for debugging
+    console.log("[PROXY] Response status:", response.status)
+    console.log(
+      "[PROXY] Response headers:",
+      Object.fromEntries(response.headers.entries())
+    )
+
+    // Handle non-200 responses
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("[PROXY] API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          message: `API error: ${response.status} ${response.statusText}`,
+          details: errorText,
+        },
+        { status: response.status }
+      )
+    }
+
+    // Parse and validate response data
     const data = await response.json()
+    if (!data || typeof data !== "object") {
+      console.error("[PROXY] Invalid response format:", data)
+      return NextResponse.json(
+        { success: false, message: "Invalid response format from API" },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error("Error in admin users proxy:", error)
+    console.error("[PROXY] Error in admin users proxy:", error)
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     )
   }

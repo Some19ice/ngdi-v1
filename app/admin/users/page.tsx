@@ -31,15 +31,15 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
     const authToken = cookieStore.get("auth_token")?.value
 
     if (!authToken) {
-      console.error("No auth token found in cookies")
+      console.error("[SERVER] No auth token found in cookies")
       throw new Error("Authentication required")
     }
 
-    // Build full URL for debugging
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?page=1&limit=10`
-    console.log("[SERVER] Fetching users from:", url)
+    // Use our proxy route instead of direct API call
+    const url = `/api/admin/users?page=1&limit=10`
+    console.log("[SERVER] Fetching users from proxy:", url)
 
-    // Using the server-side fetch to call the API server
+    // Using the server-side fetch to call our proxy route
     const response = await fetch(url, {
       cache: "no-store",
       headers: {
@@ -49,11 +49,17 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
     })
 
     if (!response.ok) {
-      console.error(`API error (${response.status}): ${response.statusText}`)
+      const errorText = await response.text()
+      console.error("[SERVER] API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      })
       throw new Error(`Failed to fetch users: ${response.statusText}`)
     }
 
     const result = await response.json()
+    console.log("[SERVER] API response:", result)
 
     if (result.success && result.data) {
       return {
@@ -62,10 +68,10 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
       }
     }
 
-    console.error("Invalid API response format:", result)
+    console.error("[SERVER] Invalid API response format:", result)
     throw new Error("Invalid response format")
   } catch (error) {
-    console.error("Error fetching users:", error)
+    console.error("[SERVER] Error fetching users:", error)
     return { users: [], total: 0 }
   }
 }
