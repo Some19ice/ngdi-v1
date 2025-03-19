@@ -193,7 +193,7 @@ const getUserNavItems = (role?: string): NavItem[] => {
   if (role === UserRole.ADMIN || role === UserRole.NODE_OFFICER) {
     items.push({
       title: "My Metadata",
-      href: "/profile/metadata",
+      href: "/my-metadata",
       icon: FileText,
       permission: Permissions.READ_METADATA,
     })
