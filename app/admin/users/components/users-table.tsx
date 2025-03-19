@@ -146,7 +146,7 @@ export function UsersTable({
         }
 
         const result = await response.json()
-        console.log("[CLIENT] API response:", result)
+        console.log("[CLIENT] API response:", JSON.stringify(result, null, 2))
 
         if (result.success && result.data) {
           setUsers(result.data.users)
@@ -221,6 +221,7 @@ export function UsersTable({
       }
 
       const result = await response.json()
+      console.log("[CLIENT] API response:", JSON.stringify(result, null, 2))
       if (result.success) {
         // Update local state
         setUsers((prevUsers) =>

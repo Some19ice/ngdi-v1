@@ -59,7 +59,7 @@ async function fetchUsers(): Promise<{ users: User[]; total: number }> {
     }
 
     const result = await response.json()
-    console.log("[SERVER] API response:", result)
+    console.log("[SERVER] API response:", JSON.stringify(result, null, 2))
 
     if (result.success && result.data) {
       return {
