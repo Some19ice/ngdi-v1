@@ -5,6 +5,7 @@ import { AdminNavWrapper } from "./components/admin-nav-wrapper"
 import { UserRole } from "@/lib/auth/constants"
 import { AdminBreadcrumbWrapper } from "./components/admin-breadcrumb-wrapper"
 import { cookies } from "next/headers"
+import AdminPrefetcher from "@/components/admin/AdminPrefetcher"
 
 async function getUser() {
   try {
@@ -73,6 +74,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AdminPrefetcher />
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <AdminNavWrapper user={user} />
         <div className="mt-6 mb-4">

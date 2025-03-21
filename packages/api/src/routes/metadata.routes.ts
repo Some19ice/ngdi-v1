@@ -10,6 +10,7 @@ import {
 import { UserRole } from "../types/auth.types"
 import { Context } from "../types/hono.types"
 import { prisma } from "../lib/prisma"
+import { SafeJSON } from "../utils/json-serializer"
 
 const metadata = new Hono<{
   Variables: {
@@ -104,7 +105,13 @@ metadata.post("/", zValidator("json", metadataSchema), async (c) => {
   const userId = c.get("userId")
   const data = await c.req.json()
   const result = await metadataService.createMetadata(data, userId)
-  return c.json(result)
+
+  // Use SafeJSON to handle BigInt values
+  return new Response(SafeJSON.stringify(result), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
 })
 
 /**
@@ -148,9 +155,17 @@ metadata.get("/:id", zValidator("param", MetadataIdParamSchema), async (c) => {
     return c.json({ error: "Metadata not found" }, 404)
   }
 
-  return c.json({
-    metadata,
-  })
+  // Use SafeJSON to handle BigInt values
+  return new Response(
+    SafeJSON.stringify({
+      metadata,
+    }),
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
 })
 
 /**
@@ -201,7 +216,13 @@ metadata.put(
     const { id } = c.req.valid("param")
     const data = await c.req.json()
     const result = await metadataService.updateMetadata(id, data, userId)
-    return c.json(result)
+
+    // Use SafeJSON to handle BigInt values
+    return new Response(SafeJSON.stringify(result), {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
   }
 )
 
@@ -335,10 +356,18 @@ metadata.get("/search", async (c) => {
     sortOrder: "desc",
   })
 
-  return c.json({
-    success: true,
-    data: result,
-  })
+  // Use SafeJSON to handle BigInt values
+  return new Response(
+    SafeJSON.stringify({
+      success: true,
+      data: result,
+    }),
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
 })
 
 /**
@@ -397,7 +426,12 @@ metadata.get("/user", async (c) => {
     sortOrder: "desc",
   })
 
-  return c.json(result)
+  // Use SafeJSON to handle BigInt values
+  return new Response(SafeJSON.stringify(result), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
 })
 
 // Export the router

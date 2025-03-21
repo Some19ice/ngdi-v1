@@ -1,3 +1,5 @@
-import { PrismaClient } from "@prisma/client"
+// Import from centralized Prisma client
+import { prisma } from "../shared/prisma-client"
 
-export const prisma = new PrismaClient()
+// Re-export the client
+export { prisma }

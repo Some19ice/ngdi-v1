@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { useState } from "react"
+import { ProtectedRoutePrefetcher } from "@/components/protected-route-prefetcher"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a client
@@ -31,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
+          <ProtectedRoutePrefetcher />
           {children}
         </ThemeProvider>
         {process.env.NODE_ENV === "development" && (

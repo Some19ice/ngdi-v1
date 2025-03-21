@@ -1,12 +1,4 @@
-import { PrismaClient } from "@prisma/client"
-
-// Create a singleton Prisma client
-export const prisma = new PrismaClient({
-  log:
-    process.env.NODE_ENV === "development"
-      ? ["query", "error", "warn"]
-      : ["error"],
-})
+import { prisma } from "../shared/prisma-client"
 
 // Helper functions for common database operations
 export const userRepository = {

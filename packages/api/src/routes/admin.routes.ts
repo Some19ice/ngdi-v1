@@ -11,6 +11,8 @@ import { prisma } from "../lib/prisma"
 import { logger } from "../lib/logger"
 import { adminMiddleware } from "../middleware/auth.middleware"
 import { UserRole as PrismaUserRole } from "@prisma/client"
+import { SafeJSON } from "../utils/json-serializer"
+import { memoryCache } from "../utils/cache"
 
 // Define the user type based on the auth middleware
 interface User {
@@ -110,6 +112,23 @@ export const adminRouter = new Hono<{
 adminRouter.get("/users", async (c) => {
   const { page = "1", limit = "10", search, role } = c.req.query()
 
+  // Generate cache key from query parameters
+  const cacheKey = `admin-users-${page}-${limit}-${search || ""}-${role || ""}`
+
+  // Check cache first for non-search queries
+  const cachedResult = memoryCache.get(cacheKey)
+  if (cachedResult && !search) {
+    // Don't use cache for search queries
+    logger.info("Serving admin users from cache")
+
+    return new Response(cachedResult as string, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Cache": "HIT",
+      },
+    })
+  }
+
   const users = await adminService.getAllUsers({
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
@@ -119,9 +138,22 @@ adminRouter.get("/users", async (c) => {
     sortOrder: "desc",
   })
 
-  return c.json({
+  // Serialize response
+  const serializedResponse = SafeJSON.stringify({
     success: true,
     data: users,
+  })
+
+  // Cache the result for 2 minutes, but only if it's not a search query
+  if (!search) {
+    memoryCache.set(cacheKey, serializedResponse, 120000) // 2 minutes TTL
+  }
+
+  return new Response(serializedResponse, {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Cache": "MISS",
+    },
   })
 })
 
@@ -492,6 +524,23 @@ adminRouter.get("/metadata", async (c) => {
     dateTo,
   } = c.req.query()
 
+  // Generate cache key from query parameters
+  const cacheKey = `admin-metadata-${page}-${limit}-${search || ""}-${category || ""}-${dateFrom || ""}-${dateTo || ""}`
+
+  // Check cache first
+  const cachedResult = memoryCache.get(cacheKey)
+  if (cachedResult && !search) {
+    // Don't use cache for search queries
+    logger.info("Serving admin metadata from cache")
+
+    return new Response(cachedResult as string, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Cache": "HIT",
+      },
+    })
+  }
+
   const result = await adminService.getAllMetadata({
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
@@ -503,9 +552,22 @@ adminRouter.get("/metadata", async (c) => {
     sortOrder: "desc",
   })
 
-  return c.json({
+  // Serialize response
+  const serializedResponse = SafeJSON.stringify({
     success: true,
     data: result,
+  })
+
+  // Cache the result for 2 minutes, but only if it's not a search query
+  if (!search) {
+    memoryCache.set(cacheKey, serializedResponse, 120000) // 2 minutes TTL
+  }
+
+  return new Response(serializedResponse, {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Cache": "MISS",
+    },
   })
 })
 
@@ -607,84 +669,121 @@ adminRouter.get("/dashboard-stats", async (c) => {
       throw new ApiError("Unauthorized", 401)
     }
 
+    // Generate a cache key based on the user ID
+    const cacheKey = `dashboard-stats-${user.id}`
+
+    // Check if we have cached data
+    const cachedStats = memoryCache.get(cacheKey)
+    if (cachedStats) {
+      logger.info("Serving dashboard stats from cache", {
+        userId: user.id,
+        email: user.email,
+      })
+
+      return new Response(cachedStats as string, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cache": "HIT",
+        },
+      })
+    }
+
     logger.info("Fetching dashboard stats", {
       userId: user.id,
       email: user.email,
     })
 
-    // Get total users
-    const totalUsers = await prisma.user.count()
-    logger.debug("Total users count", { totalUsers })
+    // Run all database queries in parallel using Promise.all
+    const [
+      totalUsers,
+      totalMetadata,
+      userRoleDistribution,
+      recentMetadata,
+      userGrowth,
+      metadataByFramework,
+      topOrganizations,
+    ] = await Promise.all([
+      // Get total users
+      prisma.user.count(),
 
-    // Get total metadata entries
-    const totalMetadata = await prisma.metadata.count()
-    logger.debug("Total metadata count", { totalMetadata })
+      // Get total metadata entries
+      prisma.metadata.count(),
 
-    // Get user role distribution
-    const userRoleDistribution = await prisma.user.groupBy({
-      by: ["role"],
-      _count: {
-        id: true,
-      },
-    })
-    logger.debug("User role distribution", {
-      distribution: userRoleDistribution,
-    })
+      // Get user role distribution
+      prisma.user.groupBy({
+        by: ["role"],
+        _count: {
+          id: true,
+        },
+      }),
 
-    // Get recent metadata entries
-    const recentMetadata = await prisma.metadata.findMany({
-      take: 5,
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
+      // Get recent metadata entries with optimized field selection
+      prisma.metadata.findMany({
+        take: 5,
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          organization: true,
+          createdAt: true,
+          thumbnailUrl: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
           },
         },
-      },
-    })
-    logger.debug("Recent metadata count", { count: recentMetadata.length })
+      }),
 
-    // Get user growth
-    const userGrowth = await prisma.user.groupBy({
-      by: ["createdAt"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 30,
-    })
-    logger.debug("User growth data points", { count: userGrowth.length })
-
-    // Get metadata by framework type
-    const metadataByFramework = await prisma.metadata.groupBy({
-      by: ["frameworkType"],
-      _count: {
-        id: true,
-      },
-    })
-    logger.debug("Metadata by framework", { distribution: metadataByFramework })
-
-    // Get top organizations
-    const topOrganizations = await prisma.metadata.groupBy({
-      by: ["organization"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
+      // Get user growth
+      prisma.user.groupBy({
+        by: ["createdAt"],
         _count: {
-          id: "desc",
+          id: true,
         },
-      },
-      take: 5,
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 30,
+      }),
+
+      // Get metadata by framework type
+      prisma.metadata.groupBy({
+        by: ["frameworkType"],
+        _count: {
+          id: true,
+        },
+      }),
+
+      // Get top organizations
+      prisma.metadata.groupBy({
+        by: ["organization"],
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          _count: {
+            id: "desc",
+          },
+        },
+        take: 5,
+      }),
+    ])
+
+    logger.debug("All dashboard queries completed", {
+      totalUsers,
+      totalMetadataCount: totalMetadata,
+      userRoleDistCount: userRoleDistribution.length,
+      recentMetadataCount: recentMetadata.length,
+      userGrowthPoints: userGrowth.length,
+      metadataByFrameworkCount: metadataByFramework.length,
+      topOrganizationsCount: topOrganizations.length,
     })
-    logger.debug("Top organizations count", { count: topOrganizations.length })
 
     const stats = {
       totalUsers,
@@ -696,20 +795,19 @@ adminRouter.get("/dashboard-stats", async (c) => {
       topOrganizations,
     }
 
-    logger.info("Dashboard stats fetched successfully", {
-      userId: user.id,
-      stats: {
-        totalUsers,
-        totalMetadata,
-        userRoleDistribution,
-        recentMetadataCount: recentMetadata.length,
-        userGrowthPoints: userGrowth.length,
-        metadataByFrameworkCount: metadataByFramework.length,
-        topOrganizationsCount: topOrganizations.length,
+    // Serialize the response once
+    const serializedResponse = SafeJSON.stringify(stats)
+
+    // Cache the serialized response for 5 minutes (300000 ms)
+    memoryCache.set(cacheKey, serializedResponse, 300000)
+
+    // Return the response
+    return new Response(serializedResponse, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Cache": "MISS",
       },
     })
-
-    return c.json(stats)
   } catch (error) {
     logger.error("Error fetching dashboard stats", {
       error,
@@ -728,6 +826,102 @@ adminRouter.get("/dashboard-stats", async (c) => {
           error instanceof Error ? error.message : "Unknown error occurred",
       },
       500 as any
+    )
+  }
+})
+
+/**
+ * @openapi
+ * /api/admin/stats:
+ *   get:
+ *     summary: Get system statistics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userCount:
+ *                       type: number
+ *                     orgCount:
+ *                       type: number
+ *                     metadataCount:
+ *                       type: number
+ *                     activeUsers:
+ *                       type: number
+ *                     pendingApprovals:
+ *                       type: number
+ *                     systemHealth:
+ *                       type: number
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+adminRouter.get("/stats", async (c) => {
+  try {
+    // Check for cached stats
+    const cacheKey = "admin-system-stats"
+    const cachedStats = memoryCache.get(cacheKey)
+
+    if (cachedStats) {
+      logger.info("Serving system stats from cache")
+
+      return new Response(cachedStats as string, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cache": "HIT",
+        },
+      })
+    }
+
+    const stats = await adminService.getAdminDashboardStats()
+
+    // Serialize the response
+    const serializedResponse = SafeJSON.stringify({
+      success: true,
+      data: stats,
+    })
+
+    // Cache for 5 minutes
+    memoryCache.set(cacheKey, serializedResponse, 300000)
+
+    // Use SafeJSON to handle BigInt values
+    return new Response(serializedResponse, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Cache": "MISS",
+      },
+    })
+  } catch (error) {
+    logger.error("Error fetching system stats", {
+      error,
+      userId: c.get("user")?.id,
+      email: c.get("user")?.email,
+    })
+
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status as any)
+    }
+
+    return c.json(
+      {
+        success: false,
+        message: "Failed to fetch system statistics",
+      },
+      500
     )
   }
 })

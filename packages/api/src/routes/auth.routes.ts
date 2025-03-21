@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
-import { prisma } from "../db/prisma"
+import { prisma } from "../shared/prisma-client"
 import { errorHandler, ApiError, ErrorCode } from "../middleware/error-handler"
 import { hashPassword, comparePassword } from "../utils/password"
 import {
@@ -53,6 +53,16 @@ const auth = new Hono()
 // Apply error handler
 auth.onError(errorHandler)
 
+// Helper function to get proper cookie domain based on environment
+function getCookieDomain() {
+  if (process.env.NODE_ENV === "production") {
+    // Use the COOKIE_DOMAIN env var if set, otherwise default to the production domain
+    return process.env.COOKIE_DOMAIN || process.env.VERCEL_URL || ".vercel.app"
+  }
+  // For local development, don't set domain to allow browser to handle it
+  return undefined
+}
+
 // Login route
 auth.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
@@ -70,18 +80,27 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
-      domain:
-        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
-    c.header(
-      "Set-Cookie",
-      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
-    c.header(
-      "Set-Cookie",
-      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
+    const domain = getCookieDomain()
+
+    // Set auth token cookie with properly formatted string
+    let authCookie = `auth_token=${result.accessToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) authCookie += "; HttpOnly"
+    if (cookieOptions.secure) authCookie += "; Secure"
+    authCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) authCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", authCookie)
+
+    // Set refresh token cookie with properly formatted string
+    let refreshCookie = `refresh_token=${result.refreshToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) refreshCookie += "; HttpOnly"
+    if (cookieOptions.secure) refreshCookie += "; Secure"
+    refreshCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) refreshCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", refreshCookie)
 
     return c.json(result)
   } catch (error) {
@@ -116,18 +135,27 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
-      domain:
-        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
-    c.header(
-      "Set-Cookie",
-      `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
-    c.header(
-      "Set-Cookie",
-      `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
+    const domain = getCookieDomain()
+
+    // Set auth token cookie with properly formatted string
+    let authCookie = `auth_token=${result.accessToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) authCookie += "; HttpOnly"
+    if (cookieOptions.secure) authCookie += "; Secure"
+    authCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) authCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", authCookie)
+
+    // Set refresh token cookie with properly formatted string
+    let refreshCookie = `refresh_token=${result.refreshToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) refreshCookie += "; HttpOnly"
+    if (cookieOptions.secure) refreshCookie += "; Secure"
+    refreshCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) refreshCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", refreshCookie)
 
     return c.json(result)
   } catch (error) {
@@ -244,18 +272,27 @@ auth.post("/refresh-token", async (c) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
-      domain:
-        process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
     }
 
-    c.header(
-      "Set-Cookie",
-      `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
-    c.header(
-      "Set-Cookie",
-      `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`
-    )
+    const domain = getCookieDomain()
+
+    // Set auth token cookie with properly formatted string
+    let authCookie = `auth_token=${accessToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) authCookie += "; HttpOnly"
+    if (cookieOptions.secure) authCookie += "; Secure"
+    authCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) authCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", authCookie)
+
+    // Set refresh token cookie with properly formatted string
+    let refreshCookie = `refresh_token=${newRefreshToken}; Path=${cookieOptions.path}`
+    if (cookieOptions.httpOnly) refreshCookie += "; HttpOnly"
+    if (cookieOptions.secure) refreshCookie += "; Secure"
+    refreshCookie += `; SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}`
+    if (domain) refreshCookie += `; Domain=${domain}`
+
+    c.header("Set-Cookie", refreshCookie)
 
     return c.json(
       {
@@ -405,18 +442,19 @@ auth.post(
 // Logout route
 auth.post("/logout", async (c) => {
   try {
-    // Clear authentication cookies with the same domain as set in login
-    const domain =
-      process.env.NODE_ENV === "production" ? "vercel.app" : "localhost"
+    const domain = getCookieDomain()
 
-    c.header(
-      "Set-Cookie",
-      `auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`
-    )
-    c.header(
-      "Set-Cookie",
-      `refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`
-    )
+    // Clear auth token cookie
+    let authCookie =
+      "auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+    if (domain) authCookie += `; Domain=${domain}`
+    c.header("Set-Cookie", authCookie)
+
+    // Clear refresh token cookie
+    let refreshCookie =
+      "refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+    if (domain) refreshCookie += `; Domain=${domain}`
+    c.header("Set-Cookie", refreshCookie)
 
     return c.json({
       success: true,
@@ -475,6 +513,82 @@ auth.get("/me", async (c) => {
       "Authentication failed",
       401,
       ErrorCode.AUTHENTICATION_ERROR
+    )
+  }
+})
+
+// Auth check endpoint - lightweight status check for client-side apps
+auth.get("/check", async (c) => {
+  try {
+    // First try to get token from Authorization header
+    const authHeader = c.req.header("Authorization")
+    let token: string | undefined
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1]
+    } else {
+      // If not in header, try to get from cookies
+      const cookieHeader = c.req.raw.headers.get("cookie")
+      if (cookieHeader) {
+        const cookies = cookieHeader.split(";")
+        const authCookie = cookies.find((cookie) =>
+          cookie.trim().startsWith("auth_token=")
+        )
+        if (authCookie) {
+          token = authCookie.split("=")[1]
+        }
+      }
+    }
+
+    // Check if we have a token
+    if (!token) {
+      return c.json(
+        {
+          authenticated: false,
+          message: "No authentication token found",
+        },
+        200
+      ) // Return 200 even for unauthenticated to avoid CORS issues
+    }
+
+    // Verify the token
+    try {
+      const decoded = await verifyToken(token)
+
+      // Return user info without sensitive data
+      return c.json(
+        {
+          authenticated: true,
+          user: {
+            id: decoded.userId,
+            email: decoded.email,
+            role: decoded.role,
+          },
+        },
+        200
+      )
+    } catch (tokenError) {
+      console.log("Token verification failed:", tokenError)
+
+      // Return clear unauthenticated state
+      return c.json(
+        {
+          authenticated: false,
+          message: "Invalid or expired token",
+        },
+        200
+      ) // Return 200 to avoid CORS issues
+    }
+  } catch (error) {
+    console.error("Auth check error:", error)
+
+    // Return generic error but still 200 to avoid disrupting client
+    return c.json(
+      {
+        authenticated: false,
+        message: "Authentication check failed",
+      },
+      200
     )
   }
 })

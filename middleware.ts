@@ -8,14 +8,51 @@ import { authClient, validateJwtToken } from "./lib/auth-client"
 // Constants
 const AUTH_COOKIE_NAME = "auth_token"
 
-// Safely parse JSON
-function safeJsonParse(str: string | null) {
-  if (!str) return null
+// Cache token validation results (TTL of 60 seconds)
+const tokenValidationCache = new Map<string, {
+  timestamp: number;
+  isValid: boolean;
+  userId?: string;
+  email?: string;
+  role?: string;
+}>();
+
+// Basic client-side token validation (non-blocking)
+function quickValidateToken(token: string) {
   try {
-    return JSON.parse(str)
+    // Quick format check
+    if (!token || !token.includes(".") || token.split(".").length !== 3) {
+      return { isValid: false }
+    }
+
+    // Decode without verification (fast operation)
+    const decoded = jose.decodeJwt(token)
+
+    // Check expiration
+    const currentTime = Math.floor(Date.now() / 1000)
+    if (decoded.exp && decoded.exp < currentTime) {
+      return { isValid: false }
+    }
+
+    // Extract basic user information
+    const userId =
+      typeof decoded.sub === "string"
+        ? decoded.sub
+        : typeof decoded.userId === "string"
+          ? decoded.userId
+          : ""
+
+    const email = typeof decoded.email === "string" ? decoded.email : "unknown"
+    const role = typeof decoded.role === "string" ? decoded.role : "USER"
+
+    return {
+      isValid: !!userId,
+      userId,
+      email,
+      role,
+    }
   } catch (e) {
-    console.error("Error parsing JSON:", e)
-    return null
+    return { isValid: false }
   }
 }
 
@@ -57,6 +94,23 @@ export async function middleware(request: NextRequest) {
 
   console.log(`Middleware processing path: ${path}`)
 
+  // Fast path for non-protected routes
+  const isProtectedRoute = PROTECTED_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`)
+  )
+
+  // Skip middleware for static assets and API routes
+  if (
+    path.startsWith("/_next") ||
+    path.startsWith("/favicon.ico") ||
+    path.startsWith("/images/") ||
+    path.startsWith("/fonts/") ||
+    path.startsWith("/assets/") ||
+    path.startsWith("/api/")
+  ) {
+    return NextResponse.next()
+  }
+
   // Check if the path is an auth route
   const isAuthRoute = path.startsWith("/auth")
 
@@ -66,131 +120,118 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For API routes, allow access and let the API handle authentication
-  if (path.startsWith("/api")) {
+  // Special handling for the home page (landing page)
+  // Always allow access to home page regardless of auth status
+  if (path === "/" || path === "/home") {
+    console.log("Home page - allowing access regardless of auth status")
     return NextResponse.next()
   }
 
-  // For static assets, allow access
-  if (
-    path.startsWith("/_next") ||
-    path.startsWith("/favicon.ico") ||
-    path.startsWith("/images/") ||
-    path.startsWith("/fonts/") ||
-    path.startsWith("/assets/")
-  ) {
-    return NextResponse.next()
-  }
+  // Only perform token validation for protected routes
+  if (isProtectedRoute) {
+    // Check if the user is authenticated
+    const authToken = request.cookies.get(AUTH_COOKIE_NAME)?.value
 
-  // Check if the user is authenticated
-  const authToken = request.cookies.get(AUTH_COOKIE_NAME)?.value
-
-  // Log token status
-  console.log(`Token status for ${path}: `, {
-    hasAuthToken: !!authToken,
-    tokenLength: authToken ? authToken.length : 0,
-    cookies: request.cookies
-      .getAll()
-      .map((c) => ({
-        name: c.name,
-        value: c.value ? c.value.substring(0, 5) + "..." : "none",
-      })),
-    isAuthRoute,
-    isProtectedRoute: PROTECTED_ROUTES.some(
-      (route) => path === route || path.startsWith(`${route}/`)
-    ),
-  })
-
-  // Create a response object that we'll modify
-  let response = NextResponse.next()
-
-  // If we have a token, try to decode it and set user headers
-  if (authToken && authToken.split(".").length === 3) {
-    try {
-      // Decode the token without verification
-      const decoded = jose.decodeJwt(authToken)
-
-      // Extract user information
-      const userId =
-        typeof decoded.sub === "string"
-          ? decoded.sub
-          : typeof decoded.userId === "string"
-            ? decoded.userId
-            : ""
-
-      const email =
-        typeof decoded.email === "string" ? decoded.email : "unknown"
-      const role = typeof decoded.role === "string" ? decoded.role : "USER"
-
-      if (userId) {
-        console.log(`Setting user headers for ${path}:`, {
-          userId,
-          email,
-          role,
-        })
-        response.headers.set("x-user-id", userId)
-        response.headers.set("x-user-email", email)
-        response.headers.set("x-user-role", role)
-      } else {
-        console.log(`Token missing user ID for ${path}`)
-      }
-
-      // Check if user is a node officer who hasn't completed onboarding
-      const tokenData = await validateJwtToken(authToken)
-      if (tokenData.isValid && role === UserRole.NODE_OFFICER) {
-        // Check if already on new-user page or coming from new-user page to avoid loops
-        if (path.startsWith("/auth/new-user")) {
-          // Allow access to the new-user page
-          return NextResponse.next()
-        }
-
-        // Check if the onboarding_complete flag is set in cookies
-        const onboardingComplete =
-          request.cookies.get("onboarding_complete")?.value === "true"
-        if (onboardingComplete) {
-          // If flag is set, skip the onboarding check
-          return NextResponse.next()
-        }
-
-        // Check if the path is for root/home, as these are the likely redirect targets after onboarding
-        if (path === "/" || path === "/home") {
-          // For root paths, check if actually onboarded
-          const hasOnboarded = await hasCompletedOnboarding(userId)
-
-          // If not onboarded, redirect to onboarding
-          if (!hasOnboarded) {
-            console.log(
-              "Node officer needs to complete onboarding, redirecting"
-            )
-            return NextResponse.redirect(new URL("/auth/new-user", request.url))
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`Error decoding token for ${path}:`, error)
+    // If no token and this is a protected route, redirect to login
+    if (!authToken) {
+      console.log(
+        `Redirecting from protected route ${path} to signin due to missing auth token`
+      )
+      const redirectUrl = new URL("/auth/signin", request.url)
+      redirectUrl.searchParams.set("from", path)
+      return NextResponse.redirect(redirectUrl)
     }
-  } else if (authToken) {
-    console.log(`Invalid token format for ${path}`)
+
+    // Check cache first for this token
+    const cachedResult = tokenValidationCache.get(authToken)
+    if (cachedResult && Date.now() - cachedResult.timestamp < 60000) {
+      // 60 second TTL
+      // Use cached result
+      if (!cachedResult.isValid) {
+        // If cached result says token is invalid, redirect to login
+        console.log(
+          `Redirecting from protected route ${path} to signin due to invalid token (cached)`
+        )
+        const redirectUrl = new URL("/auth/signin", request.url)
+        redirectUrl.searchParams.set("from", path)
+        return NextResponse.redirect(redirectUrl)
+      }
+
+      // Create response with user headers from cache
+      const response = NextResponse.next()
+      if (cachedResult.userId) {
+        response.headers.set("x-user-id", cachedResult.userId)
+        response.headers.set("x-user-email", cachedResult.email || "")
+        response.headers.set("x-user-role", cachedResult.role || "USER")
+      }
+
+      return response
+    }
+
+    // Perform quick client-side validation (synchronous)
+    const quickResult = quickValidateToken(authToken)
+
+    // Cache the result
+    tokenValidationCache.set(authToken, {
+      timestamp: Date.now(),
+      isValid: quickResult.isValid,
+      userId: quickResult.userId,
+      email: quickResult.email,
+      role: quickResult.role,
+    })
+
+    if (!quickResult.isValid) {
+      // If token is invalid, redirect to login
+      console.log(
+        `Redirecting from protected route ${path} to signin due to invalid token`
+      )
+      const redirectUrl = new URL("/auth/signin", request.url)
+      redirectUrl.searchParams.set("from", path)
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    // Create response with user headers
+    const response = NextResponse.next()
+    if (quickResult.userId) {
+      response.headers.set("x-user-id", quickResult.userId)
+      response.headers.set("x-user-email", quickResult.email || "")
+      response.headers.set("x-user-role", quickResult.role || "USER")
+    }
+
+    // Check if user is a node officer who hasn't completed onboarding
+    if (quickResult.role === UserRole.NODE_OFFICER) {
+      // Check if already on new-user page or coming from new-user page to avoid loops
+      if (path.startsWith("/auth/new-user")) {
+        // Allow access to the new-user page
+        return NextResponse.next()
+      }
+
+      // Check if the onboarding_complete flag is set in cookies
+      const onboardingComplete =
+        request.cookies.get("onboarding_complete")?.value === "true"
+      if (onboardingComplete) {
+        // If flag is set, skip the onboarding check
+        return NextResponse.next()
+      }
+
+      // Check if the path is for root/home, as these are the likely redirect targets after onboarding
+      if (path === "/" || path === "/home") {
+        // For root paths, check if actually onboarded
+        const hasOnboarded = await hasCompletedOnboarding(quickResult.userId)
+
+        // If not onboarded, redirect to onboarding
+        if (!hasOnboarded) {
+          console.log("Node officer needs to complete onboarding, redirecting")
+          return NextResponse.redirect(new URL("/auth/new-user", request.url))
+        }
+      }
+    }
+
+    return response
   }
 
-  // Check if the current path is a protected route
-  const isProtectedRoute = PROTECTED_ROUTES.some(
-    (route) => path === route || path.startsWith(`${route}/`)
-  )
-
-  // For protected routes, check if the user is authenticated
-  if (isProtectedRoute && !authToken) {
-    console.log(
-      `Redirecting from protected route ${path} to signin due to missing auth token`
-    )
-    // If not authenticated and trying to access a protected route, redirect to signin
-    const redirectUrl = new URL("/auth/signin", request.url)
-    redirectUrl.searchParams.set("from", path)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // Continue to the requested page
-  return response
+  // For non-protected routes that aren't special cases, just continue
+  return NextResponse.next()
 }
 
 export const config = {

@@ -36,15 +36,30 @@ export function SignInContent() {
     setIsLoading(true)
 
     try {
-      await login(email, password)
+      const session = await login(email, password)
 
-      // Show success toast
       toast.success("Signed in successfully")
 
-      // Use window.location.href to force a full page reload
-      window.location.href = returnUrl
+      console.log(`Redirecting to ${returnUrl} after successful login`)
+
+      setTimeout(() => {
+        if (
+          typeof window !== "undefined" &&
+          window.__authGlobals?.isNavigating
+        ) {
+          console.log(
+            "Navigation already in progress, skipping duplicate redirect"
+          )
+          return
+        }
+
+        if (returnUrl === "/" || returnUrl.startsWith("/auth")) {
+          window.location.href = "/"
+        } else {
+          window.location.href = returnUrl
+        }
+      }, 300)
     } catch (error: any) {
-      // Extract error message
       const errorMessage =
         error.response?.data?.message ||
         error.message ||

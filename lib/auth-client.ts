@@ -32,22 +32,85 @@ const API_URL = isProduction
 const AUTH_COOKIE_NAME = "auth_token"
 const REFRESH_COOKIE_NAME = "refresh_token"
 
+// Track session refresh state globally
+let lastSessionRefreshTimestamp = 0;
+let pendingSessionRefresh: Promise<Session | null> | null = null;
+
+// Track token validation locally
+interface TokenValidationCache {
+  token: string;
+  result: {
+    isValid: boolean;
+    userId?: string;
+    email?: string;
+    role?: UserRole;
+  };
+  timestamp: number;
+}
+
+const localValidationCache: TokenValidationCache[] = [];
+const MAX_CACHE_SIZE = 5;
+
+// Helper to cached validation for a token - reduces expensive decode operations
+function getCachedValidation(token: string) {
+  // Clean old cache entries (older than 5 minutes)
+  const now = Date.now();
+  const validEntries = localValidationCache.filter(
+    entry => now - entry.timestamp < 5 * 60 * 1000
+  );
+  
+  // If we cleaned any entries, update the cache
+  if (validEntries.length < localValidationCache.length) {
+    localValidationCache.length = 0;
+    localValidationCache.push(...validEntries);
+  }
+  
+  // Find cached result for this token
+  const cacheEntry = localValidationCache.find(entry => entry.token === token);
+  
+  if (cacheEntry) {
+    return cacheEntry.result;
+  }
+  
+  return null;
+}
+
+// Store validation result in cache
+function cacheValidationResult(token: string, result: { 
+  isValid: boolean; 
+  userId?: string; 
+  email?: string; 
+  role?: UserRole; 
+}) {
+  // Remove oldest entry if at capacity
+  if (localValidationCache.length >= MAX_CACHE_SIZE) {
+    localValidationCache.shift();
+  }
+  
+  // Add new entry
+  localValidationCache.push({
+    token,
+    result,
+    timestamp: Date.now()
+  });
+}
+
 // Helper functions to get cookies on the client side
 function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null
 
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)
-
+  
   if (parts.length === 2) {
     const cookieValue = parts.pop()?.split(";").shift() || null
     return cookieValue
   }
-
+  
   return null
 }
 
-// Helper function to validate JWT token structure
+// Helper function to validate JWT token structure - with local caching
 export async function validateJwtToken(token: string): Promise<{
   isValid: boolean
   userId?: string
@@ -56,106 +119,86 @@ export async function validateJwtToken(token: string): Promise<{
   error?: string
 }> {
   try {
+    // Check cache first
+    const cachedResult = getCachedValidation(token)
+    if (cachedResult) {
+      return cachedResult
+    }
+
     // Basic validation
     if (!token || token.trim() === "") {
-      return { isValid: false, error: "Empty token provided" }
+      const result = { isValid: false, error: "Empty token provided" }
+      cacheValidationResult(token, result)
+      return result
     }
 
     // Check token format
     if (!token.includes(".")) {
-      return { isValid: false, error: "Invalid token format (not a JWT)" }
+      const result = {
+        isValid: false,
+        error: "Invalid token format (not a JWT)",
+      }
+      cacheValidationResult(token, result)
+      return result
     }
 
-    // Decode the token without verification for now
+    // Decode the token without verification
     try {
       const decoded = jose.decodeJwt(token)
-
-      // Log token contents for debugging
-      console.log("Validating token:", {
-        sub: decoded.sub,
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-        exp: decoded.exp
-          ? new Date(decoded.exp * 1000).toLocaleString()
-          : "none",
-      })
 
       // Check for expiration
       const currentTime = Math.floor(Date.now() / 1000)
       if (decoded.exp && decoded.exp < currentTime) {
-        return { isValid: false, error: "Token expired" }
+        const result = { isValid: false, error: "Token expired" }
+        cacheValidationResult(token, result)
+        return result
       }
 
       // Extract user information - be more lenient with required fields
       const userId = decoded.sub || (decoded.userId as string)
       if (!userId) {
-        return { isValid: false, error: "Token missing user ID" }
+        const result = { isValid: false, error: "Token missing user ID" }
+        cacheValidationResult(token, result)
+        return result
       }
 
       const email = (decoded.email as string) || "unknown"
       const roleValue = decoded.role as string
 
       // Validate role if present
-      let role: UserRole | undefined
+      let role: UserRole | undefined = undefined
+
+      // Simplified role handling for better performance
       if (roleValue) {
-        // Handle various formats of ADMIN role
-        if (
-          roleValue.toUpperCase() === UserRole.ADMIN ||
-          roleValue === "0" || // Some systems use numeric role codes
-          roleValue === "admin" ||
-          roleValue === "Admin"
-        ) {
+        if (roleValue.toUpperCase() === UserRole.ADMIN) {
           role = UserRole.ADMIN
-          console.log("ADMIN role assigned from token value:", roleValue)
-        }
-        // Handle NODE_OFFICER role
-        else if (
-          roleValue.toUpperCase() === UserRole.NODE_OFFICER ||
-          roleValue === "1" || // Some systems use numeric role codes
-          roleValue === "node_officer" ||
-          roleValue === "NodeOfficer"
-        ) {
+        } else if (roleValue.toUpperCase() === UserRole.NODE_OFFICER) {
           role = UserRole.NODE_OFFICER
-          console.log("NODE_OFFICER role assigned from token value:", roleValue)
-        }
-        // Handle USER role
-        else if (
-          roleValue.toUpperCase() === UserRole.USER ||
-          roleValue === "2" || // Some systems use numeric role codes
-          roleValue === "user" ||
-          roleValue === "User"
-        ) {
-          role = UserRole.USER
-          console.log("USER role assigned from token value:", roleValue)
-        }
-        // Handle other cases
-        else {
-          console.log(
-            `Unrecognized role in token: ${roleValue}, defaulting to USER`
-          )
+        } else {
           role = UserRole.USER
         }
       } else {
-        console.log("No role found in token, defaulting to USER")
         role = UserRole.USER
       }
 
-      return {
+      const result = {
         isValid: true,
         userId,
         email,
         role,
       }
+
+      cacheValidationResult(token, result)
+      return result
     } catch (jwtError: any) {
-      console.error("JWT decode error:", jwtError)
-      return {
+      const result = {
         isValid: false,
         error: "Invalid JWT format: " + jwtError.message,
       }
+      cacheValidationResult(token, result)
+      return result
     }
   } catch (error) {
-    console.error("Token validation error:", error)
     return { isValid: false, error: String(error) }
   }
 }
@@ -385,177 +428,215 @@ export const authClient = {
   },
 
   /**
-   * Get the current session
+   * Get current session - with debouncing to prevent excessive API calls
    */
   async getSession(): Promise<Session | null> {
     console.log("getSession called")
 
-    // Track request time
-    const startTime = Date.now()
+    // If there's already a refresh in progress, return that promise instead of making a new one
+    if (pendingSessionRefresh) {
+      console.log("Reusing pending session refresh request")
+      return pendingSessionRefresh
+    }
 
-    try {
-      // First try a quick client-side token validation to avoid network request if possible
+    // Check if we've refreshed recently (within 5 seconds)
+    const now = Date.now()
+    if (now - lastSessionRefreshTimestamp < 5000) {
+      console.log("Session check throttled - last check was too recent")
+      // If we had a valid token within the last 5 seconds, assume it's still valid
       const token = getCookie(AUTH_COOKIE_NAME)
+      if (token) {
+        try {
+          // Quick validation without network request
+          const decoded = jose.decodeJwt(token)
+          const currentTime = Math.floor(Date.now() / 1000)
 
-      console.log("Client-side token check:", {
-        hasToken: !!token,
-        tokenLength: token?.length,
-        documentCookie:
-          typeof document !== "undefined" ? document.cookie : "N/A",
-        authCookieInDoc:
-          typeof document !== "undefined"
-            ? document.cookie.includes(AUTH_COOKIE_NAME)
-            : false,
-        callerStack: new Error().stack,
-      })
-
-      if (!token) {
-        console.log("No token found, returning null session")
-        return null
-      }
-
-      try {
-        // Quick validation without network request
-        const decoded = jose.decodeJwt(token)
-        const currentTime = Math.floor(Date.now() / 1000)
-
-        // Check if token is expired
-        if (decoded.exp && decoded.exp < currentTime) {
-          console.log("Token expired, returning null session")
-          return null
-        }
-
-        // If we have a valid token with user info, create a session immediately
-        if (decoded.sub || decoded.userId) {
-          console.log("Creating session from client-side token")
-          const userId = decoded.sub || (decoded.userId as string)
-          const email = (decoded.email as string) || "unknown"
-          let role = decoded.role as UserRole
-
-          if (!isValidRole(role)) {
-            role = UserRole.USER
-          }
-
-          // Create session from client-side token info
-          const clientSession = {
-            user: {
-              id: userId,
-              email: email,
-              name: (decoded.name as string) || "",
-              role: role,
-            },
-            expires: decoded.exp
-              ? new Date(decoded.exp * 1000).toISOString()
-              : new Date(Date.now() + 3600 * 1000).toISOString(),
-            accessToken: token,
-            refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
-          }
-
-          // Return the session without doing a background verification
-          // This avoids unnecessary API calls
-          return clientSession
-        }
-      } catch (e) {
-        console.warn(
-          "Client-side token validation failed, continuing with server check:",
-          e
-        )
-      }
-
-      // Server-side verification (if client-side failed or token doesn't have enough info)
-      console.log(
-        "Attempting to fetch session from server-side auth check endpoint"
-      )
-
-      // Create an AbortController with a longer timeout (4 seconds)
-      // This gives the server more time to respond but still prevents hanging indefinitely
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => {
-        console.warn("Server auth check timed out after 4 seconds, aborting")
-        controller.abort("timeout")
-      }, 4000)
-
-      try {
-        const response = await fetch("/api/auth/check", {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-          signal: controller.signal,
-        })
-
-        clearTimeout(timeoutId)
-
-        if (response.ok) {
-          const data = await response.json()
-          console.log("Auth check response:", data)
-
-          if (data.authenticated && data.user) {
-            console.log("Server confirmed authentication, creating session")
-            return {
-              user: {
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.name || "",
-                role: data.user.role,
-              },
-              expires: new Date(Date.now() + 3600 * 1000).toISOString(),
-              accessToken: getCookie(AUTH_COOKIE_NAME) || "",
-              refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
-            }
+          // Check if token is expired
+          if (decoded.exp && decoded.exp < currentTime) {
+            console.log("Cached token expired, continuing with session check")
           } else {
-            console.log("Server reports not authenticated:", data.message)
-            return null
-          }
-        } else {
-          console.error(
-            "Auth check endpoint returned error:",
-            response.status,
-            response.statusText
-          )
-          throw new Error(
-            `Server returned ${response.status}: ${response.statusText}`
-          )
-        }
-      } catch (serverError) {
-        // If server check fails, fall back to token validation
-        console.warn(
-          "Server check failed, falling back to token validation:",
-          serverError
-        )
+            // Create a lightweight session from cached token
+            console.log("Using cached token for quick session response")
+            const userId = decoded.sub || (decoded.userId as string)
+            const email = (decoded.email as string) || "unknown"
+            let role = decoded.role as UserRole
 
-        // Try token validation as a fallback if server check fails
-        if (token) {
-          console.log("Validating token as fallback...")
-          const validationResult = await validateJwtToken(token)
+            if (!isValidRole(role)) {
+              role = UserRole.USER
+            }
 
-          if (validationResult.isValid) {
-            console.log(
-              "Token validation successful, creating session from token"
-            )
             return {
               user: {
-                id: validationResult.userId || "",
-                email: validationResult.email || "",
-                name: "",
-                role: validationResult.role || UserRole.USER,
+                id: userId,
+                email: email,
+                name: (decoded.name as string) || "",
+                role: role,
               },
-              expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+              expires: decoded.exp
+                ? new Date(decoded.exp * 1000).toISOString()
+                : new Date(Date.now() + 3600 * 1000).toISOString(),
               accessToken: token,
               refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
             }
-          } else {
-            console.warn("Token validation failed:", validationResult.error)
           }
+        } catch (e) {
+          console.warn("Error in token validation", e)
+          // Continue with actual session check
         }
-
-        return null
       }
-    } catch (error) {
-      console.error("Error getting session:", error)
-      return null
-    } finally {
+    }
+
+    // Start a new session refresh
+    try {
+      // Track request time
+      const startTime = Date.now()
+
+      // Create and store the pending refresh promise
+      pendingSessionRefresh = (async () => {
+        try {
+          // First try a quick client-side token validation
+          const token = getCookie(AUTH_COOKIE_NAME)
+
+          console.log("Client-side token check:", {
+            hasToken: !!token,
+            tokenLength: token?.length,
+            documentCookie:
+              typeof document !== "undefined" ? document.cookie : "N/A",
+            authCookieInDoc:
+              typeof document !== "undefined"
+                ? document.cookie.includes(AUTH_COOKIE_NAME)
+                : false,
+          })
+
+          if (!token) {
+            console.log("No token found, returning null session")
+            return null
+          }
+
+          // Quick validation without network request
+          const decoded = jose.decodeJwt(token)
+          const currentTime = Math.floor(Date.now() / 1000)
+
+          // Check if token is expired
+          if (decoded.exp && decoded.exp < currentTime) {
+            console.log("Token expired, returning null session")
+            return null
+          }
+
+          // If we have a valid token with user info, try to verify with server
+          if (decoded.sub || decoded.userId) {
+            // If online and needed, verify with server
+            if (navigator.onLine && Math.random() < 0.2) {
+              // 20% chance to verify
+              try {
+                console.log(
+                  "Verifying token with server through auth/check endpoint"
+                )
+
+                // Create an AbortController with a timeout
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+
+                const response = await fetch("/api/auth/check", {
+                  method: "GET",
+                  credentials: "include",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                  signal: controller.signal,
+                })
+
+                clearTimeout(timeoutId)
+
+                if (response.ok) {
+                  const data = await response.json()
+
+                  if (data.authenticated && data.user) {
+                    console.log("Server confirmed authentication")
+                    lastSessionRefreshTimestamp = Date.now()
+
+                    return {
+                      user: {
+                        id: data.user.id,
+                        email: data.user.email,
+                        name: data.user.name || "",
+                        role: data.user.role,
+                      },
+                      expires: decoded.exp
+                        ? new Date(decoded.exp * 1000).toISOString()
+                        : new Date(Date.now() + 3600 * 1000).toISOString(),
+                      accessToken: token,
+                      refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+                    }
+                  } else {
+                    console.log("Server reports not authenticated")
+                    return null
+                  }
+                }
+              } catch (serverError) {
+                console.warn(
+                  "Server check failed, falling back to token validation",
+                  serverError
+                )
+                // Continue with client-side validation
+              }
+            }
+
+            // Create session from client-side token info (fallback or if server check skipped)
+            console.log("Creating session from client-side token")
+            const userId = decoded.sub || (decoded.userId as string)
+            const email = (decoded.email as string) || "unknown"
+            let role = decoded.role as UserRole
+
+            if (!isValidRole(role)) {
+              role = UserRole.USER
+            }
+
+            // Create session from client-side token info
+            const clientSession: Session = {
+              user: {
+                id: userId,
+                email: email,
+                name: (decoded.name as string) || "",
+                role: role,
+              },
+              expires: decoded.exp
+                ? new Date(decoded.exp * 1000).toISOString()
+                : new Date(Date.now() + 3600 * 1000).toISOString(),
+              accessToken: token,
+              refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+            }
+
+            // After successful check, update the timestamp
+            lastSessionRefreshTimestamp = Date.now()
+
+            return clientSession
+          }
+
+          // If we couldn't create a session from the token, return null
+          return null
+        } catch (error) {
+          console.error("Error in session check:", error)
+          return null
+        }
+      })()
+
+      // Wait for the refresh to complete
+      const session = await pendingSessionRefresh
+
+      // Clear the pending refresh
+      pendingSessionRefresh = null
+
+      // Log timing
       const endTime = Date.now()
       console.log(`getSession completed in ${endTime - startTime}ms`)
+
+      return session
+    } catch (error) {
+      // Reset the pending refresh if it fails
+      pendingSessionRefresh = null
+      console.error("Error in getSession outer block:", error)
+      return null
     }
   },
 
