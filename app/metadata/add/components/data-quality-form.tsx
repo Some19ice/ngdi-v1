@@ -725,7 +725,11 @@ export default function DataQualityForm({
           <Button type="button" variant="outline" onClick={handleBack}>
             Back
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="button"
+            onClick={handleContinue}
+            disabled={isSubmitting}
+          >
             Continue
           </Button>
         </div>
