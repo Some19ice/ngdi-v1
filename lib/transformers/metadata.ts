@@ -71,6 +71,12 @@ export function transformFormToApiModel(
     projection: technicalDetails.spatialInformation.projection,
     scale: technicalDetails.spatialInformation.scale,
     resolution: technicalDetails.spatialInformation.resolution,
+    // Spatial domain data is now stored in the database model
+    minLatitude: technicalDetails.spatialDomain.minLatitude,
+    minLongitude: technicalDetails.spatialDomain.minLongitude,
+    maxLatitude: technicalDetails.spatialDomain.maxLatitude,
+    maxLongitude: technicalDetails.spatialDomain.maxLongitude,
+    coordinateUnit: technicalDetails.spatialDomain.coordinateUnit,
 
     // Quality information from dataQuality
     accuracyLevel:
@@ -147,13 +153,6 @@ export function transformApiToFormModel(
       abstract: apiData.abstract,
       purpose: apiData.purpose,
       thumbnail: apiData.thumbnailUrl,
-    },
-    spatialDomain: {
-      coordinateUnit: apiData.coordinateSystem as "DD" | "DMS",
-      minLatitude: 0, // Default values - these would need to be populated from elsewhere
-      minLongitude: 0,
-      maxLatitude: 0,
-      maxLongitude: 0,
     },
     location: {
       country: "Nigeria", // Default values
@@ -241,6 +240,13 @@ export function transformApiToFormModel(
       fileSize: apiData.fileSize,
       numFeatures: apiData.numFeatures,
       softwareReqs: apiData.softwareReqs || "",
+    },
+    spatialDomain: {
+      coordinateUnit: apiData.coordinateUnit as "DD" | "DMS",
+      minLatitude: apiData.minLatitude || 0,
+      minLongitude: apiData.minLongitude || 0,
+      maxLatitude: apiData.maxLatitude || 0,
+      maxLongitude: apiData.maxLongitude || 0,
     },
   }
 

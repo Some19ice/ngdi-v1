@@ -62,25 +62,6 @@ const form1Schema = z.object({
     thumbnail: z.string().min(1, "Thumbnail URL is required"),
   }),
 
-  // Spatial Domain
-  spatialDomain: z.object({
-    coordinateUnit: z.enum(["DD", "DMS"], {
-      required_error: "Coordinate unit is required",
-    }),
-    minLatitude: z.coerce.number({
-      required_error: "Minimum latitude is required",
-    }),
-    minLongitude: z.coerce.number({
-      required_error: "Minimum longitude is required",
-    }),
-    maxLatitude: z.coerce.number({
-      required_error: "Maximum latitude is required",
-    }),
-    maxLongitude: z.coerce.number({
-      required_error: "Maximum longitude is required",
-    }),
-  }),
-
   // Location
   location: z.object({
     country: z.string().min(1, "Country is required"),
@@ -222,6 +203,24 @@ const technicalDetailsSchema = z.object({
     numFeatures: z.coerce.number().optional(),
     softwareReqs: z.string().optional(),
   }),
+  // Spatial Domain - moved from generalInfo
+  spatialDomain: z.object({
+    coordinateUnit: z.enum(["DD", "DMS"], {
+      required_error: "Coordinate unit is required",
+    }),
+    minLatitude: z.coerce.number({
+      required_error: "Minimum latitude is required",
+    }),
+    minLongitude: z.coerce.number({
+      required_error: "Minimum longitude is required",
+    }),
+    maxLatitude: z.coerce.number({
+      required_error: "Maximum latitude is required",
+    }),
+    maxLongitude: z.coerce.number({
+      required_error: "Maximum longitude is required",
+    }),
+  }),
 })
 
 const accessInfoSchema = z.object({
@@ -302,11 +301,13 @@ export async function createMetadata(data: any) {
 
           // Spatial Domain
           coordinateUnit:
-            validatedData.generalInfo.spatialDomain.coordinateUnit,
-          minLatitude: validatedData.generalInfo.spatialDomain.minLatitude,
-          minLongitude: validatedData.generalInfo.spatialDomain.minLongitude,
-          maxLatitude: validatedData.generalInfo.spatialDomain.maxLatitude,
-          maxLongitude: validatedData.generalInfo.spatialDomain.maxLongitude,
+            validatedData.technicalDetails.spatialDomain.coordinateUnit,
+          minLatitude: validatedData.technicalDetails.spatialDomain.minLatitude,
+          minLongitude:
+            validatedData.technicalDetails.spatialDomain.minLongitude,
+          maxLatitude: validatedData.technicalDetails.spatialDomain.maxLatitude,
+          maxLongitude:
+            validatedData.technicalDetails.spatialDomain.maxLongitude,
 
           // Location
           country: validatedData.generalInfo.location.country,
@@ -741,11 +742,13 @@ export async function updateMetadata(id: string, data: any) {
 
           // Spatial Domain
           coordinateUnit:
-            validatedData.generalInfo.spatialDomain.coordinateUnit,
-          minLatitude: validatedData.generalInfo.spatialDomain.minLatitude,
-          minLongitude: validatedData.generalInfo.spatialDomain.minLongitude,
-          maxLatitude: validatedData.generalInfo.spatialDomain.maxLatitude,
-          maxLongitude: validatedData.generalInfo.spatialDomain.maxLongitude,
+            validatedData.technicalDetails.spatialDomain.coordinateUnit,
+          minLatitude: validatedData.technicalDetails.spatialDomain.minLatitude,
+          minLongitude:
+            validatedData.technicalDetails.spatialDomain.minLongitude,
+          maxLatitude: validatedData.technicalDetails.spatialDomain.maxLatitude,
+          maxLongitude:
+            validatedData.technicalDetails.spatialDomain.maxLongitude,
 
           // Location
           country: validatedData.generalInfo.location.country,

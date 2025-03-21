@@ -149,6 +149,7 @@ export interface TechnicalDetailsData {
     numFeatures?: number
     softwareReqs?: string
   }
+  spatialDomain: SpatialDomain
 }
 
 export interface AccessInfoData {
@@ -176,7 +177,6 @@ export interface Form1Data {
   dataInformation: DataInformation
   fundamentalDatasets: FundamentalDatasets
   description: Description
-  spatialDomain: SpatialDomain
   location: Location
   dataStatus: DataStatus
   resourceConstraint: ResourceConstraint

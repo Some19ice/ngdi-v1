@@ -42,6 +42,7 @@ export default function ReviewForm({
     technicalDetails.spatialInformation || {}
   technicalDetails.technicalSpecifications =
     technicalDetails.technicalSpecifications || {}
+  technicalDetails.spatialDomain = technicalDetails.spatialDomain || {}
 
   dataQuality.generalSection = dataQuality.generalSection || {}
   dataQuality.positionalAccuracy = dataQuality.positionalAccuracy || {
@@ -144,6 +145,18 @@ export default function ReviewForm({
               <h4 className="text-sm font-medium">Resolution</h4>
               <p className="text-sm text-muted-foreground">
                 {technicalDetails.spatialInformation.resolution || "N/A"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Coordinate Unit</h4>
+              <p className="text-sm text-muted-foreground">
+                {technicalDetails.spatialDomain.coordinateUnit || "N/A"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Bounding Box</h4>
+              <p className="text-sm text-muted-foreground">
+                {`${technicalDetails.spatialDomain.minLatitude}, ${technicalDetails.spatialDomain.minLongitude} to ${technicalDetails.spatialDomain.maxLatitude}, ${technicalDetails.spatialDomain.maxLongitude}`}
               </p>
             </div>
             <div>

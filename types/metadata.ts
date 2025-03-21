@@ -23,6 +23,13 @@ export interface MetadataRequest {
   scale: number
   resolution?: string
 
+  // Spatial domain information
+  coordinateUnit: "DD" | "DMS"
+  minLatitude: number
+  minLongitude: number
+  maxLatitude: number
+  maxLongitude: number
+
   // Quality information
   accuracyLevel: string
   completeness?: number
