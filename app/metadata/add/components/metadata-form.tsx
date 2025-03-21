@@ -1,11 +1,19 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, Save, Check, AlertCircle, Info } from "lucide-react"
+import {
+  Loader2,
+  Save,
+  Check,
+  AlertCircle,
+  Info,
+  AlertTriangle,
+} from "lucide-react"
 import { debounce } from "lodash"
+import LZString from "lz-string"
 import {
   Card,
   CardContent,
@@ -45,6 +53,27 @@ import { useForm } from "react-hook-form"
 import { Steps } from "./steps"
 import { createMetadata, updateMetadata } from "@/app/actions/metadata"
 import { DraftManager } from "./draft-manager"
+import { isEqual } from "lodash"
+
+// Auto-save configuration
+const AUTO_SAVE_INTERVAL = 60000 // 1 minute periodic save
+const SNAPSHOT_INTERVAL = 300000 // 5 minutes snapshot
+const MAX_SNAPSHOTS = 5 // Maximum number of snapshots to keep
+const MAX_STORAGE_SIZE = 4 * 1024 * 1024 // 4MB max storage size
+
+// Define types for enhanced storage functionality
+interface FormSnapshot {
+  timestamp: string
+  version: number
+  data: Partial<NGDIMetadataFormData>
+}
+
+interface FormStorageData {
+  currentVersion: number
+  lastModified: string
+  data: Partial<NGDIMetadataFormData>
+  snapshots: FormSnapshot[]
+}
 
 // Lazy load the form components
 const GeneralInfoForm = dynamic(() => import("./general-info-form"), {
@@ -159,15 +188,22 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<
-    "saved" | "saving" | "error" | null
+    "saved" | "saving" | "error" | "conflict" | null
   >(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [showConflictDialog, setShowConflictDialog] = useState(false)
+  const [conflictData, setConflictData] =
+    useState<Partial<NGDIMetadataFormData> | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
+  const lastSavedData = useRef<Partial<NGDIMetadataFormData>>({})
+  const currentVersion = useRef(0)
   const isEditing = !!metadataId
 
   // Cache key for this form
   const cacheKey = isEditing
     ? `ngdi-metadata-form-${metadataId}`
     : "ngdi-metadata-form-draft"
+  const snapshotKey = `${cacheKey}-snapshots`
 
   const form = useForm<Partial<NGDIMetadataFormData>>({
     defaultValues: initialData || {},
@@ -177,35 +213,341 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   const { reset, setValue, getValues, watch } = form
   const formValues = watch()
 
-  // Load cached form data on initial render
+  // Track online/offline status
   useEffect(() => {
-    const loadCachedData = () => {
-      try {
-        // Skip if we have initialData provided
-        if (initialData) return
-
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          const parsedData = JSON.parse(cached)
-          reset(parsedData)
-          toast.success("Draft form loaded", {
-            description: "Your previously saved draft has been loaded",
-          })
-        }
-      } catch (err) {
-        console.error("Failed to load cached form data:", err)
-      }
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => {
+      setIsOnline(false)
+      toast.warning("You are offline. Changes will be saved locally.")
     }
 
-    loadCachedData()
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    // Initial check
+    setIsOnline(navigator.onLine)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
+  // Calculate storage size
+  const getStorageSize = (): number => {
+    let totalSize = 0
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key) {
+        const value = localStorage.getItem(key)
+        totalSize += (key.length + (value?.length || 0)) * 2 // UTF-16 characters are 2 bytes each
+      }
+    }
+    return totalSize
+  }
+
+  // Check for storage limit
+  const isStorageFull = (): boolean => {
+    return getStorageSize() > MAX_STORAGE_SIZE
+  }
+
+  // Compress data for storage
+  const compressData = (data: any): string => {
+    return LZString.compressToUTF16(JSON.stringify(data))
+  }
+
+  // Decompress stored data
+  const decompressData = (compressed: string): any => {
+    try {
+      const decompressed = LZString.decompressFromUTF16(compressed)
+      return decompressed ? JSON.parse(decompressed) : null
+    } catch (e) {
+      console.error("Failed to decompress data:", e)
+      return null
+    }
+  }
+
+  // Create a deep diff between old and new data
+  const createDiff = (
+    oldData: Partial<NGDIMetadataFormData>,
+    newData: Partial<NGDIMetadataFormData>
+  ) => {
+    const diff: Record<string, any> = {}
+
+    // Find changed sections
+    if (
+      newData.generalInfo &&
+      !isEqual(oldData.generalInfo, newData.generalInfo)
+    ) {
+      diff.generalInfo = newData.generalInfo
+    }
+    if (
+      newData.technicalDetails &&
+      !isEqual(oldData.technicalDetails, newData.technicalDetails)
+    ) {
+      diff.technicalDetails = newData.technicalDetails
+    }
+    if (
+      newData.dataQuality &&
+      !isEqual(oldData.dataQuality, newData.dataQuality)
+    ) {
+      diff.dataQuality = newData.dataQuality
+    }
+    if (
+      newData.accessInfo &&
+      !isEqual(oldData.accessInfo, newData.accessInfo)
+    ) {
+      diff.accessInfo = newData.accessInfo
+    }
+
+    return diff
+  }
+
+  // Save a snapshot of current form state
+  const saveSnapshot = useCallback(() => {
+    try {
+      // Get existing snapshots if available
+      const existingData = localStorage.getItem(snapshotKey)
+      let snapshots: FormSnapshot[] = []
+
+      if (existingData) {
+        const parsed = decompressData(existingData)
+        if (parsed && Array.isArray(parsed)) {
+          snapshots = parsed
+        }
+      }
+
+      // Create new snapshot
+      const newSnapshot: FormSnapshot = {
+        timestamp: new Date().toISOString(),
+        version: currentVersion.current,
+        data: { ...formValues },
+      }
+
+      // Add new snapshot and limit the number of snapshots
+      snapshots.unshift(newSnapshot)
+      if (snapshots.length > MAX_SNAPSHOTS) {
+        snapshots = snapshots.slice(0, MAX_SNAPSHOTS)
+      }
+
+      // Save snapshots
+      localStorage.setItem(snapshotKey, compressData(snapshots))
+    } catch (err) {
+      console.error("Failed to save snapshot:", err)
+    }
+  }, [formValues, snapshotKey])
+
+  // Load form data with conflict detection
+  const loadCachedData = useCallback(() => {
+    try {
+      // Skip if we have initialData provided
+      if (initialData) return
+
+      const cached = localStorage.getItem(cacheKey)
+      if (!cached) return
+
+      try {
+        let storageData: FormStorageData
+        const isCompressed = cached.startsWith("ɵ") // LZString compressed data typically starts with this character
+
+        if (isCompressed) {
+          storageData = decompressData(cached)
+        } else {
+          // Handle legacy data format
+          const parsedData = JSON.parse(cached)
+          storageData = {
+            currentVersion: 1,
+            lastModified: new Date().toISOString(),
+            data: parsedData,
+            snapshots: [],
+          }
+        }
+
+        if (!storageData) return
+
+        // Set current version reference
+        currentVersion.current = storageData.currentVersion
+        lastSavedData.current = storageData.data
+
+        reset(storageData.data)
+        toast.success("Draft form loaded", {
+          description: "Your previously saved draft has been loaded",
+        })
+      } catch (e) {
+        console.error("Error parsing cached data:", e)
+
+        // Try to recover from snapshots
+        recoverFromSnapshots()
+      }
+    } catch (err) {
+      console.error("Failed to load cached form data:", err)
+    }
   }, [cacheKey, initialData, reset])
+
+  // Recovery from snapshots
+  const recoverFromSnapshots = useCallback(() => {
+    try {
+      const snapshotsData = localStorage.getItem(snapshotKey)
+      if (!snapshotsData) return false
+
+      const snapshots = decompressData(snapshotsData)
+      if (!snapshots || !snapshots.length) return false
+
+      // Use the most recent snapshot
+      const latestSnapshot = snapshots[0]
+      reset(latestSnapshot.data)
+      currentVersion.current = latestSnapshot.version
+      lastSavedData.current = latestSnapshot.data
+
+      toast.success("Recovered from snapshot", {
+        description: `Recovered data from ${new Date(latestSnapshot.timestamp).toLocaleString()}`,
+      })
+      return true
+    } catch (e) {
+      console.error("Failed to recover from snapshots:", e)
+      return false
+    }
+  }, [snapshotKey, reset])
+
+  // Check for conflicts with stored data
+  const checkForConflicts = useCallback(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (!cached) return false
+
+      let storageData: FormStorageData
+
+      try {
+        const isCompressed = cached.startsWith("ɵ")
+        if (isCompressed) {
+          storageData = decompressData(cached)
+        } else {
+          // Handle legacy data format
+          const parsedData = JSON.parse(cached)
+          storageData = {
+            currentVersion: 1,
+            lastModified: new Date().toISOString(),
+            data: parsedData,
+            snapshots: [],
+          }
+        }
+
+        // Check if version is different and there's a conflict
+        if (
+          storageData &&
+          storageData.currentVersion > currentVersion.current
+        ) {
+          setConflictData(storageData.data)
+          setShowConflictDialog(true)
+          setSaveStatus("conflict")
+          return true
+        }
+      } catch (e) {
+        console.error("Error checking for conflicts:", e)
+      }
+
+      return false
+    } catch (e) {
+      console.error("Failed to check for conflicts:", e)
+      return false
+    }
+  }, [cacheKey])
+
+  // Resolve conflict by keeping current version
+  const resolveConflictKeepCurrent = () => {
+    setShowConflictDialog(false)
+    // Force save with incremented version number
+    currentVersion.current += 2 // Jump ahead to ensure it's newer
+    saveFormData(formValues, true)
+    setSaveStatus("saved")
+    setTimeout(() => setSaveStatus(null), 2000)
+  }
+
+  // Resolve conflict by using the newer version
+  const resolveConflictUseNewer = () => {
+    if (conflictData) {
+      reset(conflictData)
+      lastSavedData.current = conflictData
+      setShowConflictDialog(false)
+      setSaveStatus("saved")
+      setTimeout(() => setSaveStatus(null), 2000)
+      toast.success("Updated to newer version")
+    }
+  }
+
+  // Save form data with optimization
+  const saveFormData = (
+    data: Partial<NGDIMetadataFormData>,
+    forceFullSave = false
+  ) => {
+    try {
+      // Check if storage is near limit
+      if (isStorageFull()) {
+        // Clean up old snapshots
+        localStorage.removeItem(snapshotKey)
+        toast.warning(
+          "Storage space is limited. Older snapshots have been removed."
+        )
+      }
+
+      // Prepare storage data
+      const now = new Date().toISOString()
+      let saveData: FormStorageData
+
+      if (forceFullSave) {
+        // Full save
+        saveData = {
+          currentVersion: currentVersion.current,
+          lastModified: now,
+          data: data,
+          snapshots: [],
+        }
+        lastSavedData.current = { ...data }
+      } else {
+        // Create differential update if possible
+        const diff = createDiff(lastSavedData.current, data)
+
+        // If diff is empty or has no sections, skip save
+        if (Object.keys(diff).length === 0) {
+          setSaveStatus(null)
+          setIsSaving(false)
+          return
+        }
+
+        // Update data with diff
+        saveData = {
+          currentVersion: currentVersion.current + 1,
+          lastModified: now,
+          data: { ...lastSavedData.current, ...diff },
+          snapshots: [],
+        }
+
+        currentVersion.current += 1
+        lastSavedData.current = { ...saveData.data }
+      }
+
+      // Compress and save
+      localStorage.setItem(cacheKey, compressData(saveData))
+    } catch (err) {
+      console.error("Failed to save form data:", err)
+      setSaveStatus("error")
+      throw err
+    }
+  }
 
   // Auto-save form data on change
   const debouncedSave = debounce((data: any) => {
+    setSaveStatus("saving")
+    setIsSaving(true)
+
     try {
-      setSaveStatus("saving")
-      setIsSaving(true)
-      localStorage.setItem(cacheKey, JSON.stringify(data))
+      // Check for conflicts before saving
+      if (checkForConflicts()) {
+        // Conflict detected and dialog shown
+        return
+      }
+
+      saveFormData(data)
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus(null), 2000)
     } catch (err) {
@@ -216,6 +558,34 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     }
   }, 1000)
 
+  // Handle periodic auto-save
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      if (Object.keys(formValues).length > 0 && !isSaving) {
+        debouncedSave(formValues)
+      }
+    }, AUTO_SAVE_INTERVAL)
+
+    return () => clearInterval(autoSaveInterval)
+  }, [formValues, debouncedSave, isSaving])
+
+  // Handle snapshot creation
+  useEffect(() => {
+    const snapshotIntervalId = setInterval(() => {
+      if (Object.keys(formValues).length > 0) {
+        saveSnapshot()
+      }
+    }, SNAPSHOT_INTERVAL)
+
+    return () => clearInterval(snapshotIntervalId)
+  }, [formValues, saveSnapshot])
+
+  // Load cached data on initial render
+  useEffect(() => {
+    loadCachedData()
+  }, [loadCachedData])
+
+  // Auto-save form data on change
   useEffect(() => {
     if (Object.keys(formValues).length > 0) {
       debouncedSave(formValues)
@@ -229,6 +599,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   const clearCachedData = () => {
     try {
       localStorage.removeItem(cacheKey)
+      localStorage.removeItem(snapshotKey)
     } catch (err) {
       console.error("Failed to clear cached form data:", err)
     }
@@ -237,6 +608,8 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   // Handle loading draft from the draft manager
   const handleLoadDraft = (data: Partial<NGDIMetadataFormData>) => {
     reset(data)
+    lastSavedData.current = data
+    currentVersion.current += 1
     toast.success("Draft loaded successfully")
   }
 
@@ -248,7 +621,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     setSaveStatus("saving")
 
     try {
-      localStorage.setItem(cacheKey, JSON.stringify(formValues))
+      saveFormData(formValues, true)
       setSaveStatus("saved")
       toast.success("Draft saved successfully")
     } catch (err) {
@@ -354,6 +727,13 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
         </div>
 
         <div className="flex items-center space-x-4">
+          {!isOnline && (
+            <div className="flex items-center text-sm text-amber-500">
+              <AlertTriangle className="mr-1 h-4 w-4" />
+              Offline
+            </div>
+          )}
+
           {saveStatus === "saved" && (
             <div className="flex items-center text-sm text-muted-foreground">
               <Check className="mr-1 h-4 w-4 text-green-500" />
@@ -372,6 +752,13 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
             <div className="flex items-center text-sm text-red-500">
               <AlertCircle className="mr-1 h-4 w-4" />
               Error Saving
+            </div>
+          )}
+
+          {saveStatus === "conflict" && (
+            <div className="flex items-center text-sm text-amber-500">
+              <AlertTriangle className="mr-1 h-4 w-4" />
+              Conflict Detected
             </div>
           )}
 
@@ -397,6 +784,30 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
           />
         </div>
       </div>
+
+      {/* Conflict Resolution Dialog */}
+      <AlertDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Version Conflict Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              This form has been modified in another tab or window. Would you
+              like to keep your current changes or use the newer version?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={resolveConflictKeepCurrent}>
+              Keep My Changes
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={resolveConflictUseNewer}>
+              Use Newer Version
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card className="mb-4">
         <CardContent className="pt-4 pb-2">
