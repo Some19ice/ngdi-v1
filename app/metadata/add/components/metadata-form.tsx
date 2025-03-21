@@ -549,6 +549,8 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
       saveFormData(data)
       setSaveStatus("saved")
+
+      // Only show saved status briefly then clear it
       setTimeout(() => setSaveStatus(null), 2000)
     } catch (err) {
       console.error("Failed to save form data:", err)
@@ -562,12 +564,28 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       if (Object.keys(formValues).length > 0 && !isSaving) {
-        debouncedSave(formValues)
+        // For periodic auto-saves, don't show the saved notification
+        // This prevents the notification from appearing every minute
+        setSaveStatus("saving")
+        setIsSaving(true)
+
+        try {
+          if (!checkForConflicts()) {
+            saveFormData(formValues)
+          }
+        } catch (err) {
+          console.error("Failed to auto-save form data:", err)
+          setSaveStatus("error")
+        } finally {
+          setIsSaving(false)
+          // Don't show "Saved" for periodic auto-saves
+          setSaveStatus(null)
+        }
       }
     }, AUTO_SAVE_INTERVAL)
 
     return () => clearInterval(autoSaveInterval)
-  }, [formValues, debouncedSave, isSaving])
+  }, [formValues, isSaving, checkForConflicts])
 
   // Handle snapshot creation
   useEffect(() => {
@@ -587,9 +605,14 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
   // Auto-save form data on change
   useEffect(() => {
-    if (Object.keys(formValues).length > 0) {
-      debouncedSave(formValues)
-    }
+    // Skip empty form data
+    if (Object.keys(formValues).length === 0) return
+
+    // Skip if the data hasn't actually changed
+    if (isEqual(formValues, lastSavedData.current)) return
+
+    debouncedSave(formValues)
+
     return () => {
       debouncedSave.cancel()
     }

@@ -33,8 +33,8 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
-// Form 1: General Information And Description Form
-const form1Schema = z.object({
+// Create schemas for the new consolidated structure
+const generalInfoSchema = z.object({
   // Data Information
   dataInformation: z.object({
     dataType: z.enum(["Raster", "Vector", "Table"], {
@@ -83,18 +83,19 @@ const form1Schema = z.object({
       required_error: "Assessment is required",
     }),
     updateFrequency: z.enum(
-      ["Monthly", "Quarterly", "Bi-Annually", "Annually"],
+      [
+        "Monthly",
+        "Quarterly",
+        "Bi-Annually",
+        "Annually",
+        "Daily",
+        "Weekly",
+        "Others",
+      ],
       {
         required_error: "Update frequency is required",
       }
     ),
-  }),
-
-  // Resource Constraint
-  resourceConstraint: z.object({
-    accessConstraints: z.string().min(1, "Access constraints are required"),
-    useConstraints: z.string().min(1, "Use constraints are required"),
-    otherConstraints: z.string().min(1, "Other constraints are required"),
   }),
 
   // Metadata Reference
@@ -108,8 +109,44 @@ const form1Schema = z.object({
   }),
 })
 
-// Form 2: Data Quality Information Form
-const form2Schema = z.object({
+const technicalDetailsSchema = z.object({
+  spatialInformation: z.object({
+    coordinateSystem: z.string().min(1, "Coordinate system is required"),
+    projection: z.string().min(1, "Projection is required"),
+    scale: z.coerce.number().min(1, "Scale is required"),
+    resolution: z.string().optional(),
+  }),
+  technicalSpecifications: z.object({
+    fileFormat: z.string().min(1, "File format is required"),
+    fileSize: z.coerce.number().optional(),
+    numFeatures: z.coerce.number().optional(),
+    softwareReqs: z.string().optional(),
+  }),
+  spatialDomain: z.object({
+    coordinateUnit: z.enum(["DD", "DMS"], {
+      required_error: "Coordinate unit is required",
+    }),
+    minLatitude: z.coerce.number({
+      required_error: "Minimum latitude is required",
+    }),
+    minLongitude: z.coerce.number({
+      required_error: "Minimum longitude is required",
+    }),
+    maxLatitude: z.coerce.number({
+      required_error: "Maximum latitude is required",
+    }),
+    maxLongitude: z.coerce.number({
+      required_error: "Maximum longitude is required",
+    }),
+  }),
+  resourceConstraint: z.object({
+    accessConstraints: z.string().min(1, "Access constraints are required"),
+    useConstraints: z.string().min(1, "Use constraints are required"),
+    otherConstraints: z.string().min(1, "Other constraints are required"),
+  }),
+})
+
+const dataQualitySchema = z.object({
   // General Section
   generalSection: z.object({
     logicalConsistencyReport: z.string().optional(),
@@ -160,81 +197,6 @@ const form2Schema = z.object({
   }),
 })
 
-// Form 3: Data Distribution Information Form
-const form3Schema = z.object({
-  // Distributor Information
-  distributorInformation: z.object({
-    name: z.string().min(1, "Distributor name is required"),
-    address: z.string().min(1, "Distributor address is required"),
-    email: z.string().email("Invalid email address"),
-    phoneNumber: z.string().min(1, "Phone number is required"),
-    webLink: z.string().url().optional().or(z.literal("")),
-    socialMediaHandle: z.string().optional(),
-    isCustodian: z.boolean().default(true),
-    custodianName: z.string().optional(),
-    custodianContact: z.string().optional(),
-  }),
-
-  // Distribution Details
-  distributionDetails: z.object({
-    liability: z.string().min(1, "Liability statement is required"),
-    customOrderProcess: z.string().min(1, "Custom order process is required"),
-    technicalPrerequisites: z
-      .string()
-      .min(1, "Technical prerequisites are required"),
-  }),
-
-  // Standard Order Process
-  standardOrderProcess: z.object({
-    fees: z.string().min(1, "Fees information is required"),
-    turnaroundTime: z.string().min(1, "Turnaround time is required"),
-    orderingInstructions: z
-      .string()
-      .min(1, "Ordering instructions are required"),
-    maximumResponseTime: z.string().min(1, "Maximum response time is required"),
-  }),
-})
-
-// Create schemas for technicalDetails and accessInfo
-const technicalDetailsSchema = z.object({
-  spatialInformation: z.object({
-    coordinateSystem: z.string().min(1, "Coordinate system is required"),
-    projection: z.string().min(1, "Projection is required"),
-    scale: z.coerce.number().min(1, "Scale is required"),
-    resolution: z.string().optional(),
-  }),
-  technicalSpecifications: z.object({
-    fileFormat: z.string().min(1, "File format is required"),
-    fileSize: z.coerce.number().optional(),
-    numFeatures: z.coerce.number().optional(),
-    softwareReqs: z.string().optional(),
-  }),
-  // Spatial Domain - moved from generalInfo
-  spatialDomain: z.object({
-    coordinateUnit: z.enum(["DD", "DMS"], {
-      required_error: "Coordinate unit is required",
-    }),
-    minLatitude: z.coerce.number({
-      required_error: "Minimum latitude is required",
-    }),
-    minLongitude: z.coerce.number({
-      required_error: "Minimum longitude is required",
-    }),
-    maxLatitude: z.coerce.number({
-      required_error: "Maximum latitude is required",
-    }),
-    maxLongitude: z.coerce.number({
-      required_error: "Maximum longitude is required",
-    }),
-  }),
-  // Resource Constraint - needed to match TechnicalDetailsData interface
-  resourceConstraint: z.object({
-    accessConstraints: z.string().min(1, "Access constraints are required"),
-    useConstraints: z.string().min(1, "Use constraints are required"),
-    otherConstraints: z.string().min(1, "Other constraints are required"),
-  }),
-})
-
 const accessInfoSchema = z.object({
   distributionInfo: z.object({
     distributionFormat: z.string().min(1, "Distribution format is required"),
@@ -258,19 +220,57 @@ const accessInfoSchema = z.object({
   }),
 })
 
+// Optional distribution info schema (legacy support)
+const distributionInfoSchema = z
+  .object({
+    // Distributor Information
+    distributorInformation: z.object({
+      name: z.string().min(1, "Distributor name is required"),
+      address: z.string().min(1, "Distributor address is required"),
+      email: z.string().email("Invalid email address"),
+      phoneNumber: z.string().min(1, "Phone number is required"),
+      webLink: z.string().url().optional().or(z.literal("")),
+      socialMediaHandle: z.string().optional(),
+      isCustodian: z.boolean().default(true),
+      custodianName: z.string().optional(),
+      custodianContact: z.string().optional(),
+    }),
+
+    // Distribution Details
+    distributionDetails: z.object({
+      liability: z.string().min(1, "Liability statement is required"),
+      customOrderProcess: z.string().min(1, "Custom order process is required"),
+      technicalPrerequisites: z
+        .string()
+        .min(1, "Technical prerequisites are required"),
+    }),
+
+    // Standard Order Process
+    standardOrderProcess: z.object({
+      fees: z.string().min(1, "Fees information is required"),
+      turnaroundTime: z.string().min(1, "Turnaround time is required"),
+      orderingInstructions: z
+        .string()
+        .min(1, "Ordering instructions are required"),
+      maximumResponseTime: z
+        .string()
+        .min(1, "Maximum response time is required"),
+    }),
+  })
+  .optional()
+
 // Combined schema for the complete metadata
 const ngdiMetadataSchema = z.object({
-  // New structure with descriptive names
-  generalInfo: form1Schema,
-  dataQuality: form2Schema,
+  generalInfo: generalInfoSchema,
   technicalDetails: technicalDetailsSchema,
+  dataQuality: dataQualitySchema,
   accessInfo: accessInfoSchema,
-  distributionInfo: form3Schema.optional(),
+  distributionInfo: distributionInfoSchema,
 })
 
-export type Form1Data = z.infer<typeof form1Schema>
-export type Form2Data = z.infer<typeof form2Schema>
-export type Form3Data = z.infer<typeof form3Schema>
+export type Form1Data = z.infer<typeof generalInfoSchema>
+export type Form2Data = z.infer<typeof dataQualitySchema>
+export type Form3Data = z.infer<typeof distributionInfoSchema>
 export type NGDIMetadataFormData = z.infer<typeof ngdiMetadataSchema>
 
 export async function createMetadata(data: any) {
@@ -279,17 +279,6 @@ export async function createMetadata(data: any) {
 
     if (!userId) {
       return { success: false, error: "Unauthorized" }
-    }
-
-    // Move resourceConstraint from generalInfo to technicalDetails if it exists in generalInfo
-    if (
-      data.generalInfo?.resourceConstraint &&
-      !data.technicalDetails?.resourceConstraint
-    ) {
-      data.technicalDetails = {
-        ...data.technicalDetails,
-        resourceConstraint: data.generalInfo.resourceConstraint,
-      }
     }
 
     // Validate the data against the schema
@@ -345,11 +334,11 @@ export async function createMetadata(data: any) {
 
           // Resource Constraint
           accessConstraints:
-            validatedData.generalInfo.resourceConstraint.accessConstraints,
+            validatedData.technicalDetails.resourceConstraint.accessConstraints,
           useConstraints:
-            validatedData.generalInfo.resourceConstraint.useConstraints,
+            validatedData.technicalDetails.resourceConstraint.useConstraints,
           otherConstraints:
-            validatedData.generalInfo.resourceConstraint.otherConstraints,
+            validatedData.technicalDetails.resourceConstraint.otherConstraints,
 
           // Metadata Reference
           metadataCreationDate:
@@ -734,17 +723,6 @@ export async function updateMetadata(id: string, data: any) {
       return { success: false, error: "Not authorized to update this metadata" }
     }
 
-    // Move resourceConstraint from generalInfo to technicalDetails if it exists in generalInfo
-    if (
-      data.generalInfo?.resourceConstraint &&
-      !data.technicalDetails?.resourceConstraint
-    ) {
-      data.technicalDetails = {
-        ...data.technicalDetails,
-        resourceConstraint: data.generalInfo.resourceConstraint,
-      }
-    }
-
     // Validate the data against the schema
     const validatedData = ngdiMetadataSchema.parse(data)
 
@@ -797,11 +775,11 @@ export async function updateMetadata(id: string, data: any) {
 
           // Resource Constraint
           accessConstraints:
-            validatedData.generalInfo.resourceConstraint.accessConstraints,
+            validatedData.technicalDetails.resourceConstraint.accessConstraints,
           useConstraints:
-            validatedData.generalInfo.resourceConstraint.useConstraints,
+            validatedData.technicalDetails.resourceConstraint.useConstraints,
           otherConstraints:
-            validatedData.generalInfo.resourceConstraint.otherConstraints,
+            validatedData.technicalDetails.resourceConstraint.otherConstraints,
 
           // Metadata Reference
           metadataCreationDate:

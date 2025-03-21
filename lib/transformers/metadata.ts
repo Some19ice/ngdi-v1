@@ -127,25 +127,26 @@ export function transformApiToFormModel(
       cat.toLowerCase().includes(name.toLowerCase())
     )
 
-  // General Information
+  // Convert API model to form structure with descriptive section names
   const generalInfo: GeneralInfoData = {
     dataInformation: {
-      dataType: apiData.frameworkType as "Raster" | "Vector" | "Table",
-      dataName: apiData.title,
+      dataType:
+        (apiData.frameworkType as "Raster" | "Vector" | "Table") || "Raster",
+      dataName: apiData.title || "",
       cloudCoverPercentage: "",
-      productionDate: apiData.dateFrom,
+      productionDate: apiData.dateFrom || new Date().toISOString(),
     },
     fundamentalDatasets: {
-      geodeticData: hasCategory("geodetic"),
-      topographicData: hasCategory("topographic"),
-      cadastralData: hasCategory("cadastral"),
-      administrativeBoundaries: hasCategory("administrative"),
-      hydrographicData: hasCategory("hydrographic"),
-      landUseLandCover: hasCategory("land use"),
-      geologicalData: hasCategory("geological"),
-      demographicData: hasCategory("demographic"),
-      digitalImagery: hasCategory("imagery"),
-      transportationData: hasCategory("transportation"),
+      geodeticData: hasCategory("Geodetic Data"),
+      topographicData: hasCategory("Topographic Data"),
+      cadastralData: hasCategory("Cadastral Data"),
+      administrativeBoundaries: hasCategory("Administrative Boundaries"),
+      hydrographicData: hasCategory("Hydrographic Data"),
+      landUseLandCover: hasCategory("Land Use Land Cover"),
+      geologicalData: hasCategory("Geological Data"),
+      demographicData: hasCategory("Demographic Data"),
+      digitalImagery: hasCategory("Digital Imagery"),
+      transportationData: hasCategory("Transportation Data"),
       others: false,
       otherDescription: "",
     },
@@ -168,11 +169,6 @@ export function transformApiToFormModel(
         | "Quarterly"
         | "Bi-Annually"
         | "Annually",
-    },
-    resourceConstraint: {
-      accessConstraints: apiData.accessRestrictions[0] || "",
-      useConstraints: apiData.usageTerms,
-      otherConstraints: apiData.attributionRequirements,
     },
     metadataReference: {
       creationDate: new Date().toISOString(),
@@ -230,23 +226,28 @@ export function transformApiToFormModel(
   // Technical Details
   const technicalDetails: TechnicalDetailsData = {
     spatialInformation: {
-      coordinateSystem: apiData.coordinateSystem,
-      projection: apiData.projection,
-      scale: apiData.scale,
-      resolution: apiData.resolution,
+      coordinateSystem: apiData.coordinateSystem || "",
+      projection: apiData.projection || "",
+      scale: Number(apiData.scale) || 1,
+      resolution: apiData.resolution || "",
     },
     technicalSpecifications: {
-      fileFormat: apiData.fileFormat,
-      fileSize: apiData.fileSize,
-      numFeatures: apiData.numFeatures,
-      softwareReqs: apiData.softwareReqs || "",
+      fileFormat: apiData.fileFormat || "",
+      fileSize: apiData.fileSize || 0,
+      numFeatures: 0,
+      softwareReqs: "",
     },
     spatialDomain: {
-      coordinateUnit: apiData.coordinateUnit as "DD" | "DMS",
+      coordinateUnit: "DD",
       minLatitude: apiData.minLatitude || 0,
       minLongitude: apiData.minLongitude || 0,
       maxLatitude: apiData.maxLatitude || 0,
       maxLongitude: apiData.maxLongitude || 0,
+    },
+    resourceConstraint: {
+      accessConstraints: apiData.accessRestrictions[0] || "",
+      useConstraints: apiData.usageTerms || "",
+      otherConstraints: apiData.attributionRequirements || "",
     },
   }
 

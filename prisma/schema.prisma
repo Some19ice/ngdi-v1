@@ -88,6 +88,7 @@ model User {
   sessions      Session[]
   metadata      Metadata[]
   ngdiMetadata  NGDIMetadata[]
+  drafts        Draft[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 }
@@ -404,4 +405,24 @@ model Settings {
   apiRateLimit            Int
   /// Last update timestamp
   updatedAt               DateTime @updatedAt
+}
+
+/// Model for storing form drafts
+model Draft {
+  /// Unique identifier for the draft
+  id          String   @id @default(cuid())
+  /// Reference to the user who owns this draft
+  userId      String
+  /// Title of the draft
+  title       String   @default("Untitled Draft")
+  /// Draft data as JSON
+  data        Json
+  /// Last updated timestamp
+  lastUpdated String
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// User who owns this draft
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

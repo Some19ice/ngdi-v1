@@ -199,7 +199,15 @@ export interface Form3Data {
   standardOrderProcess: StandardOrderProcess
 }
 
-export interface GeneralInfoData extends Form1Data {}
+export interface GeneralInfoData {
+  dataInformation: DataInformation
+  fundamentalDatasets: FundamentalDatasets
+  description: Description
+  location: Location
+  dataStatus: DataStatus
+  metadataReference: MetadataReference
+}
+
 export interface DataQualityData extends Form2Data {}
 export interface DistributionInfoData extends Form3Data {}
 
