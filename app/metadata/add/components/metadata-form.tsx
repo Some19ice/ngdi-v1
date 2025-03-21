@@ -17,9 +17,6 @@ import type {
   DistributionInfoData,
   AccessInfoData,
   TechnicalDetailsData,
-  Form1Data,
-  Form2Data,
-  Form3Data,
 } from "@/types/ngdi-metadata"
 
 // Import the form components
@@ -96,24 +93,26 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
         return
       }
 
-      // Create distribution info if it doesn't exist
-      const distributionInfo: DistributionInfoData =
-        formData.distributionInfo || {
+      // Prepare the data with both new and old structure for backward compatibility
+      const finalFormData = {
+        ...formData,
+        // Set old structure properties for backward compatibility
+        form1: formData.generalInfo,
+        form2: formData.dataQuality,
+        form3: formData.distributionInfo || {
           distributorInformation: {
-            name: formData.accessInfo.contactInfo.contactPerson || "",
-            address: formData.accessInfo.contactInfo.department || "",
-            email: formData.accessInfo.contactInfo.email || "",
-            phoneNumber: formData.accessInfo.contactInfo.phone || "",
+            name: formData.accessInfo?.contactInfo?.contactPerson || "",
+            address: formData.accessInfo?.contactInfo?.department || "",
+            email: formData.accessInfo?.contactInfo?.email || "",
+            phoneNumber: formData.accessInfo?.contactInfo?.phone || "",
             isCustodian: true,
-            custodianName: "",
-            custodianContact: "",
           },
           distributionDetails: {
-            liability: formData.accessInfo.licenseInfo.usageTerms || "",
-            customOrderProcess: "Contact distributor for custom orders",
+            liability: formData.accessInfo?.licenseInfo?.usageTerms || "",
+            customOrderProcess: "",
             technicalPrerequisites:
-              formData.technicalDetails.technicalSpecifications.softwareReqs ||
-              "Standard GIS software",
+              formData.technicalDetails?.technicalSpecifications
+                ?.softwareReqs || "",
           },
           standardOrderProcess: {
             fees: "Please contact for pricing",
@@ -121,29 +120,9 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
             orderingInstructions: "Contact via email or phone",
             maximumResponseTime: "5 business days",
           },
-        }
-
-      // Create explicit required form data that matches the expected schema
-      const form1Data: Form1Data = formData.generalInfo
-      const form2Data: Form2Data = formData.dataQuality
-      const form3Data: Form3Data = distributionInfo
-      const form4Data = formData.accessInfo
-
-      // Prepare the final form data with both naming conventions
-      const finalFormData = {
-        // New naming convention
-        generalInfo: formData.generalInfo,
-        technicalDetails: formData.technicalDetails,
-        dataQuality: formData.dataQuality,
-        accessInfo: formData.accessInfo,
-        distributionInfo: distributionInfo,
-
-        // Legacy naming convention with strict typing
-        form1: form1Data,
-        form2: form2Data,
-        form3: form3Data,
-        form4: form4Data,
-      }
+        },
+        form4: formData.accessInfo,
+      } as NGDIMetadataFormData
 
       let result
 
