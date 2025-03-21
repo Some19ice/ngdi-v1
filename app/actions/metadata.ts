@@ -913,3 +913,160 @@ export async function updateMetadata(id: string, data: any) {
     return { success: false, error: "Failed to update metadata" }
   }
 }
+
+/**
+ * Server action to get admin metadata with pagination and filters
+ */
+export async function getAdminMetadata({
+  page = 1,
+  limit = 10,
+  search = "",
+  category = "",
+  status = "",
+  validationStatus = "",
+  organization = "",
+  sortBy = "createdAt",
+  sortOrder = "desc",
+}: {
+  page?: number
+  limit?: number
+  search?: string
+  category?: string
+  status?: string
+  validationStatus?: string
+  organization?: string
+  sortBy?: string
+  sortOrder?: "asc" | "desc"
+}) {
+  console.log("Fetching admin metadata with params:", {
+    page,
+    limit,
+    search,
+    category,
+    status,
+    validationStatus,
+    organization,
+    sortBy,
+    sortOrder,
+  })
+  
+  try {
+    // Get the base metadata using direct Prisma query instead of searchMetadata
+    // to avoid potential issues with the result structure
+    
+    // Calculate pagination
+    const skip = (page - 1) * limit
+
+    // Build the where clause for filtering
+    const where: any = {}
+
+    // Add search filter if provided
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { abstract: { contains: search, mode: "insensitive" } },
+        { purpose: { contains: search, mode: "insensitive" } },
+        { author: { contains: search, mode: "insensitive" } },
+        { organization: { contains: search, mode: "insensitive" } },
+      ]
+    }
+
+    // Add category filter if provided
+    if (category && category !== "All Categories") {
+      if (where.OR) {
+        where.AND = [
+          ...(where.AND || []),
+          { frameworkType: { equals: category, mode: "insensitive" } },
+        ]
+      } else {
+        where.frameworkType = { equals: category, mode: "insensitive" }
+      }
+    }
+
+    // Add organization filter if provided
+    if (organization) {
+      if (where.OR || where.AND) {
+        where.AND = [
+          ...(where.AND || []),
+          { organization: { contains: organization, mode: "insensitive" } },
+        ]
+      } else {
+        where.organization = { contains: organization, mode: "insensitive" }
+      }
+    }
+
+    // Get total count for pagination
+    const total = await prisma.metadata.count({ where })
+
+    // Get metadata items with pagination and sorting
+    const metadataItems = await prisma.metadata.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      select: {
+        id: true,
+        title: true,
+        author: true,
+        organization: true,
+        abstract: true,
+        purpose: true,
+        thumbnailUrl: true,
+        dateFrom: true,
+        dateTo: true,
+        createdAt: true,
+        updatedAt: true,
+        dataType: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    // Transform to admin metadata with status information
+    // In a real app, these would come from the database
+    const adminMetadata = metadataItems.map((item: any) => ({
+      ...item,
+      status: "Published", // Default status - in a real app, this would come from DB
+      validationStatus: "Validated", // Default validation status
+      downloads: Math.floor(Math.random() * 200), // Mock data - would be real in production
+      views: Math.floor(Math.random() * 1000), // Mock data - would be real in production
+      tags: item.dataType ? [item.dataType.toLowerCase()] : [], // Use dataType as tag
+      lastModified: item.updatedAt || item.createdAt,
+    }))
+
+    // Now filter by status and validationStatus if provided
+    const filteredMetadata = adminMetadata.filter((item: any) => {
+      return (
+        (!status || status === "All Statuses" || item.status === status) &&
+        (!validationStatus || validationStatus === "All Validations" || item.validationStatus === validationStatus)
+      )
+    })
+
+    const totalPages = Math.ceil(total / limit)
+
+    return {
+      metadata: filteredMetadata,
+      total: filteredMetadata.length,
+      currentPage: page,
+      limit,
+      totalPages
+    }
+  } catch (error) {
+    console.error("Error fetching admin metadata:", error)
+    
+    // Return empty data on error
+    return {
+      metadata: [],
+      total: 0,
+      currentPage: page,
+      limit,
+      totalPages: 0
+    }
+  }
+}

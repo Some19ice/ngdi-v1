@@ -123,3 +123,40 @@ export interface MetadataListResponse {
   totalPages: number
   currentPage: number
 }
+
+// Admin metadata status and validation status enums
+export enum MetadataStatus {
+  Published = "Published",
+  Draft = "Draft",
+  UnderReview = "Under Review"
+}
+
+export enum ValidationStatus {
+  Validated = "Validated",
+  Pending = "Pending",
+  Failed = "Failed"
+}
+
+// Admin metadata item with additional administrative fields
+export interface AdminMetadataItem extends MetadataItem {
+  status: MetadataStatus;
+  validationStatus: ValidationStatus;
+  downloads: number;
+  views: number;
+  tags: string[];
+  lastModified?: string;
+  modifiedBy?: string;
+}
+
+export interface AdminMetadataSearchParams extends MetadataSearchParams {
+  status?: MetadataStatus;
+  validationStatus?: ValidationStatus;
+}
+
+export interface AdminMetadataSearchResponse {
+  metadata: AdminMetadataItem[];
+  total: number;
+  currentPage: number;
+  limit: number;
+  totalPages: number;
+}
