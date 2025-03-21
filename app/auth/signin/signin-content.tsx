@@ -41,8 +41,8 @@ export function SignInContent() {
       // Show success toast
       toast.success("Signed in successfully")
 
-      // Use router.push instead of window.location for client-side routing
-      router.push(returnUrl)
+      // Use window.location.href to force a full page reload
+      window.location.href = returnUrl
     } catch (error: any) {
       // Extract error message
       const errorMessage =

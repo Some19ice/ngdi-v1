@@ -89,6 +89,16 @@ export async function middleware(request: NextRequest) {
   console.log(`Token status for ${path}: `, {
     hasAuthToken: !!authToken,
     tokenLength: authToken ? authToken.length : 0,
+    cookies: request.cookies
+      .getAll()
+      .map((c) => ({
+        name: c.name,
+        value: c.value ? c.value.substring(0, 5) + "..." : "none",
+      })),
+    isAuthRoute,
+    isProtectedRoute: PROTECTED_ROUTES.some(
+      (route) => path === route || path.startsWith(`${route}/`)
+    ),
   })
 
   // Create a response object that we'll modify

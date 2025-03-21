@@ -400,8 +400,13 @@ export const authClient = {
       console.log("Client-side token check:", {
         hasToken: !!token,
         tokenLength: token?.length,
-        cookiesAvailable:
+        documentCookie:
           typeof document !== "undefined" ? document.cookie : "N/A",
+        authCookieInDoc:
+          typeof document !== "undefined"
+            ? document.cookie.includes(AUTH_COOKIE_NAME)
+            : false,
+        callerStack: new Error().stack,
       })
 
       if (!token) {

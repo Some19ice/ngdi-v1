@@ -89,8 +89,16 @@ export async function redirectIfAuthenticated(redirectTo: string = "/") {
   // Check for auth cookie in the request
   const authToken = cookies().get(AUTH_COOKIE_NAME)?.value
 
+  console.log("redirectIfAuthenticated check:", {
+    hasAuthToken: !!authToken,
+    redirectTo,
+  })
+
   if (authToken) {
+    console.log(`User is authenticated, redirecting to: ${redirectTo}`)
     redirect(redirectTo)
+  } else {
+    console.log("User is not authenticated, allowing access to auth page");
   }
 }
 
