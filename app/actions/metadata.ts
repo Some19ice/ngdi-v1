@@ -176,6 +176,9 @@ const form3Schema = z.object({
     phoneNumber: z.string().min(1, "Phone number is required"),
     webLink: z.string().url().optional().or(z.literal("")),
     socialMediaHandle: z.string().optional(),
+    isCustodian: z.boolean().default(true),
+    custodianName: z.string().optional(),
+    custodianContact: z.string().optional(),
   }),
 
   // Distribution Details
@@ -194,20 +197,71 @@ const form3Schema = z.object({
     orderingInstructions: z
       .string()
       .min(1, "Ordering instructions are required"),
-    maximumResponseTime: z.string().optional(),
+    maximumResponseTime: z.string().min(1, "Maximum response time is required"),
+  }),
+})
+
+// Technical Details Schema
+const technicalDetailsSchema = z.object({
+  spatialInformation: z.object({
+    coordinateSystem: z.string().min(1, "Coordinate system is required"),
+    projection: z.string().min(1, "Projection is required"),
+    scale: z.coerce.number().positive("Scale must be a positive number"),
+    resolution: z.string().optional(),
+  }),
+  technicalSpecifications: z.object({
+    fileFormat: z.string().min(1, "File format is required"),
+    fileSize: z.coerce.number().optional(),
+    numFeatures: z.coerce.number().optional(),
+    softwareReqs: z.string().optional(),
+  }),
+})
+
+// Access Info Schema
+const accessInfoSchema = z.object({
+  distributionInfo: z.object({
+    distributionFormat: z.string().min(1, "Distribution format is required"),
+    accessMethod: z.string().min(1, "Access method is required"),
+    downloadUrl: z.string().url().optional().or(z.literal("")),
+    apiEndpoint: z.string().url().optional().or(z.literal("")),
+  }),
+  licenseInfo: z.object({
+    licenseType: z.string().min(1, "License type is required"),
+    usageTerms: z.string().min(1, "Usage terms are required"),
+    attributionRequirements: z
+      .string()
+      .min(1, "Attribution requirements are required"),
+    accessRestrictions: z.array(z.string()),
+  }),
+  contactInfo: z.object({
+    contactPerson: z.string().min(1, "Contact person is required"),
+    email: z.string().email("Invalid email address"),
+    department: z.string().optional(),
+    phone: z.string().optional(),
   }),
 })
 
 // Combined schema for the complete metadata
 const ngdiMetadataSchema = z.object({
+  // New naming convention
+  generalInfo: form1Schema,
+  dataQuality: form2Schema,
+  technicalDetails: technicalDetailsSchema,
+  accessInfo: accessInfoSchema,
+  distributionInfo: form3Schema.optional(),
+
+  // Legacy naming for backward compatibility
   form1: form1Schema,
   form2: form2Schema,
   form3: form3Schema,
+  form4: accessInfoSchema.optional(),
 })
 
 export type Form1Data = z.infer<typeof form1Schema>
 export type Form2Data = z.infer<typeof form2Schema>
 export type Form3Data = z.infer<typeof form3Schema>
+export type TechnicalDetailsData = z.infer<typeof technicalDetailsSchema>
+export type AccessInfoData = z.infer<typeof accessInfoSchema>
 export type NGDIMetadataFormData = z.infer<typeof ngdiMetadataSchema>
 
 export async function createMetadata(data: NGDIMetadataFormData) {
@@ -340,8 +394,7 @@ export async function createMetadata(data: NGDIMetadataFormData) {
           orderingInstructions:
             validatedData.form3.standardOrderProcess.orderingInstructions,
           maximumResponseTime:
-            validatedData.form3.standardOrderProcess.maximumResponseTime ||
-            "48 hours",
+            validatedData.form3.standardOrderProcess.maximumResponseTime,
 
           // User reference
           userId: userId,
