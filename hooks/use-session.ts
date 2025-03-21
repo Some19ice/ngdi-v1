@@ -3,6 +3,7 @@ import { authClient, Session, User } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { UserRole } from "@/lib/auth/constants"
+import React from "react"
 
 // Query keys
 const SESSION_QUERY_KEY = ["session"]
@@ -30,7 +31,37 @@ export function useSession() {
     retry: 1,
     refetchOnWindowFocus: true,
     refetchInterval: 10 * 60 * 1000, // Refresh every 10 minutes
+    refetchOnMount: true,
   })
+
+  // Check for cookie existence - this helps detect when browser data is cleared
+  const checkCookies = () => {
+    if (typeof document === "undefined") return true
+    const hasAuthCookie = document.cookie.includes("auth_token")
+    const hasRefreshCookie = document.cookie.includes("refresh_token")
+    return hasAuthCookie || hasRefreshCookie
+  }
+
+  // Effect to handle cookie changes or browser data clearing
+  React.useEffect(() => {
+    const hasCookies = checkCookies()
+
+    // If session exists in memory but cookies are gone, force refresh
+    if (session?.user && !hasCookies) {
+      console.log("Cookies missing but session exists - forcing refresh")
+      refetch()
+    }
+
+    // Set up event listener for storage changes
+    const handleStorageChange = () => {
+      refetch()
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
+  }, [session, refetch])
 
   // Login mutation
   const loginMutation = useMutation({

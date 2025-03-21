@@ -282,6 +282,24 @@ export const authClient = {
         userRole: user.role,
       })
 
+      // Verify that cookies were properly set after login
+      // Short timeout to allow cookies to be set by the browser
+      setTimeout(() => {
+        if (typeof document !== "undefined") {
+          const hasAuthCookie = document.cookie.includes("auth_token")
+          const hasRefreshCookie = document.cookie.includes("refresh_token")
+
+          if (!hasAuthCookie || !hasRefreshCookie) {
+            console.warn(
+              "Warning: Authentication cookies not detected after login"
+            )
+
+            // If needed, we could try to set cookies directly here as a fallback
+            // But that's typically handled by the server via Set-Cookie headers
+          }
+        }
+      }, 100)
+
       return session
     } catch (error: any) {
       console.error("Login failed:", error.message || error)
@@ -433,6 +451,19 @@ export const authClient = {
   async getSession(): Promise<Session | null> {
     console.log("getSession called")
 
+    // First, check if cookies exist - this is crucial for handling cleared browser data
+    const token = getCookie(AUTH_COOKIE_NAME)
+    const refreshToken = getCookie(REFRESH_COOKIE_NAME)
+
+    // If both tokens are missing, immediately return null (no session)
+    if (!token && !refreshToken) {
+      console.log("No auth cookies found, session is null")
+      // Reset any in-memory session state
+      lastSessionRefreshTimestamp = 0
+      pendingSessionRefresh = null
+      return null
+    }
+
     // If there's already a refresh in progress, return that promise instead of making a new one
     if (pendingSessionRefresh) {
       console.log("Reusing pending session refresh request")
@@ -444,7 +475,6 @@ export const authClient = {
     if (now - lastSessionRefreshTimestamp < 5000) {
       console.log("Session check throttled - last check was too recent")
       // If we had a valid token within the last 5 seconds, assume it's still valid
-      const token = getCookie(AUTH_COOKIE_NAME)
       if (token) {
         try {
           // Quick validation without network request
@@ -476,7 +506,7 @@ export const authClient = {
                 ? new Date(decoded.exp * 1000).toISOString()
                 : new Date(Date.now() + 3600 * 1000).toISOString(),
               accessToken: token,
-              refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+              refreshToken: refreshToken || "",
             }
           }
         } catch (e) {
@@ -494,7 +524,7 @@ export const authClient = {
       // Create and store the pending refresh promise
       pendingSessionRefresh = (async () => {
         try {
-          // First try a quick client-side token validation
+          // Recheck for token in case it changed during async operations
           const token = getCookie(AUTH_COOKIE_NAME)
 
           console.log("Client-side token check:", {

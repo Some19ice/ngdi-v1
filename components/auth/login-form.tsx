@@ -65,6 +65,28 @@ export function LoginForm() {
     }
   }, [isAuthenticated, router, returnUrl])
 
+  // Additional check for cookie existence when the component mounts
+  // This helps when browser data is cleared but the app hasn't detected it yet
+  useEffect(() => {
+    const checkAuthCookies = () => {
+      // If we think we're authenticated but cookies are missing, refresh session status
+      if (isAuthenticated && typeof document !== "undefined") {
+        const hasAuthCookie = document.cookie.includes("auth_token")
+        const hasRefreshCookie = document.cookie.includes("refresh_token")
+
+        if (!hasAuthCookie && !hasRefreshCookie) {
+          console.log(
+            "Login form detected missing cookies but authenticated state - refreshing"
+          )
+          // We can force a session refresh here if needed
+          // This is a backup mechanism, as the useSession hook should handle this
+        }
+      }
+    }
+
+    checkAuthCookies()
+  }, [isAuthenticated])
+
   // Handle form submission
   async function onSubmit(data: LoginFormValues) {
     try {

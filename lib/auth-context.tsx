@@ -137,6 +137,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log("AuthProvider: Initializing session")
 
+        // Quick check for cookies before calling getSession
+        // This helps immediately handle cleared browser data
+        const hasCookies =
+          typeof document !== "undefined" &&
+          (document.cookie.includes("auth_token") ||
+            document.cookie.includes("refresh_token"))
+
+        if (!hasCookies) {
+          console.log(
+            "No auth cookies found during initialization, setting unauthenticated"
+          )
+          setStatus("unauthenticated")
+          setSession(null)
+          setInitialized(true)
+          return
+        }
+
         // Get the session with priority=true for initial load
         const session = await authClient.getSession()
 
@@ -174,6 +191,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshIntervalHandler = async () => {
       // Skip if already refreshing or not authenticated
       if (isRefreshing || status !== "authenticated") return
+
+      // Check if cookies still exist - critical for handling cleared browser data
+      const hasCookies =
+        typeof document !== "undefined" &&
+        (document.cookie.includes("auth_token") ||
+          document.cookie.includes("refresh_token"))
+
+      if (!hasCookies && status === "authenticated") {
+        console.log(
+          "Auth cookies missing but status is authenticated - logging out"
+        )
+        setSession(null)
+        setStatus("unauthenticated")
+        return
+      }
 
       // Skip if we attempted a refresh in the last 2 minutes (prevents duplicate refreshes)
       if (Date.now() - lastRefreshAttemptTime < 120000) {
