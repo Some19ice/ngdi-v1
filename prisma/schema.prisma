@@ -87,8 +87,6 @@ model User {
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
-  // TODO: Remove this relation after successful migration to the new Metadata model
-  ngdiMetadata  NGDIMetadata[]
   drafts        Draft[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -190,7 +188,7 @@ model Metadata {
   /// File format
   fileFormat             String?
   /// File size in bytes
-  fileSize              Int?
+  fileSize              BigInt?
   
   // Location
   /// Country covered by the dataset
@@ -339,175 +337,6 @@ model Metadata {
   /// Last update timestamp
   updatedAt              DateTime @updatedAt
 
-  @@index([userId])
-}
-
-// DEPRECATED: This model will be removed after migration to the updated Metadata model
-// All references to this model should be updated to use the Metadata model instead
-// TODO: Remove this model after successful migration
-model NGDIMetadata {
-  /// Unique identifier for the metadata entry
-  id                      String   @id @default(uuid())
-  
-  // Form 1: General Information
-  // Data Information
-  /// Type of data (Raster, Vector, Table)
-  dataType                String
-  /// Name of the dataset
-  dataName                String
-  /// Percentage of cloud cover for imagery
-  cloudCoverPercentage    String?
-  /// Date when the dataset was produced
-  productionDate          String
-  
-  // Fundamental Datasets (stored as JSON)
-  /// Information about fundamental dataset types
-  fundamentalDatasets     Json
-  
-  // Description
-  /// Summary of the dataset's content and purpose
-  abstract                String  @db.Text
-  /// Reason the dataset was created
-  purpose                 String  @db.Text
-  /// URL to the thumbnail image
-  thumbnailUrl            String
-  
-  // Spatial Domain
-  /// Unit system for coordinates (DD or DMS)
-  coordinateUnit          String
-  /// Southernmost latitude value
-  minLatitude             Float
-  /// Westernmost longitude value
-  minLongitude            Float
-  /// Northernmost latitude value
-  maxLatitude             Float
-  /// Easternmost longitude value
-  maxLongitude            Float
-  
-  // Location
-  /// Country covered by the dataset
-  country                 String
-  /// Geopolitical zone within Nigeria
-  geopoliticalZone        String
-  /// State or province
-  state                   String
-  /// Local Government Area
-  lga                     String
-  /// Town or city
-  townCity                String
-  
-  // Data Status
-  /// Completion status (Complete or Incomplete)
-  assessment              String
-  /// Frequency of updates (Monthly, Quarterly, etc.)
-  updateFrequency         String
-  
-  // Resource Constraint
-  /// Limitations on access to the dataset
-  accessConstraints       String  @db.Text
-  /// Limitations on use of the dataset
-  useConstraints          String  @db.Text
-  /// Other constraints or legal prerequisites
-  otherConstraints        String  @db.Text
-  
-  // Metadata Reference
-  /// Date when the metadata was created
-  metadataCreationDate    String
-  /// Date when the metadata was last reviewed
-  metadataReviewDate      String
-  /// Name of the contact person for metadata
-  metadataContactName     String
-  /// Address of the contact person
-  metadataContactAddress  String  @db.Text
-  /// Email of the contact person
-  metadataContactEmail    String
-  /// Phone number of the contact person
-  metadataContactPhone    String
-  
-  // Form 2: Data Quality Information
-  // General Section
-  /// Report on logical consistency
-  logicalConsistencyReport String?  @db.Text
-  /// Report on completeness
-  completenessReport      String?  @db.Text
-  
-  // Attribute Accuracy
-  /// Report on attribute accuracy
-  attributeAccuracyReport String?  @db.Text
-  
-  // Positional Accuracy (stored as JSON)
-  /// Information about horizontal and vertical accuracy
-  positionalAccuracy      Json?
-  
-  // Source Information (stored as JSON)
-  /// Information about the source of the dataset
-  sourceInformation       Json?
-  
-  // Data Processing Information
-  /// Description of processing steps
-  processingDescription   String  @db.Text
-  /// Version of software used for processing
-  softwareVersion         String?
-  /// Date when the data was processed
-  processedDate           String
-  
-  // Processor Contact Information
-  /// Name of the processor
-  processorName           String
-  /// Email of the processor
-  processorEmail          String
-  /// Address of the processor
-  processorAddress        String  @db.Text
-  
-  // Form 3: Data Distribution Information
-  // Distributor Information
-  /// Name of the distributor
-  distributorName         String
-  /// Address of the distributor
-  distributorAddress      String  @db.Text
-  /// Email of the distributor
-  distributorEmail        String
-  /// Phone number of the distributor
-  distributorPhone        String
-  /// Website of the distributor
-  distributorWebLink      String?
-  /// Social media handle of the distributor
-  distributorSocialMedia  String?
-  /// Indicates if distributor is also the custodian
-  isCustodian             Boolean @default(true)
-  /// Name of the custodian if different from distributor
-  custodianName           String?
-  /// Contact information for the custodian if different from distributor
-  custodianContact        String?
-  
-  // Distribution Details
-  /// Statement of liability
-  distributionLiability   String  @db.Text
-  /// Process for custom orders
-  customOrderProcess      String  @db.Text
-  /// Technical prerequisites for using the dataset
-  technicalPrerequisites  String  @db.Text
-  
-  // Standard Order Process
-  /// Fees for obtaining the dataset
-  fees                    String
-  /// Typical time between order and delivery
-  turnaroundTime          String
-  /// Instructions for ordering the dataset
-  orderingInstructions    String  @db.Text
-  /// Maximum time for response about dataset availability
-  maximumResponseTime     String
-  
-  // User reference
-  /// Reference to the user who created this entry
-  userId                  String
-  user                    User     @relation(fields: [userId], references: [id])
-  
-  /// Creation timestamp
-  createdAt               DateTime @default(now())
-  /// Last update timestamp
-  updatedAt               DateTime @updatedAt
-  
   @@index([userId])
 }
 

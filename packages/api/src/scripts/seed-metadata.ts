@@ -458,6 +458,587 @@ async function main() {
       // User association
       userId: adminUser.id,
     },
+    {
+      // Core metadata fields
+      title: "Nigeria Population Density Map",
+      dataName: "Nigeria Population Density Map 2023",
+      dataType: "Raster",
+      productionDate: "2023-05-15",
+      author: "National Population Commission",
+      organization: "National Population Commission of Nigeria",
+      dateFrom: "2023-01-01",
+      dateTo: "2023-12-31",
+      abstract:
+        "Population density map of Nigeria derived from the 2023 census data, showing population distribution at the LGA level. The dataset includes population counts, density calculations, and demographic indicators.",
+      purpose:
+        "To support demographic analysis, policy planning, and resource allocation based on accurate population distribution data.",
+      thumbnailUrl: "https://example.com/thumbnails/population-density.png",
+      imageName: "population-density.png",
+      frameworkType: "Raster",
+      categories: ["demographicData", "censusData", "populationDistribution"],
+
+      // Spatial information
+      coordinateUnit: "DD",
+      coordinateSystem: "WGS 84",
+      projection: "Geographic",
+      scale: 100000,
+      resolution: "100m",
+      accuracyLevel: "Medium",
+      completeness: 100,
+      consistencyCheck: true,
+      validationStatus: "Validated",
+      minLatitude: 4.277,
+      minLongitude: 2.668,
+      maxLatitude: 13.892,
+      maxLongitude: 14.68,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "All",
+      state: "All",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
+      fileFormat: "GeoTIFF",
+      fileSize: 450000000,
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Annually",
+      updateCycle: "Annually",
+
+      // Distribution information
+      distributionFormat: "GeoTIFF, PNG, CSV with coordinates",
+      accessMethod: "API, Direct Download",
+      downloadUrl: "https://data.population.gov.ng/datasets/density-2023.zip",
+      apiEndpoint: "https://api.population.gov.ng/v1/density",
+      licenseType: "Nigeria Government Open Data License",
+      usageTerms: "Free for all uses with attribution",
+      attributionRequirements:
+        "Data source: National Population Commission of Nigeria (NPopC)",
+      accessRestrictions: [],
+      accessConstraints: "Open access with registration.",
+      useConstraints:
+        "Attribution required. Commercial and non-commercial use allowed.",
+      otherConstraints:
+        "Users must acknowledge source and date of acquisition in any derived products.",
+
+      // Metadata information
+      metadataCreationDate: "2023-06-10",
+      metadataReviewDate: "2023-07-15",
+      metadataContactName: "Dr. Samuel Akinyemi",
+      metadataContactAddress:
+        "National Population Commission Headquarters, Abuja",
+      metadataContactEmail: "metadata@population.gov.ng",
+      metadataContactPhone: "+234 807 123 4567",
+
+      // Quality information
+      logicalConsistencyReport:
+        "Data is consistent with administrative boundaries and has been validated against official census records.",
+      completenessReport:
+        "Dataset covers 100% of Nigeria's territory at the LGA level.",
+      attributeAccuracyReport:
+        "Population counts have been verified against official census records with 99% accuracy.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 100,
+          unit: "meters",
+          method: "Administrative boundary alignment",
+        },
+        vertical: null,
+      },
+      sourceInformation: {
+        source: "Nigeria Census 2023",
+        sourceDate: "2023-04-30",
+        methodology: "Compilation from census data and population projections",
+      },
+      fundamentalDatasets: {
+        type: "demographic",
+        subTypes: ["population", "density"],
+        scale: "100000",
+      },
+
+      // Processing information
+      processingDescription:
+        "Census data was aggregated at LGA level, mapped to administrative boundaries, and converted to population density. Density was calculated as persons per square kilometer.",
+      softwareVersion: "ArcGIS Pro 2.9, Python 3.9",
+      processedDate: "2023-05-10",
+      processorName: "NPopC Data Analytics Team",
+      processorEmail: "analytics@population.gov.ng",
+      processorAddress: "NPopC Data Processing Center, Abuja",
+
+      // Distribution details
+      distributorName: "National Population Commission of Nigeria",
+      distributorAddress:
+        "NPopC Headquarters, Central Business District, Abuja",
+      distributorEmail: "data@population.gov.ng",
+      distributorPhone: "+234 807 987 6543",
+      distributorWebLink: "https://data.population.gov.ng",
+      distributorSocialMedia: "@NPopC_Nigeria",
+      isCustodian: true,
+      distributionLiability:
+        "NPopC provides this data without warranty. Users bear all responsibility for conclusions drawn from the data.",
+      customOrderProcess:
+        "Custom data extracts at ward or enumeration area level can be requested through the data portal.",
+      technicalPrerequisites: "GIS software capable of reading GeoTIFF format.",
+      fees: "Free for all uses.",
+      turnaroundTime:
+        "Standard downloads are immediate. Custom extracts within 3 business days.",
+      orderingInstructions:
+        "Register on the NPopC data portal with organization details and purpose of use.",
+      maximumResponseTime: "48 hours for inquiries",
+
+      // Contact information
+      contactPerson: "Dr. Samuel Akinyemi",
+      email: "data@population.gov.ng",
+      department: "Data Analytics",
+
+      // User association
+      userId: adminUser.id,
+    },
+    {
+      // Core metadata fields
+      title: "Nigeria Flood Risk Zones",
+      dataName: "Nigeria Flood Risk Zones 2023",
+      dataType: "Vector",
+      productionDate: "2023-06-30",
+      author: "Nigeria Hydrological Services Agency",
+      organization: "Nigeria Hydrological Services Agency",
+      dateFrom: "2023-05-01",
+      dateTo: "2023-11-30",
+      abstract:
+        "Comprehensive mapping of flood risk zones across Nigeria based on 2023 rainfall patterns, river levels, and terrain analysis. Includes five risk categories from very low to extremely high risk.",
+      purpose:
+        "To support disaster preparedness, urban planning, insurance risk assessment, and emergency response planning.",
+      thumbnailUrl: "https://example.com/thumbnails/flood-risk.png",
+      imageName: "flood-risk.png",
+      frameworkType: "Vector",
+      categories: ["hydrographicData", "disasterManagement", "riskAssessment"],
+
+      // Spatial information
+      coordinateUnit: "DD",
+      coordinateSystem: "WGS 84",
+      projection: "UTM Zone 32N",
+      scale: 50000,
+      resolution: null,
+      accuracyLevel: "High",
+      completeness: 95,
+      consistencyCheck: true,
+      validationStatus: "Validated",
+      minLatitude: 4.277,
+      minLongitude: 2.668,
+      maxLatitude: 13.892,
+      maxLongitude: 14.68,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "All",
+      state: "All",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
+      fileFormat: "Shapefile",
+      fileSize: 180000000,
+      numFeatures: 2450,
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Annually",
+      updateCycle: "Annually",
+
+      // Distribution information
+      distributionFormat: "Shapefile, GeoPackage",
+      accessMethod: "Direct Download",
+      downloadUrl: "https://data.nihsa.gov.ng/datasets/flood-risk-2023.zip",
+      apiEndpoint: "https://api.nihsa.gov.ng/v1/flood-risk",
+      licenseType: "NIHSA Data License",
+      usageTerms:
+        "Free for government and non-commercial use. Commercial use requires written permission.",
+      attributionRequirements:
+        "Data source: Nigeria Hydrological Services Agency (NIHSA)",
+      accessRestrictions: ["Authentication Required"],
+      accessConstraints:
+        "Authentication required for download. Registration required for all users.",
+      useConstraints:
+        "Attribution required. Commercial use requires written permission and may incur fees.",
+      otherConstraints:
+        "Users must not modify risk categories without explicit approval. Critical infrastructure planning must verify with current field conditions.",
+
+      // Metadata information
+      metadataCreationDate: "2023-07-10",
+      metadataReviewDate: "2023-08-15",
+      metadataContactName: "Dr. Emmanuel Adewale",
+      metadataContactAddress: "NIHSA Headquarters, Maitama, Abuja",
+      metadataContactEmail: "metadata@nihsa.gov.ng",
+      metadataContactPhone: "+234 809 123 4567",
+
+      // Quality information
+      logicalConsistencyReport:
+        "Risk zones are topologically consistent with no gaps or overlaps. Zones follow natural terrain features and are consistent with river networks.",
+      completenessReport:
+        "Dataset covers 95% of flood-prone areas in Nigeria, with remaining 5% being areas with limited access or data.",
+      attributeAccuracyReport:
+        "Risk categories have been verified through field surveys and historical flood data with 90% accuracy.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 30,
+          unit: "meters",
+          method: "Comparison with high-resolution satellite imagery",
+        },
+        vertical: {
+          value: 2,
+          unit: "meters",
+          method: "Digital Elevation Model comparison",
+        },
+      },
+      sourceInformation: {
+        source: "NIHSA Field Surveys, Satellite Imagery, SRTM DEM",
+        sourceDate: "2023-04-15",
+        methodology:
+          "Hydrological modeling combined with historical flood data analysis",
+      },
+      fundamentalDatasets: {
+        type: "hazard",
+        subTypes: ["flood", "risk"],
+        scale: "50000",
+      },
+
+      // Processing information
+      processingDescription:
+        "Risk zones were delineated using hydrological models considering rainfall patterns, river levels, terrain, soil permeability, and historical flood extents. Five risk categories were established based on flood probability and potential impact.",
+      softwareVersion: "ArcGIS Pro 2.9, HEC-RAS 6.1",
+      processedDate: "2023-06-15",
+      processorName: "NIHSA Hydrological Modeling Team",
+      processorEmail: "modeling@nihsa.gov.ng",
+      processorAddress: "NIHSA Technical Office, Abuja",
+
+      // Distribution details
+      distributorName: "Nigeria Hydrological Services Agency",
+      distributorAddress: "NIHSA Headquarters, Maitama, Abuja",
+      distributorEmail: "data@nihsa.gov.ng",
+      distributorPhone: "+234 809 987 6543",
+      distributorWebLink: "https://data.nihsa.gov.ng",
+      distributorSocialMedia: "@NIHSA_Nigeria",
+      isCustodian: true,
+      distributionLiability:
+        "NIHSA provides this data as a guide only. Users must conduct site-specific assessments for critical applications. No warranty is provided regarding accuracy for specific locations.",
+      customOrderProcess:
+        "Custom analyses or higher resolution data for specific areas can be requested through a formal application.",
+      technicalPrerequisites:
+        "GIS software capable of reading Shapefile or GeoPackage formats.",
+      fees: "Government: Free, Academic: Free with registration, Commercial: Starting at ₦100,000",
+      turnaroundTime:
+        "Standard downloads within 24 hours after approval. Custom requests within 7 business days.",
+      orderingInstructions:
+        "Submit request through the NIHSA data portal with organization details and specific purpose.",
+      maximumResponseTime: "48 hours for standard inquiries",
+
+      // Contact information
+      contactPerson: "Dr. Emmanuel Adewale",
+      email: "data@nihsa.gov.ng",
+      department: "Hydrological Modeling",
+
+      // User association
+      userId: adminUser.id,
+    },
+    {
+      // Core metadata fields
+      title: "Nigeria National Parks and Protected Areas",
+      dataName: "Nigeria National Parks and Protected Areas 2023",
+      dataType: "Vector",
+      productionDate: "2023-04-25",
+      author: "National Park Service",
+      organization: "Nigeria National Park Service",
+      dateFrom: "2022-06-01",
+      dateTo: "2023-06-30",
+      abstract:
+        "Boundaries and attribute information for all national parks, game reserves, and protected areas in Nigeria. Includes conservation status, biodiversity indices, management information, and key species habitats.",
+      purpose:
+        "To support conservation planning, environmental impact assessment, ecotourism development, and biodiversity research.",
+      thumbnailUrl: "https://example.com/thumbnails/protected-areas.png",
+      imageName: "protected-areas.png",
+      frameworkType: "Vector",
+      categories: ["landUseLandCover", "environmentData", "conservationData"],
+
+      // Spatial information
+      coordinateUnit: "DD",
+      coordinateSystem: "WGS 84",
+      projection: "Geographic",
+      scale: 100000,
+      resolution: null,
+      accuracyLevel: "Medium",
+      completeness: 100,
+      consistencyCheck: true,
+      validationStatus: "Validated",
+      minLatitude: 4.277,
+      minLongitude: 2.668,
+      maxLatitude: 13.892,
+      maxLongitude: 14.68,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "All",
+      state: "All",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
+      fileFormat: "Shapefile",
+      fileSize: 85000000,
+      numFeatures: 147,
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Annually",
+      updateCycle: "Annually",
+
+      // Distribution information
+      distributionFormat: "Shapefile, KML",
+      accessMethod: "Direct Download",
+      downloadUrl: "https://data.nnps.gov.ng/datasets/protected-areas.zip",
+      apiEndpoint: "https://api.nnps.gov.ng/v1/protected-areas",
+      licenseType: "Creative Commons Attribution 4.0",
+      usageTerms: "Free for all uses with attribution",
+      attributionRequirements:
+        "Data source: Nigeria National Park Service (NNPS)",
+      accessRestrictions: [],
+      accessConstraints:
+        "Open access. Sensitive species location data may be restricted.",
+      useConstraints:
+        "Attribution required. Commercial and non-commercial use allowed.",
+      otherConstraints:
+        "Precise locations of endangered species habitats may be generalized for conservation purposes.",
+
+      // Metadata information
+      metadataCreationDate: "2023-05-10",
+      metadataReviewDate: "2023-06-15",
+      metadataContactName: "Dr. Fatima Ibrahim",
+      metadataContactAddress: "NNPS Headquarters, Garki, Abuja",
+      metadataContactEmail: "metadata@nnps.gov.ng",
+      metadataContactPhone: "+234 805 123 4567",
+
+      // Quality information
+      logicalConsistencyReport:
+        "Protected area boundaries are topologically consistent and align with administrative boundaries where applicable.",
+      completenessReport:
+        "Dataset includes all officially designated protected areas in Nigeria as of June 2023.",
+      attributeAccuracyReport:
+        "Conservation status and management information verified with park authorities with 95% accuracy.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 50,
+          unit: "meters",
+          method: "GPS survey and boundary validation",
+        },
+        vertical: null,
+      },
+      sourceInformation: {
+        source: "NNPS Official Records, Field Surveys",
+        sourceDate: "2022-11-30",
+        methodology:
+          "Compilation from official gazette records, boundary surveys, and management plans",
+      },
+      fundamentalDatasets: {
+        type: "conservation",
+        subTypes: ["protected_areas", "national_parks"],
+        scale: "100000",
+      },
+
+      // Processing information
+      processingDescription:
+        "Protected area boundaries were digitized from official records, verified through field surveys, and attributed with conservation status, biodiversity indicators, and management information.",
+      softwareVersion: "QGIS 3.28, ArcGIS Pro 3.0",
+      processedDate: "2023-04-15",
+      processorName: "NNPS GIS Unit",
+      processorEmail: "gis@nnps.gov.ng",
+      processorAddress: "NNPS Technical Office, Abuja",
+
+      // Distribution details
+      distributorName: "Nigeria National Park Service",
+      distributorAddress: "NNPS Headquarters, Garki, Abuja",
+      distributorEmail: "data@nnps.gov.ng",
+      distributorPhone: "+234 805 987 6543",
+      distributorWebLink: "https://data.nnps.gov.ng",
+      distributorSocialMedia: "@NNPS_Nigeria",
+      isCustodian: true,
+      distributionLiability:
+        "NNPS provides this data without warranty. Boundaries should be used for general reference and not for legal delineation without verification.",
+      customOrderProcess:
+        "Detailed biodiversity data or high-resolution boundaries for specific protected areas can be requested via the data portal.",
+      technicalPrerequisites:
+        "GIS software capable of reading Shapefile or KML formats.",
+      fees: "Free for all uses.",
+      turnaroundTime: "Immediate download after registration.",
+      orderingInstructions:
+        "Register on the NNPS data portal and access the protected areas dataset section.",
+      maximumResponseTime: "24 hours for inquiries",
+
+      // Contact information
+      contactPerson: "Dr. Fatima Ibrahim",
+      email: "conservation@nnps.gov.ng",
+      department: "Conservation Data Management",
+
+      // User association
+      userId: adminUser.id,
+    },
+    {
+      // Core metadata fields
+      title: "Abuja Digital Elevation Model",
+      dataName: "Abuja Digital Elevation Model 2023",
+      dataType: "Raster",
+      productionDate: "2023-03-15",
+      author: "FCT Survey and Mapping Department",
+      organization: "Federal Capital Territory Administration",
+      dateFrom: "2023-01-01",
+      dateTo: "2023-03-31",
+      abstract:
+        "High-resolution digital elevation model (DEM) of the Federal Capital Territory, Abuja. Derived from LiDAR data with 1-meter resolution covering the entire FCT area with high vertical accuracy.",
+      purpose:
+        "To support urban planning, flood modeling, infrastructure development, viewshed analysis, and precise elevation determination.",
+      thumbnailUrl: "https://example.com/thumbnails/abuja-dem.png",
+      imageName: "abuja-dem.png",
+      frameworkType: "Raster",
+      categories: ["topographicData", "elevation", "terrain"],
+
+      // Spatial information
+      coordinateUnit: "DD",
+      coordinateSystem: "WGS 84",
+      projection: "UTM Zone 32N",
+      scale: 5000,
+      resolution: "1m",
+      accuracyLevel: "Very High",
+      completeness: 99,
+      consistencyCheck: true,
+      validationStatus: "Validated",
+      minLatitude: 8.4,
+      minLongitude: 6.9,
+      maxLatitude: 9.3,
+      maxLongitude: 7.6,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "North Central",
+      state: "Federal Capital Territory",
+      lga: "All",
+      townCity: "Abuja",
+
+      // Technical details
+      fileFormat: "GeoTIFF",
+      fileSize: 3200000000,
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Every 3 years",
+      updateCycle: "Every 3 years",
+
+      // Distribution information
+      distributionFormat: "GeoTIFF, ASCII Grid",
+      accessMethod: "Direct Download",
+      downloadUrl: "https://data.fct.gov.ng/datasets/dem-2023.zip",
+      apiEndpoint: "https://api.fct.gov.ng/v1/elevation",
+      licenseType: "FCT Geospatial Data License",
+      usageTerms:
+        "Free for government use. Academic and commercial use requires registration and fee.",
+      attributionRequirements:
+        "Data source: FCT Survey and Mapping Department, Abuja, Nigeria",
+      accessRestrictions: [
+        "Authentication Required",
+        "Fee Required for Commercial Use",
+      ],
+      accessConstraints:
+        "Authentication required. Commercial use requires licensing. Security-sensitive areas may have restricted data.",
+      useConstraints:
+        "Government and academic use allowed with attribution. Commercial use requires license purchase.",
+      otherConstraints:
+        "Critical infrastructure planning must verify with ground surveys. Not for navigation without additional verification.",
+
+      // Metadata information
+      metadataCreationDate: "2023-04-05",
+      metadataReviewDate: "2023-05-10",
+      metadataContactName: "Engr. Suleiman Abba",
+      metadataContactAddress: "FCT Survey and Mapping Department, Garki, Abuja",
+      metadataContactEmail: "metadata@fct.gov.ng",
+      metadataContactPhone: "+234 802 123 4567",
+
+      // Quality information
+      logicalConsistencyReport:
+        "DEM has been hydrologically corrected to ensure proper water flow. No data voids or artifacts present in the dataset.",
+      completenessReport:
+        "99% coverage of FCT area. Small gaps (1%) exist in areas with security restrictions or dense forest canopy.",
+      attributeAccuracyReport:
+        "Vertical accuracy validated against 120 ground control points with RMSE of 15cm.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 0.5,
+          unit: "meters",
+          method: "GNSS control point comparison",
+        },
+        vertical: {
+          value: 0.15,
+          unit: "meters",
+          method: "RTK GPS survey verification",
+        },
+      },
+      sourceInformation: {
+        source: "Airborne LiDAR Survey",
+        sourceDate: "2023-01-15",
+        methodology:
+          "Aerial LiDAR acquisition at 8 points per square meter, processed to bare earth DEM",
+      },
+      fundamentalDatasets: {
+        type: "elevation",
+        subTypes: ["dem", "terrain"],
+        resolution: "1m",
+      },
+
+      // Processing information
+      processingDescription:
+        "Raw LiDAR point cloud was classified, filtered to remove non-ground points, and interpolated to create a bare-earth DEM. Hydrological corrections were applied to ensure proper drainage patterns.",
+      softwareVersion: "TerraSolid 2022, ArcGIS Pro 3.0",
+      processedDate: "2023-02-28",
+      processorName: "FCT GIS Unit",
+      processorEmail: "lidar@fct.gov.ng",
+      processorAddress: "FCT Survey and Mapping Department, Garki, Abuja",
+
+      // Distribution details
+      distributorName: "Federal Capital Territory Administration",
+      distributorAddress: "FCT Survey and Mapping Department, Garki, Abuja",
+      distributorEmail: "gis@fct.gov.ng",
+      distributorPhone: "+234 802 987 6543",
+      distributorWebLink: "https://gis.fct.gov.ng",
+      distributorSocialMedia: "@FCT_GIS",
+      isCustodian: true,
+      distributionLiability:
+        "FCT Administration provides this data without warranty. Users must verify suitability for their specific applications.",
+      customOrderProcess:
+        "Specialized derivatives (contours, slope maps, etc.) or subsets can be requested through the FCT GIS portal.",
+      technicalPrerequisites:
+        "GIS software capable of handling large raster datasets. Minimum 16GB RAM recommended for processing the full dataset.",
+      fees: "Government: Free, Academic: ₦50,000, Commercial: Starting at ₦250,000",
+      turnaroundTime:
+        "Standard downloads within 24 hours after approval. Custom requests within 5 business days.",
+      orderingInstructions:
+        "Submit request through the FCT GIS portal with organization details and specific purpose.",
+      maximumResponseTime: "48 hours for inquiries",
+
+      // Contact information
+      contactPerson: "Engr. Suleiman Abba",
+      email: "gis@fct.gov.ng",
+      department: "Survey and Mapping",
+
+      // User association
+      userId: adminUser.id,
+    },
   ]
 
   // Check for existing metadata to avoid duplicates
