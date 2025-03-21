@@ -87,6 +87,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
+  // TODO: Remove this relation after successful migration to the new Metadata model
   ngdiMetadata  NGDIMetadata[]
   drafts        Draft[]
   createdAt     DateTime   @default(now())
@@ -103,42 +104,83 @@ enum UserRole {
   NODE_OFFICER
 }
 
-/// Geospatial metadata information
+/// Geospatial metadata information following NGDI standards
 model Metadata {
   /// Unique identifier for the metadata entry
   id                      String   @id @default(uuid())
-  /// Title of the dataset
+  
+  // Legacy fields from original Metadata model
+  /// Title of the dataset (legacy field - use dataName instead)
   title                   String
-  /// Author of the dataset
-  author                  String
-  /// Organization name
-  organization            String
-  /// Start date of the dataset
-  dateFrom               String
-  /// End date of the dataset
-  dateTo                 String
-  /// Abstract/description of the dataset
-  abstract               String
-  /// Purpose of the dataset
-  purpose                String
-  /// URL to the thumbnail image
-  thumbnailUrl           String
-  /// Name of the image file
-  imageName              String
-  /// Type of framework used
-  frameworkType          String
-  /// Categories of the dataset
+  /// Author of the dataset (legacy field)
+  author                  String?
+  /// Organization name (legacy field)
+  organization            String?
+  /// Start date of the dataset (legacy field)
+  dateFrom               String?
+  /// End date of the dataset (legacy field)
+  dateTo                 String?
+  /// Framework type (legacy field - use dataType instead)
+  frameworkType          String?
+  /// Categories of the dataset (legacy field)
   categories             String[] @default([])
+  /// Number of features (legacy field)
+  numFeatures           Int?
+  /// Software requirements (legacy field - use technicalPrerequisites instead)
+  softwareReqs          String?
+  /// Update cycle (legacy field - use updateFrequency instead)
+  updateCycle           String?
+  /// Last update date (legacy field)
+  lastUpdate            DateTime?
+  /// Next update date (legacy field)
+  nextUpdate            DateTime?
+  
+  // Form 1: General Information
+  // Data Information
+  /// Type of data (Raster, Vector, Table)
+  dataType                String?
+  /// Name of the dataset
+  dataName                String
+  /// Percentage of cloud cover for imagery
+  cloudCoverPercentage    String?
+  /// Date when the dataset was produced
+  productionDate          String
+  
+  // Fundamental Datasets (stored as JSON)
+  /// Information about fundamental dataset types
+  fundamentalDatasets     Json?
+  
+  // Description
+  /// Abstract/description of the dataset
+  abstract               String? @db.Text
+  /// Purpose of the dataset
+  purpose                String? @db.Text
+  /// URL to the thumbnail image
+  thumbnailUrl           String?
+  /// Name of the image file
+  imageName              String?
+  
+  // Spatial Domain
+  /// Unit system for coordinates (DD or DMS)
+  coordinateUnit          String?
+  /// Southernmost latitude value
+  minLatitude             Float?
+  /// Westernmost longitude value
+  minLongitude            Float?
+  /// Northernmost latitude value
+  maxLatitude             Float?
+  /// Easternmost longitude value
+  maxLongitude            Float?
   /// Coordinate system used
-  coordinateSystem       String
+  coordinateSystem       String?
   /// Projection used
-  projection             String
+  projection             String?
   /// Scale of the dataset
-  scale                  Int
+  scale                  Int?
   /// Resolution of the dataset
   resolution             String?
   /// Accuracy level
-  accuracyLevel          String
+  accuracyLevel          String?
   /// Completeness percentage
   completeness           Int?
   /// Consistency check status
@@ -146,39 +188,145 @@ model Metadata {
   /// Validation status
   validationStatus       String?
   /// File format
-  fileFormat             String
+  fileFormat             String?
   /// File size in bytes
   fileSize              Int?
-  /// Number of features
-  numFeatures           Int?
-  /// Software requirements
-  softwareReqs          String?
-  /// Update cycle
-  updateCycle           String
-  /// Last update date
-  lastUpdate            DateTime?
-  /// Next update date
-  nextUpdate            DateTime?
+  
+  // Location
+  /// Country covered by the dataset
+  country                 String?
+  /// Geopolitical zone within Nigeria
+  geopoliticalZone        String?
+  /// State or province
+  state                   String?
+  /// Local Government Area
+  lga                     String?
+  /// Town or city
+  townCity                String?
+  
+  // Data Status
+  /// Completion status (Complete or Incomplete)
+  assessment              String?
+  /// Frequency of updates (Monthly, Quarterly, etc.)
+  updateFrequency         String?
+  
+  // Resource Constraint
+  /// Limitations on access to the dataset
+  accessConstraints       String?  @db.Text
+  /// Limitations on use of the dataset
+  useConstraints          String?  @db.Text
+  /// Other constraints or legal prerequisites
+  otherConstraints        String?  @db.Text
+  /// Access restrictions
+  accessRestrictions     String[] @default([])
+  /// License type
+  licenseType           String?
+  /// Usage terms
+  usageTerms             String?
+  /// Attribution requirements
+  attributionRequirements String?
   /// Distribution format
-  distributionFormat     String
+  distributionFormat     String?
   /// Access method
-  accessMethod           String
+  accessMethod           String?
   /// Download URL
   downloadUrl           String?
   /// API endpoint
   apiEndpoint           String?
-  /// License type
-  licenseType           String
-  /// Usage terms
-  usageTerms             String
-  /// Attribution requirements
-  attributionRequirements String
-  /// Access restrictions
-  accessRestrictions     String[] @default([])
+  
+  // Metadata Reference
+  /// Date when the metadata was created
+  metadataCreationDate    String?
+  /// Date when the metadata was last reviewed
+  metadataReviewDate      String?
+  /// Name of the contact person for metadata
+  metadataContactName     String?
+  /// Address of the contact person
+  metadataContactAddress  String?  @db.Text
+  /// Email of the contact person
+  metadataContactEmail    String?
+  /// Phone number of the contact person
+  metadataContactPhone    String?
+  
+  // Form 2: Data Quality Information
+  // General Section
+  /// Report on logical consistency
+  logicalConsistencyReport String?  @db.Text
+  /// Report on completeness
+  completenessReport      String?  @db.Text
+  
+  // Attribute Accuracy
+  /// Report on attribute accuracy
+  attributeAccuracyReport String?  @db.Text
+  
+  // Positional Accuracy (stored as JSON)
+  /// Information about horizontal and vertical accuracy
+  positionalAccuracy      Json?
+  
+  // Source Information (stored as JSON)
+  /// Information about the source of the dataset
+  sourceInformation       Json?
+  
+  // Data Processing Information
+  /// Description of processing steps
+  processingDescription   String?  @db.Text
+  /// Version of software used for processing
+  softwareVersion         String?
+  /// Date when the data was processed
+  processedDate           String?
+  
+  // Processor Contact Information
+  /// Name of the processor
+  processorName           String?
+  /// Email of the processor
+  processorEmail          String?
+  /// Address of the processor
+  processorAddress        String?  @db.Text
+  
+  // Form 3: Data Distribution Information
+  // Distributor Information
+  /// Name of the distributor
+  distributorName         String?
+  /// Address of the distributor
+  distributorAddress      String?  @db.Text
+  /// Email of the distributor
+  distributorEmail        String?
+  /// Phone number of the distributor
+  distributorPhone        String?
+  /// Website of the distributor
+  distributorWebLink      String?
+  /// Social media handle of the distributor
+  distributorSocialMedia  String?
+  /// Indicates if distributor is also the custodian
+  isCustodian             Boolean? @default(true)
+  /// Name of the custodian if different from distributor
+  custodianName           String?
+  /// Contact information for the custodian if different from distributor
+  custodianContact        String?
+  
+  // Distribution Details
+  /// Statement of liability
+  distributionLiability   String?  @db.Text
+  /// Process for custom orders
+  customOrderProcess      String?  @db.Text
+  /// Technical prerequisites for using the dataset
+  technicalPrerequisites  String?  @db.Text
+  
+  // Standard Order Process
+  /// Fees for obtaining the dataset
+  fees                    String?
+  /// Typical time between order and delivery
+  turnaroundTime          String?
+  /// Instructions for ordering the dataset
+  orderingInstructions    String?  @db.Text
+  /// Maximum time for response about dataset availability
+  maximumResponseTime     String?
+  
+  // Contact details from original Metadata model
   /// Contact person
-  contactPerson          String
+  contactPerson          String?
   /// Contact email
-  email                  String
+  email                  String?
   /// Department
   department            String?
 
@@ -194,7 +342,9 @@ model Metadata {
   @@index([userId])
 }
 
-/// NGDI Metadata information based on the metadata-schema.md specification
+// DEPRECATED: This model will be removed after migration to the updated Metadata model
+// All references to this model should be updated to use the Metadata model instead
+// TODO: Remove this model after successful migration
 model NGDIMetadata {
   /// Unique identifier for the metadata entry
   id                      String   @id @default(uuid())

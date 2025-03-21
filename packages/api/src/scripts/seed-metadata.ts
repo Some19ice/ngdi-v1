@@ -16,19 +16,26 @@ async function main() {
   // Sample metadata entries
   const sampleMetadata = [
     {
+      // Core metadata fields
       title: "Nigeria Administrative Boundaries",
+      dataName: "Nigeria Administrative Boundaries 2023",
+      dataType: "Vector",
+      productionDate: "2023-01-15",
       author: "NGDI Geospatial Division",
       organization: "Nigeria Geospatial Data Infrastructure",
-      dateFrom: "2022-01-01",
-      dateTo: "2022-12-31",
+      dateFrom: "2023-01-01",
+      dateTo: "2023-12-31",
       abstract:
-        "Comprehensive dataset of administrative boundaries across Nigeria, including state, LGA, and ward boundaries. Updated with the latest demarcations as of December 2022.",
+        "Comprehensive dataset of administrative boundaries across Nigeria, including state, LGA, and ward boundaries. Updated with the latest demarcations as of December 2023.",
       purpose:
         "To provide accurate reference data for governance, planning, and spatial analysis across Nigerian territories.",
       thumbnailUrl: "https://example.com/thumbnails/admin-boundaries.png",
       imageName: "admin-boundaries.png",
       frameworkType: "Vector",
       categories: ["administrativeBoundaries", "governmentData"],
+
+      // Spatial information
+      coordinateUnit: "DD",
       coordinateSystem: "WGS 84",
       projection: "UTM Zone 32N",
       scale: 50000,
@@ -37,11 +44,30 @@ async function main() {
       completeness: 98,
       consistencyCheck: true,
       validationStatus: "Validated",
+      minLatitude: 4.277,
+      minLongitude: 2.668,
+      maxLatitude: 13.892,
+      maxLongitude: 14.68,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "All",
+      state: "All",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
       fileFormat: "Shapefile",
       fileSize: 245000000,
       numFeatures: 1256,
       softwareReqs: "QGIS 3.0+, ArcGIS 10.5+",
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Annually",
       updateCycle: "Annually",
+
+      // Distribution information
       distributionFormat: "Shapefile, GeoJSON",
       accessMethod: "Direct Download",
       downloadUrl: "https://data.ngdi.gov.ng/datasets/admin-boundaries.zip",
@@ -54,13 +80,97 @@ async function main() {
         "Authentication Required",
         "API Key Required for Bulk Access",
       ],
+      accessConstraints:
+        "Authentication required for download. API key required for automated access.",
+      useConstraints:
+        "Attribution required. No commercial use without written permission.",
+      otherConstraints:
+        "Data must not be altered without documentation. Derivative works must acknowledge the source.",
+
+      // Metadata information
+      metadataCreationDate: "2023-02-20",
+      metadataReviewDate: "2023-06-10",
+      metadataContactName: "Dr. Aisha Mohammed",
+      metadataContactAddress:
+        "NGDI Headquarters, Central Business District, Abuja, Nigeria",
+      metadataContactEmail: "metadata@ngdi.gov.ng",
+      metadataContactPhone: "+234 800 123 4567",
+
+      // Quality information
+      logicalConsistencyReport:
+        "All boundaries conform to national standards. Boundaries are topologically clean with no gaps or overlaps.",
+      completenessReport:
+        "Dataset is 99% complete, covering all 36 states and the FCT.",
+      attributeAccuracyReport:
+        "Attributes validated against official gazette records with 98% accuracy.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 5,
+          unit: "meters",
+          method: "GPS survey comparison",
+        },
+        vertical: null,
+      },
+      sourceInformation: {
+        source: "Office of the Surveyor General of the Federation",
+        sourceScale: "1:50,000",
+        sourceDate: "2022-12-01",
+        methodology:
+          "Compilation from official survey records and satellite imagery",
+      },
+      fundamentalDatasets: {
+        type: "boundary",
+        subTypes: ["administrative", "political"],
+        layer: "national",
+      },
+
+      // Processing information
+      processingDescription:
+        "Data was compiled from official sources, verified against satellite imagery, and processed to ensure topological integrity.",
+      softwareVersion: "ArcGIS Pro 2.9, QGIS 3.22",
+      processedDate: "2023-01-10",
+      processorName: "NGDI Geospatial Team",
+      processorEmail: "processing@ngdi.gov.ng",
+      processorAddress: "NGDI Technical Office, Abuja, Nigeria",
+
+      // Distribution details
+      distributorName: "Nigeria Geospatial Data Infrastructure",
+      distributorAddress:
+        "NGDI Headquarters, Central Business District, Abuja, Nigeria",
+      distributorEmail: "data@ngdi.gov.ng",
+      distributorPhone: "+234 800 987 6543",
+      distributorWebLink: "https://data.ngdi.gov.ng",
+      distributorSocialMedia: "@NGDI_Nigeria",
+      isCustodian: true,
+      distributionLiability:
+        "While NGDI strives for accuracy, the data is provided 'as is' without warranty of any kind.",
+      customOrderProcess:
+        "Custom extracts or specialized formats can be requested via the data portal.",
+      technicalPrerequisites:
+        "GIS software capable of reading Shapefile or GeoJSON formats. Minimum 8GB RAM recommended.",
+      fees: "Free for government and academic use. Commercial licensing starts at ₦50,000.",
+      turnaroundTime:
+        "Standard downloads are immediate. Custom orders within 3-5 business days.",
+      orderingInstructions:
+        "Register on the NGDI portal, browse available datasets, and follow the download instructions.",
+      maximumResponseTime: "24 hours for inquiries",
+
+      // Contact information
       contactPerson: "Dr. Aisha Mohammed",
       email: "data@ngdi.gov.ng",
       department: "Geospatial Division",
+
+      // User association
       userId: adminUser.id,
     },
     {
+      // Core metadata fields
       title: "Lagos State High-Resolution Satellite Imagery",
+      dataName: "Lagos State High-Resolution Satellite Imagery 2023",
+      dataType: "Raster",
+      productionDate: "2023-03-20",
       author: "Lagos State Geographic Information Systems",
       organization: "Lagos State Government",
       dateFrom: "2023-03-15",
@@ -73,6 +183,9 @@ async function main() {
       imageName: "lagos-imagery.png",
       frameworkType: "Raster",
       categories: ["digitalImagery", "urbanPlanning"],
+
+      // Spatial information
+      coordinateUnit: "DD",
       coordinateSystem: "WGS 84",
       projection: "UTM Zone 31N",
       scale: 10000,
@@ -81,10 +194,29 @@ async function main() {
       completeness: 95,
       consistencyCheck: true,
       validationStatus: "Validated",
+      minLatitude: 6.357,
+      minLongitude: 2.687,
+      maxLatitude: 6.702,
+      maxLongitude: 4.351,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "South West",
+      state: "Lagos",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
       fileFormat: "GeoTIFF",
       fileSize: 2147483647,
-      softwareReqs: "QGIS 3.0+, ERDAS IMAGINE 2020+",
+      cloudCoverPercentage: "4.2",
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Bi-Annually",
       updateCycle: "Bi-Annually",
+
+      // Distribution information
       distributionFormat: "GeoTIFF, ECW",
       accessMethod: "Tile Server",
       downloadUrl: "https://data.lagosstate.gov.ng/imagery/2023/bundle.zip",
@@ -98,96 +230,94 @@ async function main() {
         "Authentication Required",
         "Usage Reporting Required",
       ],
+      accessConstraints:
+        "Authentication required. Licensed access based on user category.",
+      useConstraints:
+        "Academic and government use allowed. Commercial use requires additional licensing.",
+      otherConstraints:
+        "Redistribution prohibited. No third-party transfers without explicit permission.",
+
+      // Metadata information
+      metadataCreationDate: "2023-04-25",
+      metadataReviewDate: "2023-05-10",
+      metadataContactName: "Michael Adebayo",
+      metadataContactAddress: "Lagos State GIS Office, Alausa, Ikeja, Lagos",
+      metadataContactEmail: "metadata@lagosstate.gov.ng",
+      metadataContactPhone: "+234 802 345 6789",
+
+      // Quality information
+      logicalConsistencyReport:
+        "Imagery has been radiometrically corrected and orthorectified to ensure spatial accuracy.",
+      completenessReport:
+        "100% coverage of Lagos State with less than 5% cloud obstruction.",
+      attributeAccuracyReport:
+        "Spectral bands calibrated to USGS standards for radiometric accuracy.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 1.2,
+          unit: "meters",
+          method: "Ground control point verification",
+        },
+        vertical: null,
+      },
+      sourceInformation: {
+        source: "WorldView-3 Satellite",
+        sourceDate: "2023-02-15",
+        methodology: "Multi-pass satellite imaging during dry season",
+      },
+      fundamentalDatasets: {
+        type: "imagery",
+        subTypes: ["satellite", "multispectral"],
+        resolution: "50cm",
+      },
+
+      // Processing information
+      processingDescription:
+        "Raw imagery was orthorectified using digital elevation model, radiometrically corrected, and mosaicked to create a seamless coverage.",
+      softwareVersion: "ERDAS IMAGINE 2022, PCI Geomatica 2021",
+      processedDate: "2023-03-15",
+      processorName: "Lagos State GIS Technical Team",
+      processorEmail: "processing@lagosstate.gov.ng",
+      processorAddress:
+        "Lagos State GIS Processing Center, Alausa, Ikeja, Lagos",
+
+      // Distribution details
+      distributorName: "Lagos State Geographic Information Systems",
+      distributorAddress: "LAGIS Headquarters, Alausa, Ikeja, Lagos",
+      distributorEmail: "data@lagosstate.gov.ng",
+      distributorPhone: "+234 802 987 6543",
+      distributorWebLink: "https://gis.lagosstate.gov.ng",
+      distributorSocialMedia: "@LAGIS_Official",
+      isCustodian: true,
+      distributionLiability:
+        "Lagos State GIS provides this data without warranty. Users bear all responsibility for conclusions drawn from the data.",
+      customOrderProcess:
+        "Specialized extracts, additional processing, or different formats can be requested through the LAGIS portal.",
+      technicalPrerequisites:
+        "Raster processing software capable of handling large GeoTIFF files. 16GB RAM recommended.",
+      fees: "Government: Free, Academic: ₦25,000, Commercial: Starting at ₦250,000",
+      turnaroundTime:
+        "Standard downloads: 24 hours after approval. Custom processing: 5-7 business days.",
+      orderingInstructions:
+        "Submit request through the LAGIS portal with organization details and intended use case.",
+      maximumResponseTime: "48 hours for data requests",
+
+      // Contact information
       contactPerson: "Michael Adebayo",
       email: "gis@lagosstate.gov.ng",
       department: "Geographic Information Systems",
+
+      // User association
       userId: adminUser.id,
     },
     {
-      title: "Nigeria Population Density 2023",
-      author: "National Population Commission",
-      organization: "National Population Commission of Nigeria",
-      dateFrom: "2023-01-01",
-      dateTo: "2023-12-31",
-      abstract:
-        "Population density estimates across Nigeria based on the 2023 census data, showing population concentration per square kilometer at LGA level.",
-      purpose:
-        "Supporting demographic analysis, policy planning, and resource allocation based on population distribution.",
-      thumbnailUrl: "https://example.com/thumbnails/population-density.png",
-      imageName: "population-density.png",
-      frameworkType: "Vector",
-      categories: ["demographicData", "censusData"],
-      coordinateSystem: "WGS 84",
-      projection: "Geographic",
-      scale: 100000,
-      resolution: null,
-      accuracyLevel: "Medium",
-      completeness: 100,
-      consistencyCheck: true,
-      validationStatus: "Validated",
-      fileFormat: "GeoJSON",
-      fileSize: 15000000,
-      numFeatures: 774,
-      softwareReqs: "Any GIS software supporting GeoJSON",
-      updateCycle: "Annually",
-      distributionFormat: "GeoJSON, CSV with coordinates",
-      accessMethod: "API, Direct Download",
-      downloadUrl: "https://data.population.gov.ng/datasets/density-2023.zip",
-      apiEndpoint: "https://api.population.gov.ng/v1/density",
-      licenseType: "Nigeria Government Open Data License",
-      usageTerms: "Free for all uses with attribution",
-      attributionRequirements:
-        "Data source: National Population Commission of Nigeria (NPopC)",
-      accessRestrictions: [],
-      contactPerson: "Dr. Samuel Akinyemi",
-      email: "data@population.gov.ng",
-      department: "Data Analytics",
-      userId: adminUser.id,
-    },
-    {
-      title: "Nigeria Flood Risk Zones 2023",
-      author: "Nigeria Hydrological Services Agency",
-      organization: "Nigeria Hydrological Services Agency",
-      dateFrom: "2023-05-01",
-      dateTo: "2023-11-30",
-      abstract:
-        "Comprehensive mapping of flood risk zones across Nigeria based on 2023 rainfall patterns, river levels, and terrain analysis. Includes risk categories from low to extremely high.",
-      purpose:
-        "Disaster preparedness, urban planning, insurance risk assessment, and emergency response planning.",
-      thumbnailUrl: "https://example.com/thumbnails/flood-risk.png",
-      imageName: "flood-risk.png",
-      frameworkType: "Vector",
-      categories: ["hydrographicData", "disasterManagement"],
-      coordinateSystem: "WGS 84",
-      projection: "UTM Zone 32N",
-      scale: 25000,
-      resolution: null,
-      accuracyLevel: "High",
-      completeness: 92,
-      consistencyCheck: true,
-      validationStatus: "Validated",
-      fileFormat: "Shapefile",
-      fileSize: 178000000,
-      numFeatures: 2352,
-      softwareReqs: "QGIS 3.0+, ArcGIS 10.5+",
-      updateCycle: "Annually",
-      distributionFormat: "Shapefile, GeoPackage",
-      accessMethod: "Direct Download",
-      downloadUrl: "https://data.nihsa.gov.ng/datasets/flood-risk-2023.zip",
-      apiEndpoint: "https://api.nihsa.gov.ng/v1/flood-risk",
-      licenseType: "NIHSA Data License",
-      usageTerms:
-        "Free for non-commercial use. Commercial use requires written permission.",
-      attributionRequirements:
-        "Data source: Nigeria Hydrological Services Agency (NIHSA)",
-      accessRestrictions: ["Authentication Required"],
-      contactPerson: "Dr. Emmanuel Adewale",
-      email: "data@nihsa.gov.ng",
-      department: "Hydrological Modeling",
-      userId: adminUser.id,
-    },
-    {
-      title: "Nigeria Road Network 2023",
+      // Core metadata fields
+      title: "Nigeria Road Network",
+      dataName: "Nigeria Road Network 2023",
+      dataType: "Vector",
+      productionDate: "2023-02-28",
       author: "Federal Ministry of Works and Housing",
       organization: "Federal Ministry of Works and Housing",
       dateFrom: "2023-01-01",
@@ -200,6 +330,9 @@ async function main() {
       imageName: "road-network.png",
       frameworkType: "Vector",
       categories: ["transportationData", "infrastructureData"],
+
+      // Spatial information
+      coordinateUnit: "DD",
       coordinateSystem: "WGS 84",
       projection: "UTM Zone 32N",
       scale: 50000,
@@ -208,11 +341,29 @@ async function main() {
       completeness: 90,
       consistencyCheck: true,
       validationStatus: "Validated",
+      minLatitude: 4.277,
+      minLongitude: 2.668,
+      maxLatitude: 13.892,
+      maxLongitude: 14.68,
+
+      // Location information
+      country: "Nigeria",
+      geopoliticalZone: "All",
+      state: "All",
+      lga: "All",
+      townCity: "All",
+
+      // Technical details
       fileFormat: "Shapefile",
       fileSize: 320000000,
       numFeatures: 15782,
-      softwareReqs: "QGIS 3.0+, ArcGIS 10.5+",
-      updateCycle: "Bi-Annually",
+
+      // Status information
+      assessment: "Complete",
+      updateFrequency: "Annually",
+      updateCycle: "Annually",
+
+      // Distribution information
       distributionFormat: "Shapefile, GeoJSON",
       accessMethod: "Direct Download, WFS",
       downloadUrl: "https://data.fmw.gov.ng/datasets/roads-2023.zip",
@@ -222,136 +373,89 @@ async function main() {
       attributionRequirements:
         "Data source: Federal Ministry of Works and Housing, Nigeria",
       accessRestrictions: [],
+      accessConstraints: "Open access with registration.",
+      useConstraints:
+        "Attribution required. Commercial and non-commercial use allowed.",
+      otherConstraints:
+        "Users must acknowledge source and date of acquisition in any derived products.",
+
+      // Metadata information
+      metadataCreationDate: "2023-03-15",
+      metadataReviewDate: "2023-04-10",
+      metadataContactName: "Engr. Ibrahim Mohammed",
+      metadataContactAddress:
+        "Federal Ministry of Works and Housing, Headquarters, Abuja",
+      metadataContactEmail: "metadata@fmw.gov.ng",
+      metadataContactPhone: "+234 805 678 9012",
+
+      // Quality information
+      logicalConsistencyReport:
+        "Road network is topologically connected. All intersections are correctly modeled.",
+      completenessReport:
+        "98% complete for federal and state roads, 85% complete for urban roads.",
+      attributeAccuracyReport:
+        "Road classification verified against official records. Surface type and condition verified by field surveys.",
+
+      // JSON fields
+      positionalAccuracy: {
+        horizontal: {
+          value: 10,
+          unit: "meters",
+          method: "GPS survey and satellite imagery comparison",
+        },
+        vertical: null,
+      },
+      sourceInformation: {
+        source: "Federal Ministry of Works and Housing",
+        sourceScale: "1:50,000",
+        sourceDate: "2022-09-30",
+        methodology:
+          "Compilation from existing road maps, satellite imagery, and field surveys",
+      },
+      fundamentalDatasets: {
+        type: "transportation",
+        subTypes: ["roads", "highways"],
+        scale: "1:50000",
+      },
+
+      // Processing information
+      processingDescription:
+        "Data compiled from multiple sources, conflated with GPS tracks and satellite imagery.",
+      softwareVersion: "ArcGIS 10.8, QGIS 3.20",
+      processedDate: "2023-02-15",
+      processorName: "Federal Ministry of Works GIS Unit",
+      processorEmail: "gis@fmw.gov.ng",
+      processorAddress:
+        "Federal Ministry of Works and Housing, GIS Division, Abuja",
+
+      // Distribution details
+      distributorName: "Nigeria Geospatial Data Infrastructure",
+      distributorAddress: "NGDI Headquarters, Central Business District, Abuja",
+      distributorEmail: "roads@ngdi.gov.ng",
+      distributorPhone: "+234 803 456 7890",
+      distributorWebLink: "https://roads.ngdi.gov.ng",
+      distributorSocialMedia: "@NGDI_Roads",
+      isCustodian: false,
+      custodianName: "Federal Ministry of Works and Housing",
+      custodianContact: "Engr. Biodun Oladipo, Director of Highways",
+      distributionLiability:
+        "Data is provided as-is without warranty. Users should verify road conditions before relying on the data for navigation.",
+      customOrderProcess:
+        "Custom extracts by state or region available upon request.",
+      technicalPrerequisites:
+        "GIS software capable of reading Shapefile or GeoJSON formats.",
+      fees: "Free for all uses.",
+      turnaroundTime: "Immediate download after registration.",
+      orderingInstructions:
+        "Register on the NGDI portal, navigate to transportation datasets, and download directly.",
+      maximumResponseTime: "24 hours for support inquiries",
+
+      // Contact information
       contactPerson: "Engr. Biodun Oladipo",
       email: "gis@fmw.gov.ng",
       department: "GIS Unit",
-      userId: adminUser.id,
-    },
-    {
-      title: "Nigeria National Parks and Protected Areas",
-      author: "National Park Service",
-      organization: "Nigeria National Park Service",
-      dateFrom: "2022-06-01",
-      dateTo: "2023-06-30",
-      abstract:
-        "Boundaries and attribute information for all national parks, game reserves, and protected areas in Nigeria. Includes conservation status, biodiversity indices, and management information.",
-      purpose:
-        "Conservation planning, environmental impact assessment, and ecotourism development.",
-      thumbnailUrl: "https://example.com/thumbnails/protected-areas.png",
-      imageName: "protected-areas.png",
-      frameworkType: "Vector",
-      categories: ["landUseLandCover", "environmentData"],
-      coordinateSystem: "WGS 84",
-      projection: "Geographic",
-      scale: 100000,
-      resolution: null,
-      accuracyLevel: "Medium",
-      completeness: 100,
-      consistencyCheck: true,
-      validationStatus: "Validated",
-      fileFormat: "Shapefile",
-      fileSize: 82000000,
-      numFeatures: 147,
-      softwareReqs: "Any GIS software supporting Shapefile format",
-      updateCycle: "Annually",
-      distributionFormat: "Shapefile, KML",
-      accessMethod: "Direct Download",
-      downloadUrl: "https://data.nnps.gov.ng/datasets/protected-areas.zip",
-      apiEndpoint: null,
-      licenseType: "Creative Commons Attribution 4.0",
-      usageTerms: "Free for all uses with attribution",
-      attributionRequirements:
-        "Data source: Nigeria National Park Service (NNPS)",
-      accessRestrictions: [],
-      contactPerson: "Dr. Fatima Ibrahim",
-      email: "conservation@nnps.gov.ng",
-      department: "Conservation Data Management",
-      userId: adminUser.id,
-    },
-    {
-      title: "Nigeria Soil Types",
-      author: "Institute of Soil Science",
-      organization: "Federal Ministry of Agriculture and Rural Development",
-      dateFrom: "2021-01-01",
-      dateTo: "2022-12-31",
-      abstract:
-        "Comprehensive soil classification map of Nigeria showing major soil types, textures, and agricultural suitability. Based on extensive field sampling and laboratory analysis.",
-      purpose:
-        "Agricultural planning, land management, and environmental assessment.",
-      thumbnailUrl: "https://example.com/thumbnails/soil-types.png",
-      imageName: "soil-types.png",
-      frameworkType: "Vector",
-      categories: ["geologicalData", "agriculturalData"],
-      coordinateSystem: "WGS 84",
-      projection: "UTM Zone 32N",
-      scale: 250000,
-      resolution: null,
-      accuracyLevel: "Medium",
-      completeness: 95,
-      consistencyCheck: true,
-      validationStatus: "Validated",
-      fileFormat: "Shapefile",
-      fileSize: 145000000,
-      numFeatures: 326,
-      softwareReqs: "QGIS 3.0+, ArcGIS 10.5+",
-      updateCycle: "Every 5 years",
-      distributionFormat: "Shapefile, GeoTIFF",
-      accessMethod: "Direct Download",
-      downloadUrl: "https://data.fmard.gov.ng/datasets/soil-types.zip",
-      apiEndpoint: null,
-      licenseType: "Nigeria Government Open Data License",
-      usageTerms:
-        "Free for academic and non-commercial use. Commercial use requires registration.",
-      attributionRequirements:
-        "Data source: Institute of Soil Science, Federal Ministry of Agriculture, Nigeria",
-      accessRestrictions: ["Commercial Use Registration Required"],
-      contactPerson: "Prof. Yusuf Adamu",
-      email: "soils@fmard.gov.ng",
-      department: "Soil Science Division",
-      userId: adminUser.id,
-    },
-    {
-      title: "Abuja Digital Elevation Model",
-      author: "FCT Survey and Mapping Department",
-      organization: "Federal Capital Territory Administration",
-      dateFrom: "2023-01-01",
-      dateTo: "2023-03-31",
-      abstract:
-        "High-resolution digital elevation model (DEM) of the Federal Capital Territory, Abuja. Derived from LiDAR data with 1-meter resolution.",
-      purpose:
-        "Urban planning, flood modeling, infrastructure development, and viewshed analysis.",
-      thumbnailUrl: "https://example.com/thumbnails/abuja-dem.png",
-      imageName: "abuja-dem.png",
-      frameworkType: "Raster",
-      categories: ["topographicData", "elevation"],
-      coordinateSystem: "WGS 84",
-      projection: "UTM Zone 32N",
-      scale: 5000,
-      resolution: "1m",
-      accuracyLevel: "Very High",
-      completeness: 99,
-      consistencyCheck: true,
-      validationStatus: "Validated",
-      fileFormat: "GeoTIFF",
-      fileSize: 2147483647,
-      softwareReqs: "QGIS 3.0+, ArcGIS 10.5+, Global Mapper 20+",
-      updateCycle: "Every 3 years",
-      distributionFormat: "GeoTIFF, ASCII Grid",
-      accessMethod: "Direct Download",
-      downloadUrl: "https://data.fct.gov.ng/datasets/dem-2023.zip",
-      apiEndpoint: null,
-      licenseType: "FCT Geospatial Data License",
-      usageTerms:
-        "Free for government use. Academic and commercial use requires registration and fee.",
-      attributionRequirements:
-        "Data source: FCT Survey and Mapping Department, Abuja, Nigeria",
-      accessRestrictions: [
-        "Authentication Required",
-        "Fee Required for Commercial Use",
-      ],
-      contactPerson: "Engr. Suleiman Abba",
-      email: "gis@fct.gov.ng",
-      department: "Survey and Mapping",
+
+      // User association
       userId: adminUser.id,
     },
   ]
