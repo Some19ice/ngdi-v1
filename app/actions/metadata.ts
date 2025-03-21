@@ -227,6 +227,12 @@ const technicalDetailsSchema = z.object({
       required_error: "Maximum longitude is required",
     }),
   }),
+  // Resource Constraint - needed to match TechnicalDetailsData interface
+  resourceConstraint: z.object({
+    accessConstraints: z.string().min(1, "Access constraints are required"),
+    useConstraints: z.string().min(1, "Use constraints are required"),
+    otherConstraints: z.string().min(1, "Other constraints are required"),
+  }),
 })
 
 const accessInfoSchema = z.object({
@@ -273,6 +279,17 @@ export async function createMetadata(data: any) {
 
     if (!userId) {
       return { success: false, error: "Unauthorized" }
+    }
+
+    // Move resourceConstraint from generalInfo to technicalDetails if it exists in generalInfo
+    if (
+      data.generalInfo?.resourceConstraint &&
+      !data.technicalDetails?.resourceConstraint
+    ) {
+      data.technicalDetails = {
+        ...data.technicalDetails,
+        resourceConstraint: data.generalInfo.resourceConstraint,
+      }
     }
 
     // Validate the data against the schema
@@ -715,6 +732,17 @@ export async function updateMetadata(id: string, data: any) {
 
     if (existingMetadata.userId !== userId) {
       return { success: false, error: "Not authorized to update this metadata" }
+    }
+
+    // Move resourceConstraint from generalInfo to technicalDetails if it exists in generalInfo
+    if (
+      data.generalInfo?.resourceConstraint &&
+      !data.technicalDetails?.resourceConstraint
+    ) {
+      data.technicalDetails = {
+        ...data.technicalDetails,
+        resourceConstraint: data.generalInfo.resourceConstraint,
+      }
     }
 
     // Validate the data against the schema
