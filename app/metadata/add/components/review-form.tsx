@@ -24,14 +24,36 @@ export default function ReviewForm({
   formData,
   isSubmitting,
 }: ReviewFormProps) {
-  // Extract form data sections
+  // Extract form data sections with fallbacks to prevent errors
   const {
-    generalInfo,
-    dataQuality,
-    technicalDetails,
-    accessInfo,
+    generalInfo = {} as NGDIMetadataFormData["generalInfo"],
+    dataQuality = {} as NGDIMetadataFormData["dataQuality"],
+    technicalDetails = {} as NGDIMetadataFormData["technicalDetails"],
+    accessInfo = {} as NGDIMetadataFormData["accessInfo"],
     distributionInfo,
-  } = formData
+  } = formData || {}
+
+  // Initialize nested objects if they don't exist
+  generalInfo.dataInformation = generalInfo.dataInformation || {}
+  generalInfo.description = generalInfo.description || {}
+  generalInfo.resourceConstraint = generalInfo.resourceConstraint || {}
+
+  technicalDetails.spatialInformation =
+    technicalDetails.spatialInformation || {}
+  technicalDetails.technicalSpecifications =
+    technicalDetails.technicalSpecifications || {}
+
+  dataQuality.generalSection = dataQuality.generalSection || {}
+  dataQuality.positionalAccuracy = dataQuality.positionalAccuracy || {
+    horizontal: {},
+    vertical: {},
+  }
+  dataQuality.dataProcessingInformation =
+    dataQuality.dataProcessingInformation || {}
+
+  accessInfo.distributionInfo = accessInfo.distributionInfo || {}
+  accessInfo.licenseInfo = accessInfo.licenseInfo || {}
+  accessInfo.contactInfo = accessInfo.contactInfo || {}
 
   return (
     <div className="space-y-6">

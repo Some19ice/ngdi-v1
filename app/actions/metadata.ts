@@ -12,12 +12,19 @@ async function getCurrentUserId(): Promise<string | null> {
   const authToken = cookies().get("auth_token")?.value
 
   if (!authToken) {
+    console.error("Auth token is missing - user will be unauthorized")
     return null
   }
 
-  // In a real implementation, you would decode and validate the token
-  // For now, we'll return a placeholder user ID
-  return "placeholder-user-id"
+  try {
+    // In a real implementation, you would decode and validate the token
+    // For now, we'll return a placeholder user ID
+    console.log("Auth token found, using placeholder user ID")
+    return "placeholder-user-id"
+  } catch (error) {
+    console.error("Error parsing auth token:", error)
+    return null
+  }
 }
 
 // Form 1: General Information And Description Form
@@ -176,6 +183,9 @@ const form3Schema = z.object({
     phoneNumber: z.string().min(1, "Phone number is required"),
     webLink: z.string().url().optional().or(z.literal("")),
     socialMediaHandle: z.string().optional(),
+    isCustodian: z.boolean().default(true),
+    custodianName: z.string().optional(),
+    custodianContact: z.string().optional(),
   }),
 
   // Distribution Details
@@ -194,7 +204,46 @@ const form3Schema = z.object({
     orderingInstructions: z
       .string()
       .min(1, "Ordering instructions are required"),
-    maximumResponseTime: z.string().optional(),
+    maximumResponseTime: z.string().min(1, "Maximum response time is required"),
+  }),
+})
+
+// Create schemas for technicalDetails and accessInfo
+const technicalDetailsSchema = z.object({
+  spatialInformation: z.object({
+    coordinateSystem: z.string().min(1, "Coordinate system is required"),
+    projection: z.string().min(1, "Projection is required"),
+    scale: z.coerce.number().min(1, "Scale is required"),
+    resolution: z.string().optional(),
+  }),
+  technicalSpecifications: z.object({
+    fileFormat: z.string().min(1, "File format is required"),
+    fileSize: z.coerce.number().optional(),
+    numFeatures: z.coerce.number().optional(),
+    softwareReqs: z.string().optional(),
+  }),
+})
+
+const accessInfoSchema = z.object({
+  distributionInfo: z.object({
+    distributionFormat: z.string().min(1, "Distribution format is required"),
+    accessMethod: z.string().min(1, "Access method is required"),
+    downloadUrl: z.string().url().optional().or(z.literal("")),
+    apiEndpoint: z.string().url().optional().or(z.literal("")),
+  }),
+  licenseInfo: z.object({
+    licenseType: z.string().min(1, "License type is required"),
+    usageTerms: z.string().min(1, "Usage terms are required"),
+    attributionRequirements: z
+      .string()
+      .min(1, "Attribution requirements are required"),
+    accessRestrictions: z.array(z.string()),
+  }),
+  contactInfo: z.object({
+    contactPerson: z.string().min(1, "Contact person is required"),
+    email: z.string().email("Invalid email address"),
+    department: z.string().optional(),
+    phone: z.string().optional(),
   }),
 })
 
@@ -203,8 +252,8 @@ const ngdiMetadataSchema = z.object({
   // New structure with descriptive names
   generalInfo: form1Schema,
   dataQuality: form2Schema,
-  technicalDetails: z.any(),
-  accessInfo: z.any(),
+  technicalDetails: technicalDetailsSchema,
+  accessInfo: accessInfoSchema,
   distributionInfo: form3Schema.optional(),
 })
 
@@ -213,7 +262,7 @@ export type Form2Data = z.infer<typeof form2Schema>
 export type Form3Data = z.infer<typeof form3Schema>
 export type NGDIMetadataFormData = z.infer<typeof ngdiMetadataSchema>
 
-export async function createMetadata(data: NGDIMetadataFormData) {
+export async function createMetadata(data: any) {
   try {
     const userId = await getCurrentUserId()
 
@@ -225,7 +274,9 @@ export async function createMetadata(data: NGDIMetadataFormData) {
     const validatedData = ngdiMetadataSchema.parse(data)
 
     // Transform the form data to the API model
-    const apiMetadata = transformFormToApiModel(validatedData)
+    const apiMetadata = transformFormToApiModel(
+      validatedData as NGDIMetadataFormData
+    )
 
     // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
     // and in the consolidated Metadata table
@@ -637,7 +688,7 @@ export async function getMetadataById(id: string) {
 /**
  * Update an existing metadata record
  */
-export async function updateMetadata(id: string, data: NGDIMetadataFormData) {
+export async function updateMetadata(id: string, data: any) {
   try {
     const userId = await getCurrentUserId()
 
@@ -663,7 +714,9 @@ export async function updateMetadata(id: string, data: NGDIMetadataFormData) {
     const validatedData = ngdiMetadataSchema.parse(data)
 
     // Transform the form data to the API model
-    const apiMetadata = transformFormToApiModel(validatedData)
+    const apiMetadata = transformFormToApiModel(
+      validatedData as NGDIMetadataFormData
+    )
 
     // Update the metadata record - creates a new version in the original table
     // and updates the consolidated table
