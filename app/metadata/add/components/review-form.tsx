@@ -13,17 +13,21 @@ import { NGDIMetadataFormData } from "@/types/ngdi-metadata"
 import { Loader2 } from "lucide-react"
 
 interface ReviewFormProps {
-  onBack: () => void
-  onSave: () => void
-  formData: NGDIMetadataFormData
+  step: number
+  onStepChange: (step: number) => void
+  formData: Partial<NGDIMetadataFormData>
+  onChange: (data: Partial<NGDIMetadataFormData>) => void
   isSubmitting: boolean
+  onSubmit: () => void
 }
 
 export default function ReviewForm({
-  onBack,
-  onSave,
+  step,
+  onStepChange,
   formData,
+  onChange,
   isSubmitting,
+  onSubmit,
 }: ReviewFormProps) {
   // Extract form data sections with fallbacks to prevent errors
   const {
@@ -37,8 +41,10 @@ export default function ReviewForm({
   // Initialize nested objects if they don't exist
   generalInfo.dataInformation = generalInfo.dataInformation || {}
   generalInfo.description = generalInfo.description || {}
-  generalInfo.resourceConstraint = generalInfo.resourceConstraint || {}
 
+  // Resource constraint now belongs to technicalDetails, not generalInfo
+  technicalDetails.resourceConstraint =
+    technicalDetails.resourceConstraint || {}
   technicalDetails.spatialInformation =
     technicalDetails.spatialInformation || {}
   technicalDetails.technicalSpecifications =
@@ -157,7 +163,12 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Bounding Box</h4>
               <p className="text-sm text-muted-foreground">
-                {`${technicalDetails.spatialDomain.minLatitude}, ${technicalDetails.spatialDomain.minLongitude} to ${technicalDetails.spatialDomain.maxLatitude}, ${technicalDetails.spatialDomain.maxLongitude}`}
+                {technicalDetails.spatialDomain.minLatitude &&
+                technicalDetails.spatialDomain.minLongitude &&
+                technicalDetails.spatialDomain.maxLatitude &&
+                technicalDetails.spatialDomain.maxLongitude
+                  ? `${technicalDetails.spatialDomain.minLatitude}, ${technicalDetails.spatialDomain.minLongitude} to ${technicalDetails.spatialDomain.maxLatitude}, ${technicalDetails.spatialDomain.maxLongitude}`
+                  : "N/A"}
               </p>
             </div>
             <div>
@@ -172,6 +183,19 @@ export default function ReviewForm({
                 {technicalDetails.technicalSpecifications.fileSize
                   ? `${technicalDetails.technicalSpecifications.fileSize} MB`
                   : "N/A"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Access Constraints</h4>
+              <p className="text-sm text-muted-foreground">
+                {technicalDetails.resourceConstraint?.accessConstraints ||
+                  "N/A"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">Use Constraints</h4>
+              <p className="text-sm text-muted-foreground">
+                {technicalDetails.resourceConstraint?.useConstraints || "N/A"}
               </p>
             </div>
           </div>
@@ -203,7 +227,7 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Horizontal Accuracy</h4>
               <p className="text-sm text-muted-foreground">
-                {dataQuality.positionalAccuracy.horizontal.percentValue
+                {dataQuality.positionalAccuracy?.horizontal?.percentValue
                   ? `${dataQuality.positionalAccuracy.horizontal.percentValue}%`
                   : "N/A"}
               </p>
@@ -231,107 +255,48 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Distribution Format</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo.distributionInfo.distributionFormat ||
-                  distributionInfo?.distributorInformation.name ||
-                  "N/A"}
+                {accessInfo.distributionInfo?.distributionFormat || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Contact Person</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo.contactInfo.contactPerson ||
-                  distributionInfo?.distributorInformation.name ||
-                  "N/A"}
+                {accessInfo.contactInfo?.contactPerson || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Contact Email</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo.contactInfo.email ||
-                  distributionInfo?.distributorInformation.email ||
-                  "N/A"}
+                {accessInfo.contactInfo?.email || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">License Type</h4>
-              <p className="text-sm text-muted-foreground truncate">
-                {accessInfo.licenseInfo.licenseType || "N/A"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">Usage Terms</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo.licenseInfo.usageTerms ||
-                  distributionInfo?.distributionDetails.liability ||
-                  "N/A"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">Access Method</h4>
-              <p className="text-sm text-muted-foreground">
-                {accessInfo.distributionInfo.accessMethod || "N/A"}
+                {accessInfo.licenseInfo?.licenseType || "N/A"}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Access and Usage Restrictions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">
-            Usage Restrictions
-          </CardTitle>
-          <CardDescription>Access constraints and terms of use</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-sm font-medium">Access Constraints</h4>
-              <p className="text-sm text-muted-foreground">
-                {generalInfo.resourceConstraint.accessConstraints || "N/A"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">Use Constraints</h4>
-              <p className="text-sm text-muted-foreground">
-                {generalInfo.resourceConstraint.useConstraints || "N/A"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">Other Constraints</h4>
-              <p className="text-sm text-muted-foreground">
-                {generalInfo.resourceConstraint.otherConstraints || "N/A"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      <div className="flex justify-between mt-6">
+      <div className="flex justify-between">
         <Button
           type="button"
           variant="outline"
-          onClick={onBack}
+          onClick={() => onStepChange(step - 1)}
           disabled={isSubmitting}
         >
           Back
         </Button>
-        <Button
-          type="button"
-          onClick={onSave}
-          disabled={isSubmitting}
-          className="relative"
-        >
+        <Button onClick={onSubmit} disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Submitting...
             </>
           ) : (
-            <>Submit Metadata</>
+            "Submit Metadata"
           )}
         </Button>
       </div>
