@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { transformFormToApiModel } from "@/lib/transformers/metadata"
+import { validateJwtToken } from "@/lib/auth-client"
 
 // Function to get the current user ID from the auth token
-// This is a placeholder - implement based on your auth system
 async function getCurrentUserId(): Promise<string | null> {
   const authToken = cookies().get("auth_token")?.value
 
@@ -17,12 +17,18 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 
   try {
-    // In a real implementation, you would decode and validate the token
-    // For now, we'll return a placeholder user ID
-    console.log("Auth token found, using placeholder user ID")
-    return "placeholder-user-id"
+    // Validate and decode the token using the auth-client library
+    const validationResult = await validateJwtToken(authToken)
+
+    if (!validationResult.isValid) {
+      console.error("Invalid auth token:", validationResult.error)
+      return null
+    }
+
+    // Return the validated user ID from the token
+    return validationResult.userId || null
   } catch (error) {
-    console.error("Error parsing auth token:", error)
+    console.error("Error validating auth token:", error)
     return null
   }
 }
