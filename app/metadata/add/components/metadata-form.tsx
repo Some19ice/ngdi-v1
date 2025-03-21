@@ -14,18 +14,12 @@ import type {
   NGDIMetadataFormData,
   GeneralInfoData,
   DataQualityData,
-  DistributionInfoData,
   AccessInfoData,
   TechnicalDetailsData,
 } from "@/types/ngdi-metadata"
 
 // Import the form components
-import {
-  GeneralInfoForm,
-  DataQualityForm,
-  DistributionInfoForm,
-  Steps,
-} from "./index"
+import { GeneralInfoForm, DataQualityForm, Steps } from "./index"
 import TechnicalDetailsForm from "./technical-details-form"
 import AccessInfoForm from "./access-info-form"
 import ReviewForm from "./review-form"
@@ -49,7 +43,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
   // Handle step 1 (General Info) completion
   const handleGeneralInfoNext = (stepData: GeneralInfoData) => {
-    setFormData((prev) => ({ ...prev, generalInfo: stepData, form1: stepData }))
+    setFormData((prev) => ({ ...prev, generalInfo: stepData }))
     setCurrentStep(2)
   }
 
@@ -61,13 +55,13 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
   // Handle step 3 (Data Quality) completion
   const handleDataQualityNext = (stepData: DataQualityData) => {
-    setFormData((prev) => ({ ...prev, dataQuality: stepData, form2: stepData }))
+    setFormData((prev) => ({ ...prev, dataQuality: stepData }))
     setCurrentStep(4)
   }
 
   // Handle step 4 (Access Info) completion
   const handleAccessInfoNext = (stepData: AccessInfoData) => {
-    setFormData((prev) => ({ ...prev, accessInfo: stepData, form4: stepData }))
+    setFormData((prev) => ({ ...prev, accessInfo: stepData }))
     setCurrentStep(5)
   }
 
@@ -93,36 +87,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
         return
       }
 
-      // Prepare the data with both new and old structure for backward compatibility
-      const finalFormData = {
-        ...formData,
-        // Set old structure properties for backward compatibility
-        form1: formData.generalInfo,
-        form2: formData.dataQuality,
-        form3: formData.distributionInfo || {
-          distributorInformation: {
-            name: formData.accessInfo?.contactInfo?.contactPerson || "",
-            address: formData.accessInfo?.contactInfo?.department || "",
-            email: formData.accessInfo?.contactInfo?.email || "",
-            phoneNumber: formData.accessInfo?.contactInfo?.phone || "",
-            isCustodian: true,
-          },
-          distributionDetails: {
-            liability: formData.accessInfo?.licenseInfo?.usageTerms || "",
-            customOrderProcess: "",
-            technicalPrerequisites:
-              formData.technicalDetails?.technicalSpecifications
-                ?.softwareReqs || "",
-          },
-          standardOrderProcess: {
-            fees: "Please contact for pricing",
-            turnaroundTime: "Typically 3-5 business days",
-            orderingInstructions: "Contact via email or phone",
-            maximumResponseTime: "5 business days",
-          },
-        },
-        form4: formData.accessInfo,
-      } as NGDIMetadataFormData
+      const finalFormData = formData as NGDIMetadataFormData
 
       let result
 
@@ -193,7 +158,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
               {currentStep === 1 && (
                 <GeneralInfoForm
                   onNext={handleGeneralInfoNext}
-                  initialData={formData.generalInfo || formData.form1}
+                  initialData={formData.generalInfo}
                 />
               )}
               {currentStep === 2 && (
@@ -207,14 +172,14 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
                 <DataQualityForm
                   onNext={handleDataQualityNext}
                   onBack={handlePrevious}
-                  initialData={formData.dataQuality || formData.form2}
+                  initialData={formData.dataQuality}
                 />
               )}
               {currentStep === 4 && (
                 <AccessInfoForm
                   onNext={handleAccessInfoNext}
                   onBack={handlePrevious}
-                  initialData={formData.accessInfo || formData.form4}
+                  initialData={formData.accessInfo}
                 />
               )}
               {currentStep === 5 && (

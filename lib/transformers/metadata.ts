@@ -17,11 +17,13 @@ import type { MetadataRequest } from "@/types/metadata"
 export function transformFormToApiModel(
   formData: NGDIMetadataFormData
 ): MetadataRequest {
-  // Use either new property names or fall back to legacy names
-  const generalInfo = formData.generalInfo || formData.form1
-  const dataQuality = formData.dataQuality || formData.form2
-  const accessInfo = formData.accessInfo || formData.form4
-  const { technicalDetails } = formData
+  const {
+    generalInfo,
+    dataQuality,
+    technicalDetails,
+    accessInfo,
+    distributionInfo,
+  } = formData
 
   // Extract fundamental datasets as categories
   const categories: string[] = []
@@ -288,17 +290,12 @@ export function transformApiToFormModel(
     },
   }
 
-  // Return with both new and legacy property names
+  // Return with only the new structure
   return {
     generalInfo,
     dataQuality,
     technicalDetails,
     accessInfo,
     distributionInfo,
-    // Legacy names for backward compatibility
-    form1: generalInfo,
-    form2: dataQuality,
-    form3: distributionInfo,
-    form4: accessInfo,
   }
 }

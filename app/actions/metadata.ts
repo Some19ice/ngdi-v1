@@ -199,35 +199,14 @@ const form3Schema = z.object({
 })
 
 // Combined schema for the complete metadata
-const ngdiMetadataSchema = z
-  .object({
-    // Old structure for backward compatibility
-    form1: form1Schema.optional(),
-    form2: form2Schema.optional(),
-    form3: form3Schema.optional(),
-    form4: z.any().optional(),
-
-    // New structure with descriptive names
-    generalInfo: form1Schema.optional(),
-    dataQuality: form2Schema.optional(),
-    technicalDetails: z.any().optional(),
-    accessInfo: z.any().optional(),
-    distributionInfo: form3Schema.optional(),
-  })
-  .refine(
-    (data) => {
-      // Ensure either the old structure or the new structure is present
-      return (
-        (data.form1 || data.generalInfo) &&
-        (data.form2 || data.dataQuality) &&
-        data.technicalDetails
-      )
-    },
-    {
-      message:
-        "Either the old or new structure must provide all required form sections",
-    }
-  )
+const ngdiMetadataSchema = z.object({
+  // New structure with descriptive names
+  generalInfo: form1Schema,
+  dataQuality: form2Schema,
+  technicalDetails: z.any(),
+  accessInfo: z.any(),
+  distributionInfo: form3Schema.optional(),
+})
 
 export type Form1Data = z.infer<typeof form1Schema>
 export type Form2Data = z.infer<typeof form2Schema>
@@ -245,25 +224,8 @@ export async function createMetadata(data: NGDIMetadataFormData) {
     // Validate the data against the schema
     const validatedData = ngdiMetadataSchema.parse(data)
 
-    // Ensure we have the data in both formats for backward compatibility
-    const formData = {
-      ...validatedData,
-      form1: validatedData.form1 || validatedData.generalInfo,
-      form2: validatedData.form2 || validatedData.dataQuality,
-      form3: validatedData.form3 || validatedData.distributionInfo,
-      form4: validatedData.form4 || validatedData.accessInfo,
-      generalInfo: validatedData.generalInfo || validatedData.form1,
-      dataQuality: validatedData.dataQuality || validatedData.form2,
-      technicalDetails: validatedData.technicalDetails,
-      accessInfo: validatedData.accessInfo || validatedData.form4,
-      distributionInfo: validatedData.distributionInfo || validatedData.form3,
-    }
-
     // Transform the form data to the API model
-    const apiMetadata = transformFormToApiModel(formData)
-
-    // Get the form1 data from either generalInfo or form1
-    const form1Data = formData.form1 || formData.generalInfo
+    const apiMetadata = transformFormToApiModel(validatedData)
 
     // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
     // and in the consolidated Metadata table
@@ -271,105 +233,147 @@ export async function createMetadata(data: NGDIMetadataFormData) {
       // Create in NGDIMetadata (original table)
       prisma.nGDIMetadata.create({
         data: {
-          // Form 1: General Information
-          dataType: form1Data.dataInformation.dataType,
-          dataName: form1Data.dataInformation.dataName,
-          cloudCoverPercentage: form1Data.dataInformation.cloudCoverPercentage,
-          productionDate: form1Data.dataInformation.productionDate,
+          // General Information
+          dataType: validatedData.generalInfo.dataInformation.dataType,
+          dataName: validatedData.generalInfo.dataInformation.dataName,
+          cloudCoverPercentage:
+            validatedData.generalInfo.dataInformation.cloudCoverPercentage,
+          productionDate:
+            validatedData.generalInfo.dataInformation.productionDate,
 
           // Fundamental Datasets (stored as JSON)
-          fundamentalDatasets: form1Data.fundamentalDatasets,
+          fundamentalDatasets: validatedData.generalInfo.fundamentalDatasets,
 
           // Description
-          abstract: form1Data.description.abstract,
-          purpose: form1Data.description.purpose,
-          thumbnailUrl: form1Data.description.thumbnail,
+          abstract: validatedData.generalInfo.description.abstract,
+          purpose: validatedData.generalInfo.description.purpose,
+          thumbnailUrl: validatedData.generalInfo.description.thumbnail,
 
           // Spatial Domain
-          coordinateUnit: form1Data.spatialDomain.coordinateUnit,
-          minLatitude: form1Data.spatialDomain.minLatitude,
-          minLongitude: form1Data.spatialDomain.minLongitude,
-          maxLatitude: form1Data.spatialDomain.maxLatitude,
-          maxLongitude: form1Data.spatialDomain.maxLongitude,
+          coordinateUnit:
+            validatedData.generalInfo.spatialDomain.coordinateUnit,
+          minLatitude: validatedData.generalInfo.spatialDomain.minLatitude,
+          minLongitude: validatedData.generalInfo.spatialDomain.minLongitude,
+          maxLatitude: validatedData.generalInfo.spatialDomain.maxLatitude,
+          maxLongitude: validatedData.generalInfo.spatialDomain.maxLongitude,
 
           // Location
-          country: form1Data.location.country,
-          geopoliticalZone: form1Data.location.geopoliticalZone,
-          state: form1Data.location.state,
-          lga: form1Data.location.lga,
-          townCity: form1Data.location.townCity,
+          country: validatedData.generalInfo.location.country,
+          geopoliticalZone: validatedData.generalInfo.location.geopoliticalZone,
+          state: validatedData.generalInfo.location.state,
+          lga: validatedData.generalInfo.location.lga,
+          townCity: validatedData.generalInfo.location.townCity,
 
           // Data Status
-          assessment: form1Data.dataStatus.assessment,
-          updateFrequency: form1Data.dataStatus.updateFrequency,
+          assessment: validatedData.generalInfo.dataStatus.assessment,
+          updateFrequency: validatedData.generalInfo.dataStatus.updateFrequency,
 
           // Resource Constraint
-          accessConstraints: form1Data.resourceConstraint.accessConstraints,
-          useConstraints: form1Data.resourceConstraint.useConstraints,
-          otherConstraints: form1Data.resourceConstraint.otherConstraints,
+          accessConstraints:
+            validatedData.generalInfo.resourceConstraint.accessConstraints,
+          useConstraints:
+            validatedData.generalInfo.resourceConstraint.useConstraints,
+          otherConstraints:
+            validatedData.generalInfo.resourceConstraint.otherConstraints,
 
           // Metadata Reference
-          metadataCreationDate: form1Data.metadataReference.creationDate,
-          metadataReviewDate: form1Data.metadataReference.reviewDate,
-          metadataContactName: form1Data.metadataReference.contactName,
-          metadataContactAddress: form1Data.metadataReference.address,
-          metadataContactEmail: form1Data.metadataReference.email,
-          metadataContactPhone: form1Data.metadataReference.phoneNumber,
+          metadataCreationDate:
+            validatedData.generalInfo.metadataReference.creationDate,
+          metadataReviewDate:
+            validatedData.generalInfo.metadataReference.reviewDate,
+          metadataContactName:
+            validatedData.generalInfo.metadataReference.contactName,
+          metadataContactAddress:
+            validatedData.generalInfo.metadataReference.address,
+          metadataContactEmail:
+            validatedData.generalInfo.metadataReference.email,
+          metadataContactPhone:
+            validatedData.generalInfo.metadataReference.phoneNumber,
 
-          // Form 2: Data Quality Information
+          // Data Quality Information
           // General Section
           logicalConsistencyReport:
-            formData.form2.generalSection.logicalConsistencyReport,
-          completenessReport: formData.form2.generalSection.completenessReport,
+            validatedData.dataQuality.generalSection.logicalConsistencyReport,
+          completenessReport:
+            validatedData.dataQuality.generalSection.completenessReport,
 
           // Attribute Accuracy
           attributeAccuracyReport:
-            formData.form2.attributeAccuracy.accuracyReport,
+            validatedData.dataQuality.attributeAccuracy.accuracyReport,
 
           // Positional Accuracy (stored as JSON)
-          positionalAccuracy: formData.form2.positionalAccuracy,
+          positionalAccuracy: validatedData.dataQuality.positionalAccuracy,
 
           // Source Information (stored as JSON)
-          sourceInformation: formData.form2.sourceInformation,
+          sourceInformation: validatedData.dataQuality.sourceInformation,
 
           // Data Processing Information
           processingDescription:
-            formData.form2.dataProcessingInformation.description,
+            validatedData.dataQuality.dataProcessingInformation.description,
           softwareVersion:
-            formData.form2.dataProcessingInformation.softwareVersion,
-          processedDate: formData.form2.dataProcessingInformation.processedDate,
+            validatedData.dataQuality.dataProcessingInformation.softwareVersion,
+          processedDate:
+            validatedData.dataQuality.dataProcessingInformation.processedDate,
 
           // Processor Contact Information
-          processorName: formData.form2.processorContactInformation.name,
-          processorEmail: formData.form2.processorContactInformation.email,
-          processorAddress: formData.form2.processorContactInformation.address,
+          processorName:
+            validatedData.dataQuality.processorContactInformation.name,
+          processorEmail:
+            validatedData.dataQuality.processorContactInformation.email,
+          processorAddress:
+            validatedData.dataQuality.processorContactInformation.address,
 
-          // Form 3: Data Distribution Information
+          // Distribution Information
           // Distributor Information
-          distributorName: formData.form3.distributorInformation.name,
-          distributorAddress: formData.form3.distributorInformation.address,
-          distributorEmail: formData.form3.distributorInformation.email,
-          distributorPhone: formData.form3.distributorInformation.phoneNumber,
+          distributorName:
+            validatedData.distributionInfo?.distributorInformation.name ||
+            validatedData.accessInfo.contactInfo.contactPerson,
+          distributorAddress:
+            validatedData.distributionInfo?.distributorInformation.address ||
+            validatedData.accessInfo.contactInfo.department ||
+            "",
+          distributorEmail:
+            validatedData.distributionInfo?.distributorInformation.email ||
+            validatedData.accessInfo.contactInfo.email,
+          distributorPhone:
+            validatedData.distributionInfo?.distributorInformation
+              .phoneNumber ||
+            validatedData.accessInfo.contactInfo.phone ||
+            "",
           distributorWebLink:
-            formData.form3.distributorInformation.webLink || null,
+            validatedData.distributionInfo?.distributorInformation.webLink ||
+            null,
           distributorSocialMedia:
-            formData.form3.distributorInformation.socialMediaHandle,
+            validatedData.distributionInfo?.distributorInformation
+              .socialMediaHandle || "",
 
           // Distribution Details
-          distributionLiability: formData.form3.distributionDetails.liability,
+          distributionLiability:
+            validatedData.distributionInfo?.distributionDetails.liability ||
+            validatedData.accessInfo.licenseInfo.usageTerms,
           customOrderProcess:
-            formData.form3.distributionDetails.customOrderProcess,
+            validatedData.distributionInfo?.distributionDetails
+              .customOrderProcess || "Contact for custom orders",
           technicalPrerequisites:
-            formData.form3.distributionDetails.technicalPrerequisites,
+            validatedData.distributionInfo?.distributionDetails
+              .technicalPrerequisites ||
+            validatedData.technicalDetails.technicalSpecifications
+              .softwareReqs ||
+            "",
 
           // Standard Order Process
-          fees: formData.form3.standardOrderProcess.fees,
-          turnaroundTime: formData.form3.standardOrderProcess.turnaroundTime,
+          fees:
+            validatedData.distributionInfo?.standardOrderProcess.fees ||
+            "Please contact for pricing",
+          turnaroundTime:
+            validatedData.distributionInfo?.standardOrderProcess
+              .turnaroundTime || "Typically 3-5 business days",
           orderingInstructions:
-            formData.form3.standardOrderProcess.orderingInstructions,
+            validatedData.distributionInfo?.standardOrderProcess
+              .orderingInstructions || "Contact via email or phone",
           maximumResponseTime:
-            formData.form3.standardOrderProcess.maximumResponseTime ||
-            "48 hours",
+            validatedData.distributionInfo?.standardOrderProcess
+              .maximumResponseTime || "5 business days",
 
           // User reference
           userId: userId,
@@ -658,142 +662,166 @@ export async function updateMetadata(id: string, data: NGDIMetadataFormData) {
     // Validate the data against the schema
     const validatedData = ngdiMetadataSchema.parse(data)
 
-    // Ensure we have the data in both formats for backward compatibility
-    const formData = {
-      ...validatedData,
-      form1: validatedData.form1 || validatedData.generalInfo,
-      form2: validatedData.form2 || validatedData.dataQuality,
-      form3: validatedData.form3 || validatedData.distributionInfo,
-      form4: validatedData.form4 || validatedData.accessInfo,
-      generalInfo: validatedData.generalInfo || validatedData.form1,
-      dataQuality: validatedData.dataQuality || validatedData.form2,
-      technicalDetails: validatedData.technicalDetails,
-      accessInfo: validatedData.accessInfo || validatedData.form4,
-      distributionInfo: validatedData.distributionInfo || validatedData.form3,
-    } as NGDIMetadataFormData
-
     // Transform the form data to the API model
-    const apiMetadata = transformFormToApiModel(formData)
+    const apiMetadata = transformFormToApiModel(validatedData)
 
-    // Get the form1 data from either generalInfo or form1
-    const form1Data = (formData.form1 || formData.generalInfo)!
-
-    // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
-    // and in the consolidated Metadata table
-    const [ngdiMetadata, metadata] = await Promise.all([
-      // Create in NGDIMetadata (original table)
+    // Update the metadata record - creates a new version in the original table
+    // and updates the consolidated table
+    const [_, updatedMetadata] = await Promise.all([
       prisma.nGDIMetadata.create({
         data: {
-          // Form 1: General Information
-          dataType: form1Data.dataInformation.dataType,
-          dataName: form1Data.dataInformation.dataName,
-          cloudCoverPercentage: form1Data.dataInformation.cloudCoverPercentage,
-          productionDate: form1Data.dataInformation.productionDate,
+          // General Information
+          dataType: validatedData.generalInfo.dataInformation.dataType,
+          dataName: validatedData.generalInfo.dataInformation.dataName,
+          cloudCoverPercentage:
+            validatedData.generalInfo.dataInformation.cloudCoverPercentage,
+          productionDate:
+            validatedData.generalInfo.dataInformation.productionDate,
 
           // Fundamental Datasets (stored as JSON)
-          fundamentalDatasets: form1Data.fundamentalDatasets,
+          fundamentalDatasets: validatedData.generalInfo.fundamentalDatasets,
 
           // Description
-          abstract: form1Data.description.abstract,
-          purpose: form1Data.description.purpose,
-          thumbnailUrl: form1Data.description.thumbnail,
+          abstract: validatedData.generalInfo.description.abstract,
+          purpose: validatedData.generalInfo.description.purpose,
+          thumbnailUrl: validatedData.generalInfo.description.thumbnail,
 
           // Spatial Domain
-          coordinateUnit: form1Data.spatialDomain.coordinateUnit,
-          minLatitude: form1Data.spatialDomain.minLatitude,
-          minLongitude: form1Data.spatialDomain.minLongitude,
-          maxLatitude: form1Data.spatialDomain.maxLatitude,
-          maxLongitude: form1Data.spatialDomain.maxLongitude,
+          coordinateUnit:
+            validatedData.generalInfo.spatialDomain.coordinateUnit,
+          minLatitude: validatedData.generalInfo.spatialDomain.minLatitude,
+          minLongitude: validatedData.generalInfo.spatialDomain.minLongitude,
+          maxLatitude: validatedData.generalInfo.spatialDomain.maxLatitude,
+          maxLongitude: validatedData.generalInfo.spatialDomain.maxLongitude,
 
           // Location
-          country: form1Data.location.country,
-          geopoliticalZone: form1Data.location.geopoliticalZone,
-          state: form1Data.location.state,
-          lga: form1Data.location.lga,
-          townCity: form1Data.location.townCity,
+          country: validatedData.generalInfo.location.country,
+          geopoliticalZone: validatedData.generalInfo.location.geopoliticalZone,
+          state: validatedData.generalInfo.location.state,
+          lga: validatedData.generalInfo.location.lga,
+          townCity: validatedData.generalInfo.location.townCity,
 
           // Data Status
-          assessment: form1Data.dataStatus.assessment,
-          updateFrequency: form1Data.dataStatus.updateFrequency,
+          assessment: validatedData.generalInfo.dataStatus.assessment,
+          updateFrequency: validatedData.generalInfo.dataStatus.updateFrequency,
 
           // Resource Constraint
-          accessConstraints: form1Data.resourceConstraint.accessConstraints,
-          useConstraints: form1Data.resourceConstraint.useConstraints,
-          otherConstraints: form1Data.resourceConstraint.otherConstraints,
+          accessConstraints:
+            validatedData.generalInfo.resourceConstraint.accessConstraints,
+          useConstraints:
+            validatedData.generalInfo.resourceConstraint.useConstraints,
+          otherConstraints:
+            validatedData.generalInfo.resourceConstraint.otherConstraints,
 
           // Metadata Reference
-          metadataCreationDate: form1Data.metadataReference.creationDate,
-          metadataReviewDate: form1Data.metadataReference.reviewDate,
-          metadataContactName: form1Data.metadataReference.contactName,
-          metadataContactAddress: form1Data.metadataReference.address,
-          metadataContactEmail: form1Data.metadataReference.email,
-          metadataContactPhone: form1Data.metadataReference.phoneNumber,
+          metadataCreationDate:
+            validatedData.generalInfo.metadataReference.creationDate,
+          metadataReviewDate:
+            validatedData.generalInfo.metadataReference.reviewDate,
+          metadataContactName:
+            validatedData.generalInfo.metadataReference.contactName,
+          metadataContactAddress:
+            validatedData.generalInfo.metadataReference.address,
+          metadataContactEmail:
+            validatedData.generalInfo.metadataReference.email,
+          metadataContactPhone:
+            validatedData.generalInfo.metadataReference.phoneNumber,
 
-          // Form 2: Data Quality Information
+          // Data Quality Information
           // General Section
           logicalConsistencyReport:
-            formData.form2.generalSection.logicalConsistencyReport,
-          completenessReport: formData.form2.generalSection.completenessReport,
+            validatedData.dataQuality.generalSection.logicalConsistencyReport,
+          completenessReport:
+            validatedData.dataQuality.generalSection.completenessReport,
 
           // Attribute Accuracy
           attributeAccuracyReport:
-            formData.form2.attributeAccuracy.accuracyReport,
+            validatedData.dataQuality.attributeAccuracy.accuracyReport,
 
           // Positional Accuracy (stored as JSON)
-          positionalAccuracy: formData.form2.positionalAccuracy,
+          positionalAccuracy: validatedData.dataQuality.positionalAccuracy,
 
           // Source Information (stored as JSON)
-          sourceInformation: formData.form2.sourceInformation,
+          sourceInformation: validatedData.dataQuality.sourceInformation,
 
           // Data Processing Information
           processingDescription:
-            formData.form2.dataProcessingInformation.description,
+            validatedData.dataQuality.dataProcessingInformation.description,
           softwareVersion:
-            formData.form2.dataProcessingInformation.softwareVersion,
-          processedDate: formData.form2.dataProcessingInformation.processedDate,
+            validatedData.dataQuality.dataProcessingInformation.softwareVersion,
+          processedDate:
+            validatedData.dataQuality.dataProcessingInformation.processedDate,
 
           // Processor Contact Information
-          processorName: formData.form2.processorContactInformation.name,
-          processorEmail: formData.form2.processorContactInformation.email,
-          processorAddress: formData.form2.processorContactInformation.address,
+          processorName:
+            validatedData.dataQuality.processorContactInformation.name,
+          processorEmail:
+            validatedData.dataQuality.processorContactInformation.email,
+          processorAddress:
+            validatedData.dataQuality.processorContactInformation.address,
 
-          // Form 3: Data Distribution Information
+          // Distribution Information
           // Distributor Information
-          distributorName: formData.form3.distributorInformation.name,
-          distributorAddress: formData.form3.distributorInformation.address,
-          distributorEmail: formData.form3.distributorInformation.email,
-          distributorPhone: formData.form3.distributorInformation.phoneNumber,
+          distributorName:
+            validatedData.distributionInfo?.distributorInformation.name ||
+            validatedData.accessInfo.contactInfo.contactPerson,
+          distributorAddress:
+            validatedData.distributionInfo?.distributorInformation.address ||
+            validatedData.accessInfo.contactInfo.department ||
+            "",
+          distributorEmail:
+            validatedData.distributionInfo?.distributorInformation.email ||
+            validatedData.accessInfo.contactInfo.email,
+          distributorPhone:
+            validatedData.distributionInfo?.distributorInformation
+              .phoneNumber ||
+            validatedData.accessInfo.contactInfo.phone ||
+            "",
           distributorWebLink:
-            formData.form3.distributorInformation.webLink || null,
+            validatedData.distributionInfo?.distributorInformation.webLink ||
+            null,
           distributorSocialMedia:
-            formData.form3.distributorInformation.socialMediaHandle,
+            validatedData.distributionInfo?.distributorInformation
+              .socialMediaHandle || "",
 
           // Distribution Details
-          distributionLiability: formData.form3.distributionDetails.liability,
+          distributionLiability:
+            validatedData.distributionInfo?.distributionDetails.liability ||
+            validatedData.accessInfo.licenseInfo.usageTerms,
           customOrderProcess:
-            formData.form3.distributionDetails.customOrderProcess,
+            validatedData.distributionInfo?.distributionDetails
+              .customOrderProcess || "Contact for custom orders",
           technicalPrerequisites:
-            formData.form3.distributionDetails.technicalPrerequisites,
+            validatedData.distributionInfo?.distributionDetails
+              .technicalPrerequisites ||
+            validatedData.technicalDetails.technicalSpecifications
+              .softwareReqs ||
+            "",
 
           // Standard Order Process
-          fees: formData.form3.standardOrderProcess.fees,
-          turnaroundTime: formData.form3.standardOrderProcess.turnaroundTime,
+          fees:
+            validatedData.distributionInfo?.standardOrderProcess.fees ||
+            "Please contact for pricing",
+          turnaroundTime:
+            validatedData.distributionInfo?.standardOrderProcess
+              .turnaroundTime || "Typically 3-5 business days",
           orderingInstructions:
-            formData.form3.standardOrderProcess.orderingInstructions,
+            validatedData.distributionInfo?.standardOrderProcess
+              .orderingInstructions || "Contact via email or phone",
           maximumResponseTime:
-            formData.form3.standardOrderProcess.maximumResponseTime ||
-            "48 hours",
+            validatedData.distributionInfo?.standardOrderProcess
+              .maximumResponseTime || "5 business days",
 
           // User reference
           userId: userId,
         },
       }),
 
-      // Create in Metadata (unified table)
-      prisma.metadata.create({
+      // Update in Metadata (unified table)
+      prisma.metadata.update({
+        where: { id },
         data: {
           ...apiMetadata,
-          userId,
         },
       }),
     ])

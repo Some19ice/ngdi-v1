@@ -24,11 +24,14 @@ export default function ReviewForm({
   formData,
   isSubmitting,
 }: ReviewFormProps) {
-  // Extract form data sections with backward compatibility
-  const generalInfo = formData?.generalInfo || formData?.form1
-  const dataQuality = formData?.dataQuality || formData?.form2
-  const accessInfo = formData?.accessInfo || formData?.form4
-  const { technicalDetails } = formData
+  // Extract form data sections
+  const {
+    generalInfo,
+    dataQuality,
+    technicalDetails,
+    accessInfo,
+    distributionInfo,
+  } = formData
 
   return (
     <div className="space-y-6">
@@ -52,31 +55,31 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Data Type</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.dataInformation?.dataType || "N/A"}
+                {generalInfo.dataInformation.dataType || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Data Name</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.dataInformation?.dataName || "N/A"}
+                {generalInfo.dataInformation.dataName || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Production Date</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.dataInformation?.productionDate || "N/A"}
+                {generalInfo.dataInformation.productionDate || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Abstract</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {generalInfo?.description?.abstract || "N/A"}
+                {generalInfo.description.abstract || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Purpose</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {generalInfo?.description?.purpose || "N/A"}
+                {generalInfo.description.purpose || "N/A"}
               </p>
             </div>
           </div>
@@ -98,20 +101,19 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Coordinate System</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.spatialInformation?.coordinateSystem ||
-                  "N/A"}
+                {technicalDetails.spatialInformation.coordinateSystem || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Projection</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.spatialInformation?.projection || "N/A"}
+                {technicalDetails.spatialInformation.projection || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Scale</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.spatialInformation?.scale
+                {technicalDetails.spatialInformation.scale
                   ? `1:${technicalDetails.spatialInformation.scale}`
                   : "N/A"}
               </p>
@@ -119,19 +121,19 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Resolution</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.spatialInformation?.resolution || "N/A"}
+                {technicalDetails.spatialInformation.resolution || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">File Format</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.technicalSpecifications?.fileFormat || "N/A"}
+                {technicalDetails.technicalSpecifications.fileFormat || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">File Size</h4>
               <p className="text-sm text-muted-foreground">
-                {technicalDetails?.technicalSpecifications?.fileSize
+                {technicalDetails.technicalSpecifications.fileSize
                   ? `${technicalDetails.technicalSpecifications.fileSize} MB`
                   : "N/A"}
               </p>
@@ -153,19 +155,19 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Consistency Report</h4>
               <p className="text-sm text-muted-foreground">
-                {dataQuality?.generalSection?.logicalConsistencyReport || "N/A"}
+                {dataQuality.generalSection.logicalConsistencyReport || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Completeness Report</h4>
               <p className="text-sm text-muted-foreground">
-                {dataQuality?.generalSection?.completenessReport || "N/A"}
+                {dataQuality.generalSection.completenessReport || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Horizontal Accuracy</h4>
               <p className="text-sm text-muted-foreground">
-                {dataQuality?.positionalAccuracy?.horizontal?.percentValue
+                {dataQuality.positionalAccuracy.horizontal.percentValue
                   ? `${dataQuality.positionalAccuracy.horizontal.percentValue}%`
                   : "N/A"}
               </p>
@@ -173,7 +175,7 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Processing Description</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {dataQuality?.dataProcessingInformation?.description || "N/A"}
+                {dataQuality.dataProcessingInformation.description || "N/A"}
               </p>
             </div>
           </div>
@@ -193,45 +195,45 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Distribution Format</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo?.distributionInfo?.distributionFormat ||
-                  formData?.form3?.distributorInformation?.name ||
+                {accessInfo.distributionInfo.distributionFormat ||
+                  distributionInfo?.distributorInformation.name ||
                   "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Contact Person</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo?.contactInfo?.contactPerson ||
-                  formData?.form3?.distributorInformation?.name ||
+                {accessInfo.contactInfo.contactPerson ||
+                  distributionInfo?.distributorInformation.name ||
                   "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Contact Email</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo?.contactInfo?.email ||
-                  formData?.form3?.distributorInformation?.email ||
+                {accessInfo.contactInfo.email ||
+                  distributionInfo?.distributorInformation.email ||
                   "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">License Type</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {accessInfo?.licenseInfo?.licenseType || "N/A"}
+                {accessInfo.licenseInfo.licenseType || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Usage Terms</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo?.licenseInfo?.usageTerms ||
-                  formData?.form3?.distributionDetails?.liability ||
+                {accessInfo.licenseInfo.usageTerms ||
+                  distributionInfo?.distributionDetails.liability ||
                   "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Access Method</h4>
               <p className="text-sm text-muted-foreground">
-                {accessInfo?.distributionInfo?.accessMethod || "N/A"}
+                {accessInfo.distributionInfo.accessMethod || "N/A"}
               </p>
             </div>
           </div>
@@ -251,19 +253,19 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Access Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.resourceConstraint?.accessConstraints || "N/A"}
+                {generalInfo.resourceConstraint.accessConstraints || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Use Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.resourceConstraint?.useConstraints || "N/A"}
+                {generalInfo.resourceConstraint.useConstraints || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Other Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {generalInfo?.resourceConstraint?.otherConstraints || "N/A"}
+                {generalInfo.resourceConstraint.otherConstraints || "N/A"}
               </p>
             </div>
           </div>

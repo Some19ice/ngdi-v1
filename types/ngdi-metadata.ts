@@ -203,16 +203,12 @@ export interface DataQualityData extends Form2Data {}
 export interface DistributionInfoData extends Form3Data {}
 
 export interface NGDIMetadataFormData {
+  // Descriptive names
   generalInfo: GeneralInfoData
   technicalDetails: TechnicalDetailsData
   dataQuality: DataQualityData
   accessInfo: AccessInfoData
   distributionInfo?: DistributionInfoData
-
-  form1?: Form1Data
-  form2?: Form2Data
-  form3?: Form3Data
-  form4?: AccessInfoData
 }
 
 export interface NGDIMetadataResponse extends NGDIMetadataFormData {
