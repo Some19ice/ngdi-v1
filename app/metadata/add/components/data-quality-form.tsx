@@ -7,10 +7,8 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -25,13 +23,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { FormDescriptionWithTooltip, RequiredFormLabel } from "./form-elements"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { InfoIcon } from "lucide-react"
+  FormSection,
+  FormSectionGrid,
+  FormSectionDivider,
+} from "./form-section"
 
 // Define validation schema using Zod
 const formSchema = z.object({
@@ -80,42 +77,6 @@ interface DataQualityFormProps {
   initialData?: Partial<Form2Data>
 }
 
-// Custom FormLabel with red asterisk for required fields
-function RequiredFormLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <FormLabel>
-      {children} <span className="text-destructive">*</span>
-    </FormLabel>
-  )
-}
-
-// Create a custom FormDescription with tooltip
-function FormDescriptionWithTooltip({
-  children,
-  tooltip,
-}: {
-  children: React.ReactNode
-  tooltip: string
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <FormDescription className="text-muted-foreground text-xs">
-        {children}
-      </FormDescription>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <InfoIcon className="h-3.5 w-3.5 text-muted-foreground/70 cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm text-xs">
-            {tooltip}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </div>
-  )
-}
-
 export default function DataQualityForm({
   onNext,
   onBack,
@@ -162,18 +123,13 @@ export default function DataQualityForm({
         address: "",
       },
     },
-    mode: "onSubmit", // Only validate on submit
   })
-
-  function onSubmit(data: Form2Data) {
-    onNext(data)
-  }
 
   // Get current data and continue
   const handleContinue = () => {
-    // Get current form values
+    // Get current form values without validation
     const currentData = form.getValues()
-    // Pass the data to the next step
+    // Pass the data to the next step without validation
     onNext(currentData)
   }
 
