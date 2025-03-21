@@ -7,20 +7,49 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Form } from "@/components/ui/form"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { MetadataSearchParams } from "@/types/metadata"
+import { Search, XCircle, CalendarIcon, ChevronDown } from "lucide-react"
 import {
   TextSearchField,
   SelectSearchField,
   tooltips,
   descriptions,
+  LabelWithTooltip,
 } from "@/components/search/SearchFormBase"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Separator } from "@/components/ui/separator"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
 
 const formSchema = z.object({
-  search: z.string().optional(),
-  category: z.string().optional(),
+  keyword: z.string().optional(),
+  author: z.string().optional(),
+  organization: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  dataTypes: z.array(z.string()).optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
 })
@@ -31,27 +60,56 @@ interface MetadataSearchFormProps {
   searchParams: MetadataSearchParams
 }
 
-// Category options for metadata search
+// Group categories for better organization
+const categoryGroups = [
+  {
+    name: "Boundaries and Administration",
+    items: [
+      { value: "boundaries", label: "Boundaries" },
+      { value: "administrativeBoundaries", label: "Administrative Boundaries" },
+      { value: "cadastralData", label: "Cadastral Data" },
+    ],
+  },
+  {
+    name: "Geography and Environment",
+    items: [
+      { value: "elevation", label: "Elevation" },
+      { value: "land_cover", label: "Land Cover" },
+      { value: "geology", label: "Geology" },
+      { value: "climate", label: "Climate" },
+      { value: "hydrography", label: "Hydrography" },
+    ],
+  },
+  {
+    name: "Infrastructure and Society",
+    items: [
+      { value: "transportation", label: "Transportation" },
+      { value: "utilities", label: "Utilities" },
+      { value: "socioeconomic", label: "Socioeconomic" },
+      { value: "demographicData", label: "Demographic Data" },
+    ],
+  },
+  {
+    name: "Technical Data",
+    items: [
+      { value: "geodeticData", label: "Geodetic Data" },
+      { value: "topographicData", label: "Topographic Data" },
+      { value: "digitalImagery", label: "Digital Imagery" },
+    ],
+  },
+]
+
+// Flattened category options for compatibility
 const categoryOptions = [
   { value: "all", label: "All Categories" },
-  { value: "geodeticData", label: "Geodetic Data" },
-  { value: "topographicData", label: "Topographic Data" },
-  { value: "cadastralData", label: "Cadastral Data" },
-  { value: "administrativeBoundaries", label: "Administrative Boundaries" },
-  { value: "hydrographicData", label: "Hydrographic Data" },
-  { value: "landUseLandCover", label: "Land Use/Land Cover" },
-  { value: "geologicalData", label: "Geological Data" },
-  { value: "demographicData", label: "Demographic Data" },
-  { value: "digitalImagery", label: "Digital Imagery" },
-  { value: "transportationData", label: "Transportation Data" },
-  { value: "governmentData", label: "Government Data" },
-  { value: "urbanPlanning", label: "Urban Planning" },
-  { value: "censusData", label: "Census Data" },
-  { value: "disasterManagement", label: "Disaster Management" },
-  { value: "infrastructureData", label: "Infrastructure Data" },
-  { value: "environmentData", label: "Environmental Data" },
-  { value: "agriculturalData", label: "Agricultural Data" },
-  { value: "elevation", label: "Elevation Data" },
+  ...categoryGroups.flatMap((group) => group.items),
+]
+
+// Data type options
+const dataTypeOptions = [
+  { id: "vector", label: "Vector Data" },
+  { id: "raster", label: "Raster Data" },
+  { id: "tabular", label: "Tabular Data" },
 ]
 
 // Sort options for metadata search
@@ -76,10 +134,21 @@ export default function MetadataSearchForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      search: searchParams.search || "",
-      category: searchParams.category || "all",
+      keyword: searchParams.search || "",
+      author: searchParams.author || "",
+      organization: searchParams.organization || "",
       dateFrom: searchParams.dateFrom || "",
       dateTo: searchParams.dateTo || "",
+      categories: searchParams.categories
+        ? Array.isArray(searchParams.categories)
+          ? searchParams.categories
+          : [searchParams.categories]
+        : [],
+      dataTypes: searchParams.dataTypes
+        ? Array.isArray(searchParams.dataTypes)
+          ? searchParams.dataTypes
+          : [searchParams.dataTypes]
+        : [],
       sortBy: searchParams.sortBy || "createdAt",
       sortOrder: (searchParams.sortOrder as "asc" | "desc") || "desc",
     },
@@ -92,10 +161,21 @@ export default function MetadataSearchForm({
       // Build the query string
       const params = new URLSearchParams()
 
-      if (values.search) params.set("search", values.search)
-      if (values.category) params.set("category", values.category)
+      if (values.keyword) params.set("search", values.keyword)
+      if (values.author) params.set("author", values.author)
+      if (values.organization) params.set("organization", values.organization)
       if (values.dateFrom) params.set("dateFrom", values.dateFrom)
       if (values.dateTo) params.set("dateTo", values.dateTo)
+      if (values.categories && values.categories.length > 0) {
+        values.categories.forEach((category) => {
+          params.append("categories", category)
+        })
+      }
+      if (values.dataTypes && values.dataTypes.length > 0) {
+        values.dataTypes.forEach((dataType) => {
+          params.append("dataTypes", dataType)
+        })
+      }
       if (values.sortBy) params.set("sortBy", values.sortBy)
       if (values.sortOrder) params.set("sortOrder", values.sortOrder)
 
@@ -103,7 +183,7 @@ export default function MetadataSearchForm({
       params.set("page", "1")
 
       // Navigate to the search page with the new params
-      router.push(`/search/metadata?${params.toString()}`)
+      router.push(`/search?${params.toString()}`)
       setIsPending(false)
     },
     [router]
@@ -111,98 +191,356 @@ export default function MetadataSearchForm({
 
   const handleReset = () => {
     form.reset({
-      search: "",
-      category: "all",
+      keyword: "",
+      author: "",
+      organization: "",
       dateFrom: "",
       dateTo: "",
+      categories: [],
+      dataTypes: [],
       sortBy: "createdAt",
       sortOrder: "desc",
     })
-    router.push("/search/metadata")
+    router.push("/search")
   }
 
   return (
     <Card>
       <CardContent className="pt-6">
+        <h2 className="text-xl font-semibold mb-4">Search Filters</h2>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextSearchField
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Basic Search Fields */}
+            <div className="space-y-4">
+              <FormField
                 control={form.control}
-                name="search"
-                label="Search"
-                tooltip={tooltips.keyword}
-                placeholder="E.g., flood map, soil analysis, Lagos population"
-                description={descriptions.keyword}
+                name="keyword"
+                render={({ field }) => (
+                  <FormItem>
+                    <LabelWithTooltip
+                      label="Keyword Search"
+                      tooltip={tooltips.keyword}
+                    />
+                    <FormControl>
+                      <Input
+                        placeholder="Search by title, description..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
-              <SelectSearchField
+              <FormField
                 control={form.control}
-                name="category"
-                label="Category"
-                tooltip={tooltips.category}
-                placeholder="Select a category"
-                description={descriptions.category}
-                options={categoryOptions}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TextSearchField
-                control={form.control}
-                name="dateFrom"
-                label="From Date"
-                tooltip={tooltips.dateRange}
-                placeholder="YYYY-MM-DD"
-                description="Start date for metadata creation"
+                name="author"
+                render={({ field }) => (
+                  <FormItem>
+                    <LabelWithTooltip
+                      label="Author"
+                      tooltip="Filter by the author who created the dataset"
+                    />
+                    <FormControl>
+                      <Input placeholder="Author name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
-              <TextSearchField
+              <FormField
                 control={form.control}
-                name="dateTo"
-                label="To Date"
-                tooltip={tooltips.dateRange}
-                placeholder="YYYY-MM-DD"
-                description="End date for metadata creation"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SelectSearchField
-                control={form.control}
-                name="sortBy"
-                label="Sort By"
-                tooltip={tooltips.sortBy}
-                placeholder="Sort by"
-                description={descriptions.sortBy}
-                options={sortByOptions}
-              />
-
-              <SelectSearchField
-                control={form.control}
-                name="sortOrder"
-                label="Sort Order"
-                tooltip={tooltips.sortOrder}
-                placeholder="Sort order"
-                description={descriptions.sortOrder}
-                options={sortOrderOptions}
+                name="organization"
+                render={({ field }) => (
+                  <FormItem>
+                    <LabelWithTooltip
+                      label="Organization"
+                      tooltip={tooltips.organization}
+                    />
+                    <FormControl>
+                      <Input placeholder="Organization name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Separator className="my-4" />
+
+            {/* Date Range */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Date Range</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dateFrom"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>From</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value ? new Date(field.value) : undefined
+                            }
+                            onSelect={(date) =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : ""
+                              )
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dateTo"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>To</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value ? new Date(field.value) : undefined
+                            }
+                            onSelect={(date) =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : ""
+                              )
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* Categories & Data Types in Accordion */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="categories">
+                <AccordionTrigger className="text-sm font-medium">
+                  <LabelWithTooltip
+                    label="Categories"
+                    tooltip="Filter by specific dataset categories"
+                  />
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 mt-2">
+                    {categoryGroups.map((group) => (
+                      <div key={group.name} className="space-y-1">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-1">
+                          {group.name}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          {group.items.map((category) => (
+                            <FormField
+                              key={category.value}
+                              control={form.control}
+                              name="categories"
+                              render={({ field }) => (
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(
+                                        category.value
+                                      )}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([
+                                              ...(field.value || []),
+                                              category.value,
+                                            ])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value) =>
+                                                  value !== category.value
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    {category.label}
+                                  </FormLabel>
+                                </FormItem>
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="dataTypes">
+                <AccordionTrigger className="text-sm font-medium">
+                  <LabelWithTooltip
+                    label="Data Types"
+                    tooltip={tooltips.dataType}
+                  />
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    {dataTypeOptions.map((type) => (
+                      <FormField
+                        key={type.id}
+                        control={form.control}
+                        name="dataTypes"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(type.id)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([
+                                        ...(field.value || []),
+                                        type.id,
+                                      ])
+                                    : field.onChange(
+                                        field.value?.filter(
+                                          (value) => value !== type.id
+                                        )
+                                      )
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-normal cursor-pointer">
+                              {type.label}
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <Separator className="my-4" />
+
+            {/* Sort Options */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Sort Options</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="sortBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sort By</FormLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={field.value}
+                        onChange={field.onChange}
+                      >
+                        {sortByOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sortOrder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sort Order</FormLabel>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={field.value}
+                        onChange={field.onChange}
+                      >
+                        {sortOrderOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleReset}
-                className="w-full sm:w-auto"
+                className="flex-1 flex items-center gap-2 justify-center"
               >
-                Reset
+                <XCircle className="w-4 h-4" /> Reset
               </Button>
               <Button
                 type="submit"
                 disabled={isPending}
-                className="w-full sm:w-auto"
+                className="flex-1 flex items-center gap-2 justify-center"
               >
+                {isPending ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
                 Search
               </Button>
             </div>

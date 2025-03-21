@@ -135,6 +135,16 @@ module.exports = {
         destination: "/auth/signin",
         permanent: true,
       },
+      {
+        source: "/search/metadata",
+        destination: "/search",
+        permanent: true,
+      },
+      {
+        source: "/search/metadata/:path*",
+        destination: "/search/:path*",
+        permanent: true,
+      },
     ]
   },
   // Configure runtime settings

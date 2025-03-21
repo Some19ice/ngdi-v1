@@ -417,6 +417,10 @@ export async function searchMetadata({
   limit = 10,
   search = "",
   category = "",
+  author = "",
+  organization = "",
+  categories = [],
+  dataTypes = [],
   dateFrom = "",
   dateTo = "",
   sortBy = "createdAt",
@@ -426,6 +430,10 @@ export async function searchMetadata({
   limit?: number
   search?: string
   category?: string
+  author?: string
+  organization?: string
+  categories?: string[] | string
+  dataTypes?: string[] | string
   dateFrom?: string
   dateTo?: string
   sortBy?: string
@@ -442,31 +450,89 @@ export async function searchMetadata({
     if (search) {
       where.OR = [
         { dataName: { contains: search, mode: "insensitive" } },
+        { title: { contains: search, mode: "insensitive" } },
         { abstract: { contains: search, mode: "insensitive" } },
         { purpose: { contains: search, mode: "insensitive" } },
       ]
     }
 
-    // Add category filter if provided
-    if (category) {
-      // For category filtering, handle special cases and normalize
-      if (category.toLowerCase() === "vector") {
-        where.frameworkType = { equals: "Vector", mode: "insensitive" }
-      } else if (category.toLowerCase() === "raster") {
-        where.frameworkType = { equals: "Raster", mode: "insensitive" }
-      } else if (category.toLowerCase() === "table") {
-        where.frameworkType = { equals: "Table", mode: "insensitive" }
-      } else {
-        // For other categories, try to find it in the categories array or category-related fields
-        where.OR = [
-          ...(where.OR || []),
-          // Search in categories array
-          { categories: { has: category } },
-          // Search for dataType-related terms in various fields
-          { frameworkType: { contains: category, mode: "insensitive" } },
-          { title: { contains: category, mode: "insensitive" } },
-          { abstract: { contains: category, mode: "insensitive" } },
+    // Add author filter if provided
+    if (author) {
+      if (where.OR) {
+        // If we already have an OR condition, add AND condition for author
+        where.AND = [
+          ...(where.AND || []),
+          { author: { contains: author, mode: "insensitive" } },
         ]
+      } else {
+        where.author = { contains: author, mode: "insensitive" }
+      }
+    }
+
+    // Add organization filter if provided
+    if (organization) {
+      if (where.OR || where.AND) {
+        // If we already have an OR or AND condition, add to AND
+        where.AND = [
+          ...(where.AND || []),
+          { organization: { contains: organization, mode: "insensitive" } },
+        ]
+      } else {
+        where.organization = { contains: organization, mode: "insensitive" }
+      }
+    }
+
+    // Handle categories
+    const categoryFilters = []
+    if (Array.isArray(categories) && categories.length > 0) {
+      categoryFilters.push(...categories)
+    } else if (typeof categories === "string" && categories) {
+      categoryFilters.push(categories)
+    }
+
+    // Add the single category if present
+    if (category && category !== "all") {
+      categoryFilters.push(category)
+    }
+
+    if (categoryFilters.length > 0) {
+      // Add each category to the query
+      const categoryConditions = categoryFilters.map((cat) => ({
+        categories: { has: cat },
+      }))
+
+      if (where.OR || where.AND) {
+        // If we already have conditions, add to AND with an OR for categories
+        where.AND = [...(where.AND || []), { OR: categoryConditions }]
+      } else {
+        where.OR = categoryConditions
+      }
+    }
+
+    // Handle data types
+    const dataTypeFilters = []
+    if (Array.isArray(dataTypes) && dataTypes.length > 0) {
+      dataTypeFilters.push(...dataTypes)
+    } else if (typeof dataTypes === "string" && dataTypes) {
+      dataTypeFilters.push(dataTypes)
+    }
+
+    if (dataTypeFilters.length > 0) {
+      const typeConditions = dataTypeFilters.map((type) => {
+        if (type === "vector")
+          return { frameworkType: { equals: "Vector", mode: "insensitive" } }
+        if (type === "raster")
+          return { frameworkType: { equals: "Raster", mode: "insensitive" } }
+        if (type === "tabular")
+          return { frameworkType: { equals: "Table", mode: "insensitive" } }
+        return { frameworkType: { contains: type, mode: "insensitive" } }
+      })
+
+      if (where.OR || where.AND) {
+        // If we already have conditions, add to AND with an OR for data types
+        where.AND = [...(where.AND || []), { OR: typeConditions }]
+      } else {
+        where.OR = typeConditions
       }
     }
 

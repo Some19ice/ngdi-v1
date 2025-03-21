@@ -225,13 +225,13 @@ To create a comprehensive, user-friendly platform that serves as the authoritati
   - Server-Side Rendering (SSR)
   - Static Site Generation (SSG)
   - Incremental Static Regeneration (ISR)
-  - State Management: Redux Toolkit
   - Form Management: React Hook Form with Zod
-  - UI Component Library: Shadcn/ui
-  - Map Integration: React-Leaflet
+  - UI Component Library: Shadcn UI with Radix UI
+  - Map Integration: React-Leaflet/OpenLayers
   - HTTP Client: Axios
-  - Testing: Jest and React Testing Library
-  - API Caching: React Query/TanStack Query
+  - State Management: TanStack Query
+  - Testing: Playwright
+  - API Caching: TanStack Query
 
 - **Key Frontend Features**
   - Server-first approach with Next.js App Router
@@ -250,37 +250,38 @@ To create a comprehensive, user-friendly platform that serves as the authoritati
   - Middleware for authentication and routing
 
 ### 5.2 Backend Integration
-- **Django REST Framework with Next.js**
+- **Hono.js API with Next.js**
   - Authentication endpoints
-    * `/api/auth/login/` (Next.js Route Handler)
-    * `/api/auth/register/` (Next.js Route Handler)
-    * `/api/auth/logout/` (Next.js Route Handler)
-    * `/api/auth/password-reset/` (Next.js Route Handler)
-    * Proxy to Django backend via Next.js middleware
+    * `/api/auth/register` - User registration
+    * `/api/auth/login` - User login
+    * `/api/auth/refresh` - Refresh access token
+    * `/api/auth/logout` - User logout
+    * `/api/auth/forgot-password` - Request password reset
+    * `/api/auth/reset-password` - Reset password with token
   
   - Metadata endpoints
-    * `/api/metadata/` (GET, POST with Server Actions)
-    * `/api/metadata/<id>/` (GET with SSR, PUT/DELETE with Server Actions)
-    * `/api/metadata/search/` (Dynamic Route Handler)
-    * `/api/metadata/validate/` (Server-side validation)
+    * `/api/metadata` - Get and create metadata
+    * `/api/metadata/:id` - Get, update and delete specific metadata
+    * `/api/metadata/my` - Get current user's metadata
+    * `/api/metadata/search` - Search for metadata
   
   - User management endpoints
-    * `/api/users/profile/` (SSR protected routes)
-    * `/api/users/settings/` (Client-side mutations)
-    * `/api/users/metadata/` (ISR for cached data)
+    * `/api/users/me` - Get and update user profile
+    * `/api/users` - Get all users (admin only)
+    * `/api/users/:id` - Get, update and delete specific user (admin only)
   
   - Map data endpoints
-    * `/api/maps/layers/` (Edge API Routes)
-    * `/api/maps/features/` (Streaming SSR)
-    * `/api/maps/coordinates/` (API Route with caching)
+    * `/api/maps/layers` - Get map layers
+    * `/api/maps/features` - Get map features
+    * `/api/maps/coordinates` - Get coordinates data
 
 - **API Integration**
   - Next.js middleware for authentication
   - Next.js Route Handlers for API proxying
   - Server Components for data fetching
-  - React Query for client-side caching
+  - TanStack Query for client-side caching
   - Error boundaries for fallbacks
-  - Rate limiting with Edge middleware
+  - Rate limiting with Upstash
   - CORS configuration
   - API versioning
 
@@ -289,13 +290,12 @@ To create a comprehensive, user-friendly platform that serves as the authoritati
   - Server Components for initial data fetch
   - Client Components for interactive features
   - Server Actions for form submissions
-  - WebSocket for real-time updates
   - File upload with next/server
   - Response caching with ISR
   - Error handling with error.tsx
 
 - **State Management**
-  - Server state with React Query
+  - Server state with TanStack Query
     * Metadata caching
     * User session
     * Search results
@@ -313,32 +313,31 @@ To create a comprehensive, user-friendly platform that serves as the authoritati
 - **Data Validation**
   - Server-side validation with Zod
   - Client-side validation with React Hook Form
-  - Backend validation with DRF serializers
+  - Backend validation with Zod schemas
   - Cross-field validation rules
   - Custom validation messages
 
 ### 5.4 Development Tools & Environment
 - **Development**
   - Node.js v18+ (for Next.js 14)
-  - pnpm package manager
+  - npm package manager
   - TypeScript strict mode
   - ESLint with Next.js config
-  - Prettier with Tailwind plugin
-  - Husky for git hooks
+  - Prettier
   - Next.js development server
 
 - **Testing & Quality Assurance**
   - Unit testing with Jest
   - Integration testing with React Testing Library
-  - E2E testing with Cypress
+  - E2E testing with Playwright
   - Performance testing with Lighthouse
-  - API testing with Postman
+  - API testing with Supertest
 
 - **Deployment & CI/CD**
   - Docker containerization
-  - Nginx web server
   - GitHub Actions for CI/CD
-  - AWS/Azure cloud hosting
+  - Vercel for frontend deployment
+  - AWS/Azure cloud hosting (planned)
   - Environment-specific configurations
 
 ## 6. Metrics and Analytics

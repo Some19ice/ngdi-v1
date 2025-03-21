@@ -2,7 +2,14 @@
 
 import Link from "next/link"
 import { format } from "date-fns"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
   Pagination,
@@ -15,18 +22,44 @@ import {
 } from "@/components/ui/pagination"
 import { MetadataSearchParams } from "@/types/metadata"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, FileIcon, MapPinIcon } from "lucide-react"
+import { CalendarIcon, FileIcon, MapPinIcon, User, Eye } from "lucide-react"
 import Image from "next/image"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface MetadataResultsProps {
   searchResult: any
   searchParams: MetadataSearchParams
+  isLoading?: boolean
 }
 
 export default function MetadataResults({
   searchResult,
   searchParams,
+  isLoading = false,
 }: MetadataResultsProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((item) => (
+          <Card key={item}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-7 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+            <CardFooter>
+              <Skeleton className="h-10 w-24" />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
   if (!searchResult.success) {
     return (
       <div className="p-8 text-center">
@@ -42,12 +75,14 @@ export default function MetadataResults({
 
   if (metadata.length === 0) {
     return (
-      <div className="p-8 text-center">
-        <h3 className="text-lg font-semibold mb-2">No results found</h3>
-        <p className="text-muted-foreground">
-          Try adjusting your search criteria
-        </p>
-      </div>
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <div className="text-gray-500 mb-4">No results found</div>
+          <p className="text-gray-400 text-sm">
+            Try adjusting your search criteria or removing some filters
+          </p>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -59,6 +94,10 @@ export default function MetadataResults({
       params.set("search", searchParams.search.toString())
     if (searchParams.category)
       params.set("category", searchParams.category.toString())
+    if (searchParams.author)
+      params.set("author", searchParams.author.toString())
+    if (searchParams.organization)
+      params.set("organization", searchParams.organization.toString())
     if (searchParams.dateFrom)
       params.set("dateFrom", searchParams.dateFrom.toString())
     if (searchParams.dateTo)
@@ -70,67 +109,63 @@ export default function MetadataResults({
 
     params.set("page", page.toString())
 
-    return `/metadata?${params.toString()}`
+    return `/search?${params.toString()}`
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
-          Showing {metadata.length} of {total} results
-        </p>
+        <p className="text-sm text-muted-foreground">Found {total} results</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="space-y-4">
         {metadata.map((item: any) => (
-          <Card key={item.id} className="overflow-hidden flex flex-col h-full">
-            <div className="aspect-video relative bg-muted">
-              {item.thumbnailUrl ? (
-                <Image
-                  src={item.thumbnailUrl}
-                  alt={item.dataName}
-                  width={400}
-                  height={300}
-                  className="w-full h-40 object-cover rounded-md"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full h-full bg-secondary/20">
-                  <FileIcon className="h-10 w-10 text-muted-foreground" />
-                </div>
-              )}
-              <Badge className="absolute top-2 right-2">{item.dataType}</Badge>
-            </div>
+          <Card
+            key={item.id}
+            className="overflow-hidden transition-all hover:shadow-md"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">
+                {item.title || item.dataName}
+              </CardTitle>
+              <CardDescription className="flex items-center gap-1">
+                <User className="w-3 h-3" /> {item.author}, {item.organization}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">{item.abstract}</p>
 
-            <CardContent className="pt-6 flex-grow">
-              <h3 className="text-lg font-semibold mb-2 line-clamp-2">
-                {item.dataName}
-              </h3>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  <span>
-                    {format(new Date(item.productionDate), "MMM d, yyyy")}
-                  </span>
-                </div>
-
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPinIcon className="mr-2 h-4 w-4" />
-                  <span>
-                    {item.state}, {item.country}
-                  </span>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {(item.categories || []).map((category: string) => (
+                  <Badge
+                    key={category}
+                    variant="outline"
+                    className="capitalize"
+                  >
+                    {category.replace(/_/g, " ")}
+                  </Badge>
+                ))}
+                {item.frameworkType && (
+                  <Badge variant="outline">{item.frameworkType}</Badge>
+                )}
               </div>
-
-              <p className="text-sm text-muted-foreground line-clamp-3 mb-2">
-                {item.abstract}
-              </p>
             </CardContent>
-
-            <CardFooter className="pt-0">
-              <Button asChild className="w-full">
-                <Link href={`/metadata/${item.id}`}>View Details</Link>
-              </Button>
+            <CardFooter className="flex justify-between items-center border-t bg-gray-50 px-6">
+              <div className="text-gray-500 text-sm flex items-center gap-1">
+                <CalendarIcon className="w-3 h-3" /> Updated{" "}
+                {item.updatedAt
+                  ? format(new Date(item.updatedAt), "MMM d, yyyy")
+                  : format(new Date(), "MMM d, yyyy")}
+              </div>
+              <Link href={`/metadata/${item.id}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Eye className="w-3 h-3" /> View
+                </Button>
+              </Link>
             </CardFooter>
           </Card>
         ))}

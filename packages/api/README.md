@@ -69,16 +69,19 @@ EMAIL_FROM=noreply@example.com
 
 ```
 src/
-├── config/       # Configuration files
-├── db/           # Database connection and models
-├── lib/          # Utility functions and libraries
-├── middleware/   # Middleware functions
-├── routes/       # API routes
-├── services/     # Business logic
-├── tests/        # Tests
-├── types/        # TypeScript type definitions
-├── utils/        # Utility functions
-└── index.ts      # Entry point
+├── index.ts       # Entry point
+├── app.ts         # Hono app setup
+├── middleware/    # Middleware functions
+├── routes/        # API routes
+│   ├── auth.ts    # Authentication routes
+│   ├── users.ts   # User management routes  
+│   └── metadata.ts# Metadata routes
+├── controllers/   # Route controllers
+├── services/      # Business logic
+├── models/        # Data models and schema
+├── utils/         # Utility functions
+├── config/        # Configuration
+└── scripts/       # Utility scripts
 ```
 
 ## API Endpoints
@@ -89,22 +92,69 @@ src/
 - `POST /api/auth/login` - Login a user
 - `POST /api/auth/refresh` - Refresh access token
 - `POST /api/auth/logout` - Logout a user
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
 
 ### Users
 
-- `GET /api/users/me` - Get current user
-- `PUT /api/users/me` - Update current user
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user by ID
-- `DELETE /api/users/:id` - Delete user by ID
+- `GET /api/users/me` - Get current user profile
+- `PUT /api/users/me` - Update current user profile
+- `GET /api/users` - Get all users (admin only)
+- `GET /api/users/:id` - Get user by ID (admin only)
+- `PUT /api/users/:id` - Update user by ID (admin only)
+- `DELETE /api/users/:id` - Delete user by ID (admin only)
 
 ### Metadata
 
-- `GET /api/metadata` - Get all metadata
-- `POST /api/metadata` - Create new metadata
-- `GET /api/metadata/:id` - Get metadata by ID
-- `PUT /api/metadata/:id` - Update metadata by ID
-- `DELETE /api/metadata/:id` - Delete metadata by ID
+- `GET /api/metadata` - Get metadata with pagination and filtering
+- `POST /api/metadata` - Create new metadata record
+- `GET /api/metadata/:id` - Get metadata record by ID
+- `PUT /api/metadata/:id` - Update metadata record by ID
+- `DELETE /api/metadata/:id` - Delete metadata record by ID
+- `GET /api/metadata/my` - Get current user's metadata
+
+## Technologies Used
+
+- **Hono.js**: API framework
+- **Prisma**: ORM for database access
+- **Zod**: Schema validation
+- **JWT**: Authentication
+- **Jest**: Testing framework
+- **Winston/Pino**: Logging
+
+## Database
+
+The API uses Prisma ORM to interact with a PostgreSQL database. Schema can be found in the `prisma` directory.
+
+```bash
+# Generate Prisma client
+npm run prisma:generate
+
+# Push schema changes to database
+npm run prisma:push
+```
+
+## Docker Support
+
+The API includes Docker support for containerized deployment:
+
+```bash
+# Build Docker image
+docker build -t ngdi-api .
+
+# Run container
+docker run -p 3001:3001 ngdi-api
+```
+
+Or using docker-compose:
+
+```bash
+docker-compose up
+```
+
+## Deployment
+
+The API is configured for deployment on Vercel.
 
 ## License
 

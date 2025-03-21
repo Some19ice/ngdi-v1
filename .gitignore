@@ -46,3 +46,8 @@ next-env.d.ts
 # Nested node_modules
 /packages/*/node_modules
 /apps/*/node_modules
+
+# reports
+/docs/reports/
+
+

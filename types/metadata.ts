@@ -50,6 +50,10 @@ export interface MetadataSearchParams {
   limit?: number
   search?: string
   category?: string
+  author?: string
+  organization?: string
+  categories?: string[] | string
+  dataTypes?: string[] | string
   frameworkType?: string
   dateFrom?: string
   dateTo?: string

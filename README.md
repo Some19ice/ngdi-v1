@@ -1,32 +1,45 @@
 # NGDI Portal
 
-A modern web application built with Next.js 14, TypeScript, and Hono.
+A modern web application for the National Geospatial Data Infrastructure (NGDI), built with Next.js 14, TypeScript, and Hono.js.
+
+## Project Overview
+
+The NGDI Portal serves as a centralized platform for managing and accessing geospatial data in Nigeria. It features user authentication, metadata management, map visualization, and search capabilities.
 
 ## Project Structure
 
 ```
-├── app/                    # Next.js App Router pages and layouts
+├── app/                   # Next.js App Router pages and layouts
+│   ├── auth/              # Authentication pages
+│   ├── metadata/          # Metadata management pages
+│   ├── profile/           # User profile pages
+│   ├── map/               # Map visualization pages
+│   ├── search/            # Search interface
+│   ├── api/               # API routes and handlers
+│   └── (other routes)     # Additional application routes
 ├── components/            # React components
-│   ├── auth/             # Authentication components
-│   ├── error/            # Error handling components
-│   ├── layout/           # Layout components
-│   ├── map/             # Map-related components
-│   ├── metadata/        # Metadata components
-│   ├── providers/       # React context providers
-│   └── ui/              # Reusable UI components
-├── docs/                 # Project documentation
-├── hooks/                # Custom React hooks
-├── lib/                  # Shared utilities and helpers
-├── packages/             # Monorepo packages
-│   └── api/             # Hono API server
-│       ├── src/         # API source code
-│       ├── tests/       # API tests
-│       └── docker/      # Docker configuration
-├── prisma/               # Database schema and migrations
-├── public/               # Static assets
-├── scripts/              # Build and utility scripts
-├── tests/                # Frontend E2E tests
-└── types/                # TypeScript type definitions
+│   ├── auth/              # Authentication components
+│   ├── error/             # Error handling components
+│   ├── layout/            # Layout components
+│   ├── map/               # Map-related components
+│   ├── metadata/          # Metadata components
+│   ├── profile/           # User profile components
+│   ├── providers/         # React context providers
+│   ├── search/            # Search components
+│   └── ui/                # Reusable UI components
+├── docs/                  # Project documentation
+├── hooks/                 # Custom React hooks
+├── lib/                   # Shared utilities and helpers
+├── packages/              # Monorepo packages
+│   └── api/               # Hono API server
+│       ├── src/           # API source code
+│       ├── tests/         # API tests
+│       └── prisma/        # Database schema
+├── prisma/                # Database schema and migrations
+├── public/                # Static assets
+├── scripts/               # Build and utility scripts
+├── tests/                 # Frontend E2E tests
+└── types/                 # TypeScript type definitions
 ```
 
 ## Getting Started
@@ -79,6 +92,14 @@ A modern web application built with Next.js 14, TypeScript, and Hono.
 - Frontend: See `.env.example` for required variables
 - API: See `packages/api/.env.example` for required variables
 
+## Features
+
+- **Authentication**: User registration, login, and profile management
+- **Metadata Management**: Create, edit, and manage geospatial metadata
+- **Map Viewer**: Visualize geospatial data using Leaflet/OpenLayers
+- **Search**: Advanced search functionality for finding metadata
+- **User Management**: Role-based access control
+
 ## Testing
 
 We use different testing frameworks for frontend and API:
@@ -108,6 +129,6 @@ docker-compose up
 
 ## License
 
-[Add your license here]
+This project is proprietary and confidential.
 
 

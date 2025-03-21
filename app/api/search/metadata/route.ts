@@ -34,9 +34,18 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "9")
     const search = searchParams.get("search") || ""
     const category = searchParams.get("category") || ""
+    const author = searchParams.get("author") || ""
+    const organization = searchParams.get("organization") || ""
     const frameworkType = searchParams.get("frameworkType") || undefined
     const dateFrom = searchParams.get("dateFrom") || undefined
     const dateTo = searchParams.get("dateTo") || undefined
+    const sortBy = searchParams.get("sortBy") || "createdAt"
+    const sortOrder =
+      (searchParams.get("sortOrder") as "asc" | "desc") || "desc"
+
+    // Handle array parameters
+    const categories = searchParams.getAll("categories") || undefined
+    const dataTypes = searchParams.getAll("dataTypes") || undefined
 
     // Log search parameters for debugging
     console.log("Search parameters:", {
@@ -45,9 +54,15 @@ export async function GET(request: Request) {
       search: search ? `"${search}"` : "(empty)",
       searchLength: search?.length,
       category: category || "(none)",
+      author: author || "(none)",
+      organization: organization || "(none)",
+      categories: categories?.length ? categories.join(", ") : "(none)",
+      dataTypes: dataTypes?.length ? dataTypes.join(", ") : "(none)",
       frameworkType: frameworkType || "(none)",
       dateFrom: dateFrom || "(none)",
       dateTo: dateTo || "(none)",
+      sortBy,
+      sortOrder,
     })
 
     // Call the metadata service with the token
@@ -57,9 +72,15 @@ export async function GET(request: Request) {
       limit,
       search,
       category,
+      author,
+      organization,
+      categories,
+      dataTypes,
       frameworkType,
       dateFrom,
       dateTo,
+      sortBy,
+      sortOrder,
     })
 
     console.log("Search results:", {

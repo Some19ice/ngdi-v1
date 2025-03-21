@@ -16,6 +16,10 @@ export const metadataServerService = {
       limit = 10,
       search,
       category,
+      author,
+      organization,
+      categories,
+      dataTypes,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = params
@@ -51,31 +55,92 @@ export const metadataServerService = {
       })
     }
 
-    if (category && category !== "all") {
-      // For category filtering, handle special cases and normalize
-      if (category.toLowerCase() === "vector") {
-        where.frameworkType = { equals: "Vector", mode: "insensitive" }
-      } else if (category.toLowerCase() === "raster") {
-        where.frameworkType = { equals: "Raster", mode: "insensitive" }
-      } else if (category.toLowerCase() === "table") {
-        where.frameworkType = { equals: "Table", mode: "insensitive" }
-      } else {
-        // For other categories, try to find it in the categories array or category-related fields
-        where.OR = [
-          ...(where.OR || []),
-          // Search in categories array
-          { categories: { has: category } },
-          // Search for dataType-related terms in various fields
-          { frameworkType: { contains: category, mode: "insensitive" } },
-          { title: { contains: category, mode: "insensitive" } },
-          { abstract: { contains: category, mode: "insensitive" } },
+    // Handle author filter
+    if (author) {
+      if (where.OR) {
+        // If we already have an OR condition, add AND condition for author
+        where.AND = [
+          ...(where.AND || []),
+          { author: { contains: author, mode: "insensitive" } },
         ]
+      } else {
+        where.author = { contains: author, mode: "insensitive" }
+      }
+    }
+
+    // Handle organization filter
+    if (organization) {
+      if (where.OR || where.AND) {
+        // If we already have an OR or AND condition, add to AND
+        where.AND = [
+          ...(where.AND || []),
+          { organization: { contains: organization, mode: "insensitive" } },
+        ]
+      } else {
+        where.organization = { contains: organization, mode: "insensitive" }
+      }
+    }
+
+    // Handle categories
+    const categoryFilters = []
+    if (Array.isArray(categories) && categories.length > 0) {
+      categoryFilters.push(...categories)
+    } else if (typeof categories === "string" && categories) {
+      categoryFilters.push(categories)
+    }
+
+    if (category && category !== "all") {
+      categoryFilters.push(category)
+    }
+
+    if (categoryFilters.length > 0) {
+      // Add each category to the query
+      const categoryConditions = categoryFilters.map((cat) => ({
+        categories: { has: cat },
+      }))
+
+      if (where.OR || where.AND) {
+        // If we already have conditions, add to AND with an OR for categories
+        where.AND = [...(where.AND || []), { OR: categoryConditions }]
+      } else {
+        where.OR = categoryConditions
       }
 
-      // Debug log the category filter
       console.log("Category filter added:", {
-        category,
-        condition: where.frameworkType || where.OR,
+        categoryFilters,
+        condition: where.OR || where.AND,
+      })
+    }
+
+    // Handle data types
+    const dataTypeFilters = []
+    if (Array.isArray(dataTypes) && dataTypes.length > 0) {
+      dataTypeFilters.push(...dataTypes)
+    } else if (typeof dataTypes === "string" && dataTypes) {
+      dataTypeFilters.push(dataTypes)
+    }
+
+    if (dataTypeFilters.length > 0) {
+      const typeConditions = dataTypeFilters.map((type) => {
+        if (type === "vector")
+          return { frameworkType: { equals: "Vector", mode: "insensitive" } }
+        if (type === "raster")
+          return { frameworkType: { equals: "Raster", mode: "insensitive" } }
+        if (type === "tabular")
+          return { frameworkType: { equals: "Table", mode: "insensitive" } }
+        return { frameworkType: { contains: type, mode: "insensitive" } }
+      })
+
+      if (where.OR || where.AND) {
+        // If we already have conditions, add to AND with an OR for data types
+        where.AND = [...(where.AND || []), { OR: typeConditions }]
+      } else {
+        where.OR = typeConditions
+      }
+
+      console.log("Data type filter added:", {
+        dataTypeFilters,
+        condition: typeConditions,
       })
     }
 
@@ -140,6 +205,7 @@ export const metadataServerService = {
           dataType: item.frameworkType, // Map frameworkType to dataType for UI compatibility
           thumbnailUrl: item.thumbnailUrl,
           categories: item.categories || [],
+          updatedAt: item.updatedAt,
         })),
         total,
         currentPage: page,
