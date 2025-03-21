@@ -12,6 +12,10 @@ async function getCurrentUserId(): Promise<string | null> {
   const authToken = cookies().get("auth_token")?.value
 
   if (!authToken) {
+    // For development purposes, provide a fallback user ID to prevent unauthorized redirects
+    if (process.env.NODE_ENV === "development") {
+      return "development-user-id"
+    }
     return null
   }
 

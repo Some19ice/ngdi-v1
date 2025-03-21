@@ -123,8 +123,14 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
           },
         }
 
-      // Prepare the final form data with both naming conventions to ensure compatibility
-      const finalFormData: NGDIMetadataFormData = {
+      // Create explicit required form data that matches the expected schema
+      const form1Data: Form1Data = formData.generalInfo
+      const form2Data: Form2Data = formData.dataQuality
+      const form3Data: Form3Data = distributionInfo
+      const form4Data = formData.accessInfo
+
+      // Prepare the final form data with both naming conventions
+      const finalFormData = {
         // New naming convention
         generalInfo: formData.generalInfo,
         technicalDetails: formData.technicalDetails,
@@ -132,11 +138,11 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
         accessInfo: formData.accessInfo,
         distributionInfo: distributionInfo,
 
-        // Legacy naming for backward compatibility
-        form1: formData.generalInfo,
-        form2: formData.dataQuality,
-        form3: distributionInfo,
-        form4: formData.accessInfo,
+        // Legacy naming convention with strict typing
+        form1: form1Data,
+        form2: form2Data,
+        form3: form3Data,
+        form4: form4Data,
       }
 
       let result
