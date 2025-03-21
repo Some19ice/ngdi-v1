@@ -4,6 +4,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
+import { transformFormToApiModel } from "@/lib/transformers/metadata"
 
 // Function to get the current user ID from the auth token
 // This is a placeholder - implement based on your auth system
@@ -220,6 +221,9 @@ export async function createMetadata(data: NGDIMetadataFormData) {
     // Validate the data against the schema
     const validatedData = ngdiMetadataSchema.parse(data)
 
+    // Transform the form data to the API model
+    const apiMetadata = transformFormToApiModel(validatedData)
+
     // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
     // and in the consolidated Metadata table
     const [ngdiMetadata, metadata] = await Promise.all([
@@ -343,45 +347,12 @@ export async function createMetadata(data: NGDIMetadataFormData) {
           userId: userId,
         },
       }),
-      // Create in Metadata (consolidated table)
+
+      // Create in Metadata (unified table)
       prisma.metadata.create({
         data: {
-          // Map NGDI metadata to standard metadata fields
-          title: validatedData.form1.dataInformation.dataName,
-          author: validatedData.form3.distributorInformation.name,
-          organization: validatedData.form3.distributorInformation.name,
-          dateFrom: validatedData.form1.dataInformation.productionDate,
-          dateTo: validatedData.form1.dataInformation.productionDate,
-          abstract: validatedData.form1.description.abstract,
-          purpose: validatedData.form1.description.purpose,
-          thumbnailUrl: validatedData.form1.description.thumbnail,
-          imageName: `${validatedData.form1.dataInformation.dataName.toLowerCase().replace(/\s+/g, "-")}.png`,
-          frameworkType: validatedData.form1.dataInformation.dataType,
-          categories: [validatedData.form1.dataInformation.dataType],
-          coordinateSystem: "WGS 84",
-          projection: "UTM Zone 32N",
-          scale: 50000, // Default
-          resolution: null,
-          accuracyLevel: "Medium", // Default
-          completeness: 100, // Default
-          consistencyCheck: true, // Default
-          validationStatus: "Validated", // Default
-          fileFormat: "Shapefile", // Default
-          fileSize: null,
-          distributionFormat: "Shapefile, GeoJSON", // Default
-          accessMethod: "Direct Download", // Default
-          downloadUrl: null,
-          apiEndpoint: null,
-          licenseType: "NGDI Open Data License", // Default
-          usageTerms: validatedData.form1.resourceConstraint.useConstraints,
-          attributionRequirements:
-            validatedData.form1.resourceConstraint.accessConstraints,
-          accessRestrictions: [],
-          contactPerson: validatedData.form1.metadataReference.contactName,
-          email: validatedData.form1.metadataReference.email,
-          department: validatedData.form3.distributorInformation.name,
-          updateCycle: validatedData.form1.dataStatus.updateFrequency,
-          userId: userId,
+          ...apiMetadata,
+          userId,
         },
       }),
     ])
@@ -628,5 +599,62 @@ export async function getMetadataById(id: string) {
       return { success: false, error: error.message }
     }
     return { success: false, error: "Failed to get metadata" }
+  }
+}
+
+/**
+ * Update an existing metadata record
+ */
+export async function updateMetadata(id: string, data: NGDIMetadataFormData) {
+  try {
+    const userId = await getCurrentUserId()
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    // Validate the data against the schema
+    const validatedData = ngdiMetadataSchema.parse(data)
+
+    // Transform the form data to the API model
+    const apiMetadata = transformFormToApiModel(validatedData)
+
+    // Check that the metadata exists and belongs to the user
+    const existingMetadata = await prisma.metadata.findUnique({
+      where: { id },
+    })
+
+    if (!existingMetadata) {
+      return { success: false, error: "Metadata not found" }
+    }
+
+    if (existingMetadata.userId !== userId) {
+      return { success: false, error: "Not authorized to update this metadata" }
+    }
+
+    // Update the metadata record
+    const updatedMetadata = await prisma.metadata.update({
+      where: { id },
+      data: {
+        ...apiMetadata,
+      },
+    })
+
+    revalidatePath("/search/metadata")
+    revalidatePath(`/metadata/${id}`)
+
+    return { success: true, metadata: updatedMetadata }
+  } catch (error) {
+    console.error("Error updating metadata:", error)
+
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Validation error",
+        details: error.errors,
+      }
+    }
+
+    return { success: false, error: "Failed to update metadata" }
   }
 }

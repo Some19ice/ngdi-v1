@@ -1,4 +1,8 @@
+/**
+ * Shared Metadata Request type used by both the frontend and API
+ */
 export interface MetadataRequest {
+  // General information
   title: string
   author: string
   organization: string
@@ -8,36 +12,55 @@ export interface MetadataRequest {
   purpose: string
   thumbnailUrl: string
   imageName: string
+
+  // Framework and categorization
   frameworkType: string
   categories: string[]
+
+  // Spatial information
   coordinateSystem: string
   projection: string
   scale: number
   resolution?: string
+
+  // Quality information
   accuracyLevel: string
   completeness?: number
   consistencyCheck?: boolean
   validationStatus?: string
+
+  // File information
   fileFormat: string
   fileSize?: number
   numFeatures?: number
   softwareReqs?: string
-  updateCycle?: string
+
+  // Update information
+  updateCycle: string
   lastUpdate?: string
   nextUpdate?: string
+
+  // Distribution information
   distributionFormat: string
   accessMethod: string
   downloadUrl?: string
   apiEndpoint?: string
+
+  // License information
   licenseType: string
   usageTerms: string
   attributionRequirements: string
   accessRestrictions: string[]
+
+  // Contact information
   contactPerson: string
   email: string
   department?: string
 }
 
+/**
+ * Metadata response with additional system fields
+ */
 export interface MetadataResponse extends MetadataRequest {
   id: string
   userId: string

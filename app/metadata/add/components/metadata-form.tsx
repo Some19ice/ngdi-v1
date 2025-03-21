@@ -24,15 +24,23 @@ import {
   DistributionInfoForm,
   Steps,
 } from "./index"
-import { createNGDIMetadata } from "@/app/actions/ngdi/metadata"
+import { createMetadata, updateMetadata } from "@/app/actions/metadata"
 import { InfoIcon } from "lucide-react"
 
-export function MetadataForm() {
+interface MetadataFormProps {
+  initialData?: NGDIMetadataFormData
+  metadataId?: string
+}
+
+export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<Partial<NGDIMetadataFormData>>({})
+  const [formData, setFormData] = useState<Partial<NGDIMetadataFormData>>(
+    initialData || {}
+  )
   const router = useRouter()
   const totalSteps = 3
+  const isEditing = !!metadataId
 
   const handleNext = (stepData: Form1Data | Form2Data) => {
     if (currentStep === 1) {
@@ -50,39 +58,44 @@ export function MetadataForm() {
   const handleSave = async (data: Form3Data) => {
     try {
       setIsSubmitting(true)
-
-      // Combine all form data
-      const completeData = {
+      const finalFormData = {
         ...formData,
         form3: data,
       } as NGDIMetadataFormData
 
-      const result = await createNGDIMetadata(completeData)
+      let result
 
-      if (!result?.success) {
-        // Show more detailed error message if available
-        const errorMessage = result?.error || "Failed to create metadata"
-        throw new Error(errorMessage)
-      }
-
-      toast.success(
-        "Metadata created successfully! Redirecting to metadata list..."
-      )
-
-      // Short delay before redirecting to ensure toast is seen
-      setTimeout(() => {
-        router.push("/search/metadata")
-        router.refresh()
-      }, 1500)
-    } catch (error) {
-      console.error("Failed to save metadata:", error)
-
-      // Show detailed error message
-      if (error instanceof Error) {
-        toast.error(error.message)
+      if (isEditing && metadataId) {
+        // Update existing metadata
+        result = await updateMetadata(metadataId, finalFormData)
       } else {
-        toast.error("Failed to create metadata. Please try again.")
+        // Create new metadata
+        result = await createMetadata(finalFormData)
       }
+
+      if (result.success) {
+        toast.success(
+          `Metadata ${isEditing ? "updated" : "saved"} successfully`
+        )
+        router.push("/search/metadata")
+      } else {
+        if (result.details) {
+          result.details.forEach((error: any) => {
+            toast.error(`${error.path.join(".")}: ${error.message}`)
+          })
+        } else {
+          toast.error(
+            result.error ||
+              `Failed to ${isEditing ? "update" : "save"} metadata`
+          )
+        }
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+      console.error(
+        `Error ${isEditing ? "updating" : "saving"} metadata:`,
+        error
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -94,11 +107,12 @@ export function MetadataForm() {
         <div className="flex flex-col space-y-8">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-              Add NGDI Metadata
+              {isEditing ? "Edit" : "Add"} NGDI Metadata
             </h1>
             <p className="text-muted-foreground">
-              Complete the form to add a new metadata record to the NGDI
-              platform.
+              {isEditing
+                ? "Update the metadata record in the NGDI platform."
+                : "Complete the form to add a new metadata record to the NGDI platform."}
             </p>
           </div>
 
