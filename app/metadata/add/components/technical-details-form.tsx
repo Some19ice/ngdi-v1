@@ -115,9 +115,12 @@ export default function TechnicalDetailsForm({
   })
 
   // Form submission handler
-  const handleContinue = form.handleSubmit((data) => {
-    onNext(data)
-  })
+  const handleContinue = () => {
+    // Get current form values without validation
+    const currentData = form.getValues()
+    // Pass the data to the next step without validation
+    onNext(currentData)
+  }
 
   return (
     <Form {...form}>

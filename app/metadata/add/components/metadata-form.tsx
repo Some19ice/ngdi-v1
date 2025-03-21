@@ -78,7 +78,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     try {
       setIsSubmitting(true)
 
-      // Make sure we have all required form data
+      // Make sure we have all required form data sections
       if (
         !formData.generalInfo ||
         !formData.dataQuality ||
@@ -198,9 +198,8 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
               <div className="flex items-center text-sm text-muted-foreground">
                 <InfoIcon className="mr-2 h-4 w-4" />
                 <p>
-                  You can progress through the form with partial data, but final
-                  validation will occur when saving the complete metadata
-                  record.
+                  You can navigate through steps with incomplete data, but final
+                  validation will occur when submitting the complete form.
                 </p>
               </div>
             </CardFooter>
