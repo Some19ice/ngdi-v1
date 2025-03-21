@@ -451,18 +451,8 @@ export const authClient = {
             refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
           }
 
-          // Verify with server in the background after returning the session
-          // This allows the UI to render immediately while verification happens silently
-          setTimeout(() => {
-            fetch("/api/auth/check", {
-              method: "GET",
-              credentials: "include",
-              cache: "no-store",
-            }).catch((e) =>
-              console.error("Background session verification failed:", e)
-            )
-          }, 100)
-
+          // Return the session without doing a background verification
+          // This avoids unnecessary API calls
           return clientSession
         }
       } catch (e) {

@@ -55,6 +55,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+// Add global declaration for the session refresh timestamp
+declare global {
+  interface Window {
+    __lastSessionRefresh: number;
+  }
+}
+
 interface NavItem {
   title: string
   href: string
@@ -227,19 +234,41 @@ export function Sidebar({
   const [previouslyAuthenticated, setPreviouslyAuthenticated] = useState(false)
   const hasRefreshed = useRef(false)
 
-  // Add useEffect to refresh the session on mount
+  // Add useEffect to refresh the session on mount, but prevent refreshing too frequently
   useEffect(() => {
+    // Use a global refresh tracker to prevent multiple components triggering refreshes
+    if (typeof window !== "undefined") {
+      window.__lastSessionRefresh = window.__lastSessionRefresh || 0
+    }
+
     const refreshUserSession = async () => {
-      if (!hasRefreshed.current) {
+      // Only refresh if enough time has passed since the last refresh (at least 30 seconds)
+      const now = Date.now()
+      if (
+        !hasRefreshed.current &&
+        (typeof window === "undefined" ||
+          now - window.__lastSessionRefresh > 30000)
+      ) {
         console.log("Sidebar: Refreshing session")
+        if (typeof window !== "undefined") {
+          window.__lastSessionRefresh = now
+        }
         await refreshSession()
         hasRefreshed.current = true
         console.log("Sidebar: Session refreshed")
+      } else if (!hasRefreshed.current) {
+        console.log("Sidebar: Skipping refresh - too soon since last refresh")
+        hasRefreshed.current = true
       }
     }
 
-    refreshUserSession()
-  }, [refreshSession])
+    // Only attempt to refresh if we're not already authenticated
+    if (status !== "authenticated") {
+      refreshUserSession()
+    } else {
+      hasRefreshed.current = true
+    }
+  }, [refreshSession, status])
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {

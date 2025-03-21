@@ -17,6 +17,9 @@ import {
   MessageSquare,
   Moon,
   Sun,
+  LayoutDashboard,
+  Compass,
+  BookOpen,
 } from "lucide-react"
 import { useSession, useAuth } from "@/lib/auth-context"
 import { UserRole } from "@/lib/auth/constants"
@@ -55,6 +58,13 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+
+// Add global declaration for the session refresh timestamp
+declare global {
+  interface Window {
+    __lastSessionRefresh: number
+  }
+}
 
 // Public navigation items
 const publicNavItems = [
@@ -189,20 +199,42 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const hasRefreshed = useRef(false)
 
-  // Add useEffect to ensure session is refreshed when the component mounts
+  // Add useEffect to ensure session is refreshed when the component mounts,
+  // but prevent refreshing too frequently
   useEffect(() => {
+    // Use a global refresh tracker to prevent multiple components triggering refreshes
+    if (typeof window !== "undefined") {
+      window.__lastSessionRefresh = window.__lastSessionRefresh || 0
+    }
+
     const refreshUserSession = async () => {
-      // Only refresh if we haven't refreshed before
-      if (!hasRefreshed.current) {
+      // Only refresh if enough time has passed since the last refresh (at least 30 seconds)
+      const now = Date.now()
+      if (
+        !hasRefreshed.current &&
+        (typeof window === "undefined" ||
+          now - window.__lastSessionRefresh > 30000)
+      ) {
         console.log("Header: Refreshing session")
+        if (typeof window !== "undefined") {
+          window.__lastSessionRefresh = now
+        }
         await refreshSession()
         hasRefreshed.current = true
         console.log("Header: Session refreshed")
+      } else if (!hasRefreshed.current) {
+        console.log("Header: Skipping refresh - too soon since last refresh")
+        hasRefreshed.current = true
       }
     }
 
-    refreshUserSession()
-  }, [refreshSession])
+    // Only attempt to refresh if we're not already authenticated
+    if (status !== "authenticated") {
+      refreshUserSession()
+    } else {
+      hasRefreshed.current = true
+    }
+  }, [refreshSession, status])
 
   const handleSignOut = async () => {
     try {

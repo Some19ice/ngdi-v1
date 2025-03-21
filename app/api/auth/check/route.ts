@@ -113,6 +113,9 @@ export async function GET(req: NextRequest) {
         { status: 200 }
       )
 
+      // Add cache headers to prevent frequent calls
+      response.headers.set("Cache-Control", "private, max-age=60") // Cache for 1 minute
+
       // Ensure cookies are set on the response - this helps with client-side auth
       if (authToken) {
         response.cookies.set("auth_token", authToken, {

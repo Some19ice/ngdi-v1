@@ -81,21 +81,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 3000) // 3 second timeout as fallback
 
+    // Track the last refresh time to prevent frequent refreshes
+    const lastRefreshTime = Date.now() - 30000 // Initialize to 30 seconds ago
+
     const initSession = async () => {
       try {
         console.log("AuthProvider: Initializing session")
-        // First try to refresh the session to ensure we have the latest token
-        await refreshSession()
-        // Then get the session after the refresh
-        const session = await authClient.getSession()
 
-        if (isMounted) {
-          console.log("AuthProvider: Session initialized", {
-            isAuthenticated: !!session,
-            userRole: session?.user?.role,
-          })
-          setSession(session || null)
-          setStatus(session ? "authenticated" : "unauthenticated")
+        // Only refresh if we haven't refreshed recently (within the last 10 seconds)
+        if (Date.now() - lastRefreshTime > 10000) {
+          // Get the session - we don't need to call refreshSession() here
+          // as it will be called by the refresh interval if needed
+          const session = await authClient.getSession()
+
+          if (isMounted) {
+            console.log("AuthProvider: Session initialized", {
+              isAuthenticated: !!session,
+              userRole: session?.user?.role,
+            })
+            setSession(session || null)
+            setStatus(session ? "authenticated" : "unauthenticated")
+          }
+        } else {
+          console.log("AuthProvider: Skipping refresh, last refresh too recent")
         }
       } catch (error) {
         console.error("Error initializing session:", error)
@@ -120,14 +128,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Set up session refresh interval with better error handling
   useEffect(() => {
     let isRefreshing = false
+    let lastRefreshTime = 0
 
     const refreshIntervalHandler = async () => {
       // Skip if already refreshing or not authenticated
       if (isRefreshing || status !== "authenticated") return
 
+      // Skip if we refreshed in the last 30 seconds (prevents duplicate refreshes)
+      if (Date.now() - lastRefreshTime < 30000) {
+        console.log("Skipping scheduled refresh - last refresh too recent")
+        return
+      }
+
       try {
         isRefreshing = true
         console.log("Performing scheduled session refresh")
+        lastRefreshTime = Date.now()
         await refreshSession()
       } catch (error) {
         console.error("Scheduled session refresh failed:", error)
@@ -137,8 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Refresh session every 9 minutes (slightly less than common 10 minute expiry)
-    const refreshInterval = setInterval(refreshIntervalHandler, 9 * 60 * 1000)
+    // Refresh session every 15 minutes instead of 9 minutes to reduce API load
+    const refreshInterval = setInterval(refreshIntervalHandler, 15 * 60 * 1000)
 
     // Also refresh when the tab becomes visible again
     const handleVisibilityChange = () => {
