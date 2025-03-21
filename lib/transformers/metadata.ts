@@ -2,8 +2,10 @@ import type {
   Form1Data,
   Form2Data,
   Form3Data,
+  TechnicalDetailsData,
+  AccessInfoData,
   NGDIMetadataFormData,
-} from "@/app/actions/metadata"
+} from "@/types/ngdi-metadata"
 import type { MetadataRequest } from "@/types/metadata"
 
 /**
@@ -12,7 +14,7 @@ import type { MetadataRequest } from "@/types/metadata"
 export function transformFormToApiModel(
   formData: NGDIMetadataFormData
 ): MetadataRequest {
-  const { form1, form2, form3 } = formData
+  const { form1, technicalDetails, form2, form4 } = formData
 
   // Extract fundamental datasets as categories
   const categories: string[] = []
@@ -39,10 +41,11 @@ export function transformFormToApiModel(
   }
 
   return {
-    // General information
+    // General information from form1
     title: form1.dataInformation.dataName,
     author: form2.processorContactInformation.name,
-    organization: form3.distributorInformation.name,
+    organization:
+      form4.contactInfo.department || form4.contactInfo.contactPerson,
     dateFrom: form1.dataInformation.productionDate,
     dateTo: form1.dataInformation.productionDate, // Using same date if no range is provided
     abstract: form1.description.abstract,
@@ -50,56 +53,49 @@ export function transformFormToApiModel(
     thumbnailUrl: form1.description.thumbnail,
     imageName: `${form1.dataInformation.dataName.replace(/\s+/g, "-").toLowerCase()}-thumbnail`,
 
-    // Framework and categorization
+    // Framework and categorization from form1
     frameworkType: form1.dataInformation.dataType,
     categories,
 
-    // Spatial information
-    coordinateSystem: form1.spatialDomain.coordinateUnit,
-    projection: "WGS84", // Default projection, adjust based on your needs
-    scale: 1, // Default scale, adjust based on your needs
+    // Spatial information from technicalDetails
+    coordinateSystem: technicalDetails.spatialInformation.coordinateSystem,
+    projection: technicalDetails.spatialInformation.projection,
+    scale: technicalDetails.spatialInformation.scale,
+    resolution: technicalDetails.spatialInformation.resolution,
 
-    // Quality information
-    resolution: form2.sourceInformation.sourceScaleDenominator?.toString(),
+    // Quality information from form2
     accuracyLevel:
-      form2.positionalAccuracy.horizontal.accuracyReport || "Standard",
-    completeness: form2.positionalAccuracy.horizontal.percentValue,
+      form2.positionalAccuracy?.horizontal?.accuracyReport || "Standard",
+    completeness: form2.positionalAccuracy?.horizontal?.percentValue,
     consistencyCheck: true,
     validationStatus: "Validated",
 
-    // File information
-    fileFormat:
-      form1.dataInformation.dataType === "Vector"
-        ? "Shapefile"
-        : form1.dataInformation.dataType === "Raster"
-          ? "GeoTIFF"
-          : "CSV",
+    // File information from technicalDetails
+    fileFormat: technicalDetails.technicalSpecifications.fileFormat,
+    fileSize: technicalDetails.technicalSpecifications.fileSize,
+    numFeatures: technicalDetails.technicalSpecifications.numFeatures,
+    softwareReqs: technicalDetails.technicalSpecifications.softwareReqs,
 
-    // Update information
+    // Update information from form1
     updateCycle: form1.dataStatus.updateFrequency,
     lastUpdate: form2.dataProcessingInformation.processedDate,
 
-    // Distribution information
-    distributionFormat:
-      form1.dataInformation.dataType === "Vector"
-        ? "Shapefile"
-        : form1.dataInformation.dataType === "Raster"
-          ? "GeoTIFF"
-          : "CSV",
-    accessMethod: "API",
-    downloadUrl: form3.distributorInformation.webLink || undefined,
-    apiEndpoint: form3.distributorInformation.webLink || undefined,
+    // Distribution information from form4
+    distributionFormat: form4.distributionInfo.distributionFormat,
+    accessMethod: form4.distributionInfo.accessMethod,
+    downloadUrl: form4.distributionInfo.downloadUrl || undefined,
+    apiEndpoint: form4.distributionInfo.apiEndpoint || undefined,
 
-    // License information
-    licenseType: "Standard",
-    usageTerms: form1.resourceConstraint.useConstraints,
-    attributionRequirements: form1.resourceConstraint.otherConstraints,
-    accessRestrictions: [form1.resourceConstraint.accessConstraints],
+    // License information from form4
+    licenseType: form4.licenseInfo.licenseType,
+    usageTerms: form4.licenseInfo.usageTerms,
+    attributionRequirements: form4.licenseInfo.attributionRequirements,
+    accessRestrictions: form4.licenseInfo.accessRestrictions,
 
-    // Contact information
-    contactPerson: form3.distributorInformation.name,
-    email: form3.distributorInformation.email,
-    department: form1.metadataReference.address,
+    // Contact information from form4
+    contactPerson: form4.contactInfo.contactPerson,
+    email: form4.contactInfo.email,
+    department: form4.contactInfo.department,
   }
 }
 
@@ -116,6 +112,7 @@ export function transformApiToFormModel(
       cat.toLowerCase().includes(name.toLowerCase())
     )
 
+  // Form 1: General Information
   const form1: Form1Data = {
     dataInformation: {
       dataType: apiData.frameworkType as "Raster" | "Vector" | "Table",
@@ -179,6 +176,7 @@ export function transformApiToFormModel(
     },
   }
 
+  // Form 2: Data Quality
   const form2: Form2Data = {
     generalSection: {
       logicalConsistencyReport: "",
@@ -221,6 +219,45 @@ export function transformApiToFormModel(
     },
   }
 
+  // Technical Details (Step 2)
+  const technicalDetails: TechnicalDetailsData = {
+    spatialInformation: {
+      coordinateSystem: apiData.coordinateSystem,
+      projection: apiData.projection,
+      scale: apiData.scale,
+      resolution: apiData.resolution,
+    },
+    technicalSpecifications: {
+      fileFormat: apiData.fileFormat,
+      fileSize: apiData.fileSize,
+      numFeatures: apiData.numFeatures,
+      softwareReqs: apiData.softwareReqs || "",
+    },
+  }
+
+  // Form 4: Access Information
+  const form4: AccessInfoData = {
+    distributionInfo: {
+      distributionFormat: apiData.distributionFormat,
+      accessMethod: apiData.accessMethod,
+      downloadUrl: apiData.downloadUrl || "",
+      apiEndpoint: apiData.apiEndpoint || "",
+    },
+    licenseInfo: {
+      licenseType: apiData.licenseType,
+      usageTerms: apiData.usageTerms,
+      attributionRequirements: apiData.attributionRequirements,
+      accessRestrictions: apiData.accessRestrictions || [],
+    },
+    contactInfo: {
+      contactPerson: apiData.contactPerson,
+      email: apiData.email,
+      department: apiData.department || "",
+      phone: "",
+    },
+  }
+
+  // Form 3: Distribution Info (for backward compatibility)
   const form3: Form3Data = {
     distributorInformation: {
       name: apiData.organization,
@@ -229,11 +266,12 @@ export function transformApiToFormModel(
       phoneNumber: "",
       webLink: apiData.downloadUrl || "",
       socialMediaHandle: "",
+      isCustodian: true,
     },
     distributionDetails: {
       liability: "Standard liability terms apply",
       customOrderProcess: "Contact distributor for custom orders",
-      technicalPrerequisites: "Standard GIS software",
+      technicalPrerequisites: apiData.softwareReqs || "Standard GIS software",
     },
     standardOrderProcess: {
       fees: "Please contact for pricing",
@@ -243,5 +281,5 @@ export function transformApiToFormModel(
     },
   }
 
-  return { form1, form2, form3 }
+  return { form1, form2, form3, form4, technicalDetails }
 }

@@ -17,13 +17,16 @@ import type {
   Form3Data,
 } from "@/types/ngdi-metadata"
 
-// Import the components from the barrel file
+// Import the form components
 import {
   GeneralInfoForm,
   DataQualityForm,
   DistributionInfoForm,
   Steps,
 } from "./index"
+import TechnicalDetailsForm from "./technical-details-form"
+import AccessInfoForm from "./access-info-form"
+import ReviewForm from "./review-form"
 import { createMetadata, updateMetadata } from "@/app/actions/metadata"
 import { InfoIcon } from "lucide-react"
 
@@ -39,28 +42,59 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     initialData || {}
   )
   const router = useRouter()
-  const totalSteps = 3
+  const totalSteps = 5
   const isEditing = !!metadataId
 
-  const handleNext = (stepData: Form1Data | Form2Data) => {
-    if (currentStep === 1) {
-      setFormData((prev) => ({ ...prev, form1: stepData as Form1Data }))
-    } else if (currentStep === 2) {
-      setFormData((prev) => ({ ...prev, form2: stepData as Form2Data }))
-    }
-    setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
+  // Handle step 1 (General Info) completion
+  const handleGeneralInfoNext = (stepData: Form1Data) => {
+    setFormData((prev) => ({ ...prev, form1: stepData }))
+    setCurrentStep(2)
   }
 
+  // Handle step 2 (Technical Details) completion
+  const handleTechnicalDetailsNext = (stepData: any) => {
+    setFormData((prev) => ({ ...prev, technicalDetails: stepData }))
+    setCurrentStep(3)
+  }
+
+  // Handle step 3 (Data Quality) completion
+  const handleDataQualityNext = (stepData: Form2Data) => {
+    setFormData((prev) => ({ ...prev, form2: stepData }))
+    setCurrentStep(4)
+  }
+
+  // Handle step 4 (Access Info) completion
+  const handleAccessInfoNext = (stepData: any) => {
+    setFormData((prev) => ({ ...prev, form4: stepData }))
+    setCurrentStep(5)
+  }
+
+  // Handle back button for all steps
   const handlePrevious = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
-  const handleSave = async (data: Form3Data) => {
+  // Final form submission
+  const handleSave = async () => {
     try {
       setIsSubmitting(true)
+
+      // Make sure we have all required form data
+      if (
+        !formData.form1 ||
+        !formData.form2 ||
+        !formData.technicalDetails ||
+        !formData.form4
+      ) {
+        toast.error("Please complete all form sections before submitting")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Use form3 from the original structure to maintain compatibility
       const finalFormData = {
         ...formData,
-        form3: data,
+        form3: formData.form3 || ({} as Form3Data),
       } as NGDIMetadataFormData
 
       let result
@@ -122,30 +156,46 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
             <CardHeader className="bg-muted/20 px-6 py-4">
               <CardTitle className="text-xl">
                 {currentStep === 1 && "General Information"}
-                {currentStep === 2 && "Data Quality & Processing"}
-                {currentStep === 3 && "Distribution Information"}
+                {currentStep === 2 && "Technical Details"}
+                {currentStep === 3 && "Data Quality"}
+                {currentStep === 4 && "Access Information"}
+                {currentStep === 5 && "Review & Submit"}
               </CardTitle>
             </CardHeader>
             <CardContent className="px-6 py-6">
               {currentStep === 1 && (
                 <GeneralInfoForm
-                  onNext={handleNext}
+                  onNext={handleGeneralInfoNext}
                   initialData={formData.form1}
                 />
               )}
               {currentStep === 2 && (
+                <TechnicalDetailsForm
+                  onNext={handleTechnicalDetailsNext}
+                  onBack={handlePrevious}
+                  initialData={formData.technicalDetails}
+                />
+              )}
+              {currentStep === 3 && (
                 <DataQualityForm
-                  onNext={handleNext}
+                  onNext={handleDataQualityNext}
                   onBack={handlePrevious}
                   initialData={formData.form2}
                 />
               )}
-              {currentStep === 3 && (
-                <DistributionInfoForm
+              {currentStep === 4 && (
+                <AccessInfoForm
+                  onNext={handleAccessInfoNext}
+                  onBack={handlePrevious}
+                  initialData={formData.form4}
+                />
+              )}
+              {currentStep === 5 && (
+                <ReviewForm
                   onBack={handlePrevious}
                   onSave={handleSave}
                   isSubmitting={isSubmitting}
-                  initialData={formData.form3}
+                  formData={formData as NGDIMetadataFormData}
                 />
               )}
             </CardContent>

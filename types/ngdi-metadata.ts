@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 export interface DataInformation {
   dataType: "Raster" | "Vector" | "Table" // Required
   dataName: string // Required
@@ -134,6 +136,42 @@ export interface StandardOrderProcess {
   maximumResponseTime: string // Required - Maximum time for dataset availability response
 }
 
+export interface TechnicalDetailsData {
+  spatialInformation: {
+    coordinateSystem: string
+    projection: string
+    scale: number
+    resolution?: string
+  }
+  technicalSpecifications: {
+    fileFormat: string
+    fileSize?: number
+    numFeatures?: number
+    softwareReqs?: string
+  }
+}
+
+export interface AccessInfoData {
+  distributionInfo: {
+    distributionFormat: string
+    accessMethod: string
+    downloadUrl?: string
+    apiEndpoint?: string
+  }
+  licenseInfo: {
+    licenseType: string
+    usageTerms: string
+    attributionRequirements: string
+    accessRestrictions: string[]
+  }
+  contactInfo: {
+    contactPerson: string
+    email: string
+    department?: string
+    phone?: string
+  }
+}
+
 export interface Form1Data {
   dataInformation: DataInformation
   fundamentalDatasets: FundamentalDatasets
@@ -162,8 +200,10 @@ export interface Form3Data {
 
 export interface NGDIMetadataFormData {
   form1: Form1Data
+  technicalDetails: TechnicalDetailsData
   form2: Form2Data
-  form3: Form3Data
+  form4: AccessInfoData
+  form3?: Form3Data
 }
 
 export interface NGDIMetadataResponse extends NGDIMetadataFormData {

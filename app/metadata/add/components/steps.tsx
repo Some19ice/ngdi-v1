@@ -2,69 +2,54 @@ import { Check } from "lucide-react";
 
 interface StepsProps {
   currentStep: number
-  totalSteps?: number
+  totalSteps: number
 }
 
-const defaultSteps = [
-  { id: 1, name: "General Information And Description" },
-  { id: 2, name: "Data Quality Information" },
-  { id: 3, name: "Data Distribution Information" },
-]
+export function Steps({ currentStep, totalSteps }: StepsProps) {
+  // Generate step labels based on total steps
+  const getStepLabels = () => {
+    if (totalSteps === 5) {
+      return ["General", "Technical", "Quality", "Access", "Review"]
+    }
+    // Fallback for the original 3-step process
+    return ["General", "Quality", "Distribution"]
+  }
 
-export function Steps({ currentStep, totalSteps = 3 }: StepsProps) {
-  const steps =
-    totalSteps === 3 ? defaultSteps : defaultSteps.slice(0, totalSteps)
+  const stepLabels = getStepLabels()
 
   return (
-    <nav aria-label="Progress" className="w-full overflow-x-auto pb-2">
-      <ol role="list" className="flex items-center min-w-max">
-        {steps.map((step, stepIdx) => (
-          <li
-            key={step.name}
-            className={`${
-              stepIdx !== steps.length - 1 ? "pr-6 md:pr-20" : ""
-            } relative`}
-          >
-            <div className="flex items-center">
-              <div
-                className={`${
-                  step.id <= currentStep ? "bg-primary" : "bg-secondary"
-                } h-8 w-8 rounded-full flex items-center justify-center`}
-              >
-                {step.id < currentStep ? (
-                  <Check className="h-5 w-5 text-primary-foreground" />
-                ) : (
-                  <span
-                    className={`${
-                      step.id === currentStep
-                        ? "text-primary-foreground"
-                        : "text-muted-foreground"
-                    } text-sm font-semibold`}
-                  >
-                    {step.id}
-                  </span>
-                )}
-              </div>
-              <span
-                className={`${
-                  step.id <= currentStep
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground"
-                } ml-3 text-sm whitespace-nowrap`}
-              >
-                {step.name}
-              </span>
+    <div className="relative">
+      {/* Progress bar */}
+      <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+        <div
+          style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-500"
+        ></div>
+      </div>
+
+      {/* Step indicators */}
+      <div className="flex justify-between">
+        {stepLabels.map((step, index) => (
+          <div key={index} className="flex flex-col items-center">
+            <div
+              className={`rounded-full h-8 w-8 flex items-center justify-center border-2 ${
+                index + 1 <= currentStep
+                  ? "border-primary bg-primary text-white"
+                  : "border-gray-300 text-gray-300"
+              }`}
+            >
+              {index + 1 <= currentStep ? index + 1 : index + 1}
             </div>
-            {stepIdx !== steps.length - 1 && (
-              <div
-                className={`${
-                  step.id < currentStep ? "border-primary" : "border-border"
-                } absolute left-0 top-4 -ml-px mt-0.5 h-0.5 w-full border-t-2`}
-              />
-            )}
-          </li>
+            <div
+              className={`text-xs mt-1 font-medium ${
+                index + 1 <= currentStep ? "text-primary" : "text-gray-400"
+              }`}
+            >
+              {step}
+            </div>
+          </div>
         ))}
-      </ol>
-    </nav>
+      </div>
+    </div>
   )
 }

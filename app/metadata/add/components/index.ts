@@ -1,9 +1,17 @@
-export { default as GeneralInfoForm } from "./general-info-form"
-export { default as DataQualityForm } from "./data-quality-form"
-export { default as DistributionInfoForm } from "./distribution-info-form"
-export { Steps } from "./steps"
+import { Steps } from "./steps"
+import GeneralInfoForm from "./general-info-form"
+import DataQualityForm from "./data-quality-form"
+import DistributionInfoForm from "./distribution-info-form"
+import TechnicalDetailsForm from "./technical-details-form"
+import AccessInfoForm from "./access-info-form"
+import ReviewForm from "./review-form"
+
 export {
-  FormSection,
-  FormSectionGrid,
-  FormSectionDivider,
-} from "./form-section"
+  Steps,
+  GeneralInfoForm,
+  DataQualityForm,
+  DistributionInfoForm,
+  TechnicalDetailsForm,
+  AccessInfoForm,
+  ReviewForm,
+}
