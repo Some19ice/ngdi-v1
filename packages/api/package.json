@@ -15,7 +15,6 @@
     "prisma:push": "prisma db push",
     "seed:users": "tsx src/scripts/seed-users.ts",
     "seed:metadata": "tsx src/scripts/seed-metadata.ts",
-    "seed:ngdi-metadata": "tsx src/scripts/seed-ngdi-metadata.ts",
     "migrate:metadata": "tsx src/scripts/migrate-metadata.ts",
     "migrate:ngdi-to-metadata": "tsx src/scripts/migrate-ngdi-to-metadata.ts"
   },
