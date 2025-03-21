@@ -4,44 +4,62 @@ import { z } from 'zod';
  * Metadata schema
  */
 export const metadataSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  author: z.string().min(2, 'Author must be at least 2 characters'),
-  organization: z.string().min(2, 'Organization must be at least 2 characters'),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  author: z.string().min(2, "Author must be at least 2 characters"),
+  organization: z.string().min(2, "Organization must be at least 2 characters"),
   dateFrom: z.string(),
   dateTo: z.string(),
-  abstract: z.string().min(10, 'Abstract must be at least 10 characters'),
-  purpose: z.string().min(10, 'Purpose must be at least 10 characters'),
-  thumbnailUrl: z.string().url('Invalid thumbnail URL'),
+  abstract: z.string().min(10, "Abstract must be at least 10 characters"),
+  purpose: z.string().min(10, "Purpose must be at least 10 characters"),
+  thumbnailUrl: z.string().url("Invalid thumbnail URL"),
   imageName: z.string(),
   frameworkType: z.string(),
   categories: z.array(z.string()).default([]),
   coordinateSystem: z.string(),
   projection: z.string(),
-  scale: z.number().int().positive('Scale must be a positive integer'),
+  scale: z.number().int().positive("Scale must be a positive integer"),
   resolution: z.string().optional(),
+  coordinateUnit: z.enum(["DD", "DMS"]).default("DD"),
+  minLatitude: z.number().default(0),
+  minLongitude: z.number().default(0),
+  maxLatitude: z.number().default(0),
+  maxLongitude: z.number().default(0),
   accuracyLevel: z.string(),
-  completeness: z.number().int().min(0).max(100, 'Completeness must be between 0 and 100').optional(),
+  completeness: z
+    .number()
+    .int()
+    .min(0)
+    .max(100, "Completeness must be between 0 and 100")
+    .optional(),
   consistencyCheck: z.boolean().optional(),
   validationStatus: z.string().optional(),
   fileFormat: z.string(),
-  fileSize: z.number().int().positive('File size must be a positive integer').optional(),
-  numFeatures: z.number().int().positive('Number of features must be a positive integer').optional(),
+  fileSize: z
+    .number()
+    .int()
+    .positive("File size must be a positive integer")
+    .optional(),
+  numFeatures: z
+    .number()
+    .int()
+    .positive("Number of features must be a positive integer")
+    .optional(),
   softwareReqs: z.string().optional(),
   updateCycle: z.string().optional(),
   lastUpdate: z.string().optional(),
   nextUpdate: z.string().optional(),
   distributionFormat: z.string(),
   accessMethod: z.string(),
-  downloadUrl: z.string().url('Invalid download URL').optional(),
-  apiEndpoint: z.string().url('Invalid API endpoint').optional(),
+  downloadUrl: z.string().url("Invalid download URL").optional(),
+  apiEndpoint: z.string().url("Invalid API endpoint").optional(),
   licenseType: z.string(),
   usageTerms: z.string(),
   attributionRequirements: z.string(),
   accessRestrictions: z.array(z.string()).default([]),
   contactPerson: z.string(),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email("Invalid email address"),
   department: z.string().optional(),
-});
+})
 
 export type MetadataRequest = z.infer<typeof metadataSchema>;
 
@@ -63,47 +81,52 @@ export const MetadataRequestSchema = metadataSchema;
  * Metadata response
  */
 export interface MetadataResponse {
-  id: string;
-  title: string;
-  author: string;
-  organization: string;
-  dateFrom: string;
-  dateTo: string;
-  abstract: string;
-  purpose: string;
-  thumbnailUrl: string;
-  imageName: string;
-  frameworkType: string;
-  categories: string[];
-  coordinateSystem: string;
-  projection: string;
-  scale: number;
-  resolution?: string;
-  accuracyLevel: string;
-  completeness?: number;
-  consistencyCheck?: boolean;
-  validationStatus?: string;
-  fileFormat: string;
-  fileSize?: number;
-  numFeatures?: number;
-  softwareReqs?: string;
-  updateCycle?: string;
-  lastUpdate?: string;
-  nextUpdate?: string;
-  distributionFormat: string;
-  accessMethod: string;
-  downloadUrl?: string;
-  apiEndpoint?: string;
-  licenseType: string;
-  usageTerms: string;
-  attributionRequirements: string;
-  accessRestrictions: string[];
-  contactPerson: string;
-  email: string;
-  department?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  title: string
+  author: string
+  organization: string
+  dateFrom: string
+  dateTo: string
+  abstract: string
+  purpose: string
+  thumbnailUrl: string
+  imageName: string
+  frameworkType: string
+  categories: string[]
+  coordinateSystem: string
+  projection: string
+  scale: number
+  resolution?: string
+  coordinateUnit: string
+  minLatitude: number
+  minLongitude: number
+  maxLatitude: number
+  maxLongitude: number
+  accuracyLevel: string
+  completeness?: number
+  consistencyCheck?: boolean
+  validationStatus?: string
+  fileFormat: string
+  fileSize?: number
+  numFeatures?: number
+  softwareReqs?: string
+  updateCycle?: string
+  lastUpdate?: string
+  nextUpdate?: string
+  distributionFormat: string
+  accessMethod: string
+  downloadUrl?: string
+  apiEndpoint?: string
+  licenseType: string
+  usageTerms: string
+  attributionRequirements: string
+  accessRestrictions: string[]
+  contactPerson: string
+  email: string
+  department?: string
+  userId: string
+  createdAt: string
+  updatedAt: string
 }
 
 /**

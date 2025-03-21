@@ -44,7 +44,7 @@ interface ServerDraft {
   id: string
   title: string
   lastUpdated: string
-  createdAt: string
+  createdAt: Date
 }
 
 interface DraftManagerProps {
@@ -100,7 +100,7 @@ export function DraftManager({
 
       // Server drafts
       const response = await getUserDrafts()
-      if (response.success) {
+      if (response.success && response.drafts) {
         setServerDrafts(response.drafts)
       } else {
         console.error("Error loading server drafts:", response.error)

@@ -31,7 +31,7 @@ import {
 import { Permission, Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
 import { LucideIcon } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { useSession, useAuth } from "@/lib/auth-context"
 import {
@@ -217,11 +217,37 @@ export function Sidebar({
   onOpenChange = () => {},
 }: SidebarProps) {
   const { data: session, status } = useSession()
-  const { logout } = useAuth()
+  const { logout, refreshSession } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const [cachedNavSections, setCachedNavSections] = useState<NavSection[]>([])
+  const [cachedUserNavItems, setCachedUserNavItems] = useState<NavItem[]>([])
+  const [previouslyAuthenticated, setPreviouslyAuthenticated] = useState(false)
+  const hasRefreshed = useRef(false)
+
+  // Add useEffect to refresh the session on mount
+  useEffect(() => {
+    const refreshUserSession = async () => {
+      if (!hasRefreshed.current) {
+        console.log("Sidebar: Refreshing session")
+        await refreshSession()
+        hasRefreshed.current = true
+        console.log("Sidebar: Session refreshed")
+      }
+    }
+
+    refreshUserSession()
+  }, [refreshSession])
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      setPreviouslyAuthenticated(true)
+      setCachedNavSections(getMainNavItems(session.user.role))
+      setCachedUserNavItems(getUserNavItems(session.user.role))
+    }
+  }, [status, session])
 
   const handleSignOut = async () => {
     try {
@@ -237,16 +263,36 @@ export function Sidebar({
     }
   }
 
-  if (status === "loading") {
+  if (status === "loading" && !previouslyAuthenticated) {
+    return (
+      <div
+        className={cn(
+          "flex h-full flex-col border-r bg-background py-4 transition-all duration-300",
+          isCollapsed && !isMobile ? "w-[60px] px-2" : "w-[240px] px-3",
+          isMobile ? "fixed inset-y-0 left-0 z-50 shadow-lg transform" : "",
+          isMobile && !isOpen ? "-translate-x-full" : "",
+          isMobile && isOpen ? "translate-x-0" : "",
+          "items-center justify-center"
+        )}
+      >
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated" && !previouslyAuthenticated) {
     return null
   }
 
-  if (!session?.user) {
-    return null
-  }
+  const navSections =
+    status === "authenticated" && session?.user
+      ? getMainNavItems(session.user.role)
+      : cachedNavSections
 
-  const navSections = getMainNavItems(session.user.role)
-  const userNavItems = getUserNavItems(session.user.role)
+  const userNavItems =
+    status === "authenticated" && session?.user
+      ? getUserNavItems(session.user.role)
+      : cachedUserNavItems
 
   return (
     <TooltipProvider>
@@ -480,6 +526,14 @@ export function Sidebar({
                         >
                           {item.title}
                         </span>
+                        {item.badge && (
+                          <Badge
+                            variant="outline"
+                            className="ml-auto text-xs h-5 bg-primary/10 text-primary border-primary/20"
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
                         {isActive && !isCollapsed && (
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 bg-[hsl(var(--sidebar-active-text))] rounded-r-sm" />
                         )}

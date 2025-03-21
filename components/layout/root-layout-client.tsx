@@ -4,11 +4,28 @@ import { Header } from "@/components/layout/header"
 import { Banner } from "@/components/layout/banner"
 import Footer from "@/components/layout/footer"
 import { Sidebar } from "@/components/layout/sidebar"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useSession, useAuth } from "@/lib/auth-context"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+
+// Sidebar loading fallback component
+const SidebarSkeleton = ({
+  isCollapsed = false,
+}: {
+  isCollapsed?: boolean
+}) => (
+  <div
+    className={cn(
+      "hidden lg:block h-full",
+      isCollapsed ? "w-[60px]" : "w-[240px]"
+    )}
+  >
+    <Skeleton className="h-full w-full" />
+  </div>
+)
 
 export default function RootLayoutClient({
   children,
@@ -23,10 +40,14 @@ export default function RootLayoutClient({
 
   // Refresh session only once when the component mounts
   useEffect(() => {
-    if (!hasRefreshed.current && status === "loading") {
-      refreshSession()
-      hasRefreshed.current = true
+    const initSession = async () => {
+      if (!hasRefreshed.current && status === "loading") {
+        await refreshSession()
+        hasRefreshed.current = true
+      }
     }
+
+    initSession()
   }, [refreshSession, status])
 
   // Close mobile menu when window is resized to desktop
@@ -49,12 +70,14 @@ export default function RootLayoutClient({
   return (
     <div className="flex min-h-screen">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar
-          isCollapsed={isSidebarCollapsed}
-          onCollapsedChange={setIsSidebarCollapsed}
-        />
-      </div>
+      <Suspense fallback={<SidebarSkeleton isCollapsed={isSidebarCollapsed} />}>
+        <div className="hidden lg:block">
+          <Sidebar
+            isCollapsed={isSidebarCollapsed}
+            onCollapsedChange={setIsSidebarCollapsed}
+          />
+        </div>
+      </Suspense>
 
       {/* Mobile Sidebar */}
       <div className="lg:hidden">

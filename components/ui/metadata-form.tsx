@@ -14,26 +14,31 @@ import type {
   Form2Data,
   Form3Data,
   NGDIMetadataFormData,
+  GeneralInfoData,
+  DataQualityData,
+  AccessInfoData,
+  TechnicalDetailsData,
 } from "@/types/ngdi-metadata"
 
 export function MetadataForm() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<Partial<NGDIMetadataFormData>>({
-    form1: {} as Form1Data,
-    form2: {} as Form2Data,
-    form3: {} as Form3Data,
-  })
+  const [formData, setFormData] = useState<{
+    generalInfo?: Form1Data
+    dataQuality?: Form2Data
+    distributionInfo?: Form3Data
+  }>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleNext = (data: Form1Data | Form2Data) => {
+  const handleStepChange = (newStep: number) => {
+    setCurrentStep(newStep)
+  }
+
+  const handleFormChange = (data: Partial<any>) => {
     setFormData((prev) => ({
       ...prev,
-      ...(currentStep === 1
-        ? { form1: data as Form1Data }
-        : { form2: data as Form2Data }),
+      ...data,
     }))
-    setCurrentStep((prev) => prev + 1)
   }
 
   const handleBack = () => {
@@ -43,10 +48,15 @@ export function MetadataForm() {
   const handleSave = async (data: Form3Data) => {
     try {
       setIsSubmitting(true)
-      const finalData = {
-        ...formData,
-        form3: data,
-      } as NGDIMetadataFormData
+
+      // Construct the final data object according to NGDIMetadataFormData structure
+      const finalData: NGDIMetadataFormData = {
+        generalInfo: formData.generalInfo as GeneralInfoData,
+        dataQuality: formData.dataQuality as DataQualityData,
+        technicalDetails: {} as TechnicalDetailsData, // Add default or transform from existing data
+        accessInfo: {} as AccessInfoData, // Add default or transform from existing data
+        distributionInfo: data,
+      }
 
       const result = await createMetadata(finalData)
 
@@ -91,13 +101,21 @@ export function MetadataForm() {
       </div>
 
       {currentStep === 1 && (
-        <GeneralInfoForm onNext={handleNext} initialData={formData.form1} />
+        <GeneralInfoForm
+          step={1}
+          onStepChange={handleStepChange}
+          formData={formData}
+          onChange={handleFormChange}
+          isSubmitting={false}
+        />
       )}
       {currentStep === 2 && (
         <DataQualityForm
-          onNext={handleNext}
-          onBack={handleBack}
-          initialData={formData.form2}
+          step={2}
+          onStepChange={handleStepChange}
+          formData={formData}
+          onChange={handleFormChange}
+          isSubmitting={false}
         />
       )}
       {currentStep === 3 && (
@@ -105,7 +123,7 @@ export function MetadataForm() {
           onBack={handleBack}
           onSave={handleSave}
           isSubmitting={isSubmitting}
-          initialData={formData.form3}
+          initialData={formData.distributionInfo}
         />
       )}
     </div>

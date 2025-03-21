@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       nextResponse.cookies.set({
         name: "auth_token",
         value: authToken,
-        httpOnly: true,
+        httpOnly: false,
         path: "/",
         secure: isProduction,
         sameSite: "lax",

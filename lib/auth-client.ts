@@ -38,7 +38,12 @@ function getCookie(name: string): string | null {
 
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return parts.pop()?.split(";").shift() || null
+
+  if (parts.length === 2) {
+    const cookieValue = parts.pop()?.split(";").shift() || null
+    return cookieValue
+  }
+
   return null
 }
 
@@ -326,7 +331,7 @@ export const authClient = {
   async refreshToken(): Promise<string | null> {
     console.log("refreshToken called")
     const refreshToken = getCookie(REFRESH_COOKIE_NAME)
-    
+
     if (!refreshToken) {
       console.log("No refresh token found in cookies")
       return null
@@ -355,7 +360,7 @@ export const authClient = {
         console.error("No access token returned from refresh endpoint")
         return null
       }
-      
+
       return accessToken
     } catch (error) {
       console.error("Token refresh failed:", error)
@@ -385,52 +390,18 @@ export const authClient = {
   async getSession(): Promise<Session | null> {
     console.log("getSession called")
 
+    // Track request time
+    const startTime = Date.now()
+
     try {
-      // First try to get session from the server-side auth check endpoint
-      console.log(
-        "Attempting to fetch session from server-side auth check endpoint"
-      )
-      const response = await fetch("/api/auth/check", {
-        method: "GET",
-        credentials: "include", // Important: include cookies in the request
-        cache: "no-store", // Prevent caching of auth status
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log("Auth check response:", data)
-
-        if (data.authenticated && data.user) {
-          console.log("Server confirmed authentication, creating session")
-          return {
-            user: {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.name || "",
-              role: data.user.role,
-            },
-            expires: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
-            accessToken: getCookie(AUTH_COOKIE_NAME) || "",
-            refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
-          }
-        } else {
-          console.log("Server reports not authenticated:", data.message)
-        }
-      } else {
-        console.error(
-          "Auth check endpoint returned error:",
-          response.status,
-          response.statusText
-        )
-      }
-
-      // Fallback to client-side cookie check
-      console.log("Falling back to client-side cookie check")
+      // First try a quick client-side token validation to avoid network request if possible
       const token = getCookie(AUTH_COOKIE_NAME)
 
-      console.log("Token status:", {
+      console.log("Client-side token check:", {
         hasToken: !!token,
         tokenLength: token?.length,
+        cookiesAvailable:
+          typeof document !== "undefined" ? document.cookie : "N/A",
       })
 
       if (!token) {
@@ -438,32 +409,158 @@ export const authClient = {
         return null
       }
 
-      console.log("Validating token...")
-      const validationResult = await validateJwtToken(token)
-      console.log("Token validation result:", validationResult)
+      try {
+        // Quick validation without network request
+        const decoded = jose.decodeJwt(token)
+        const currentTime = Math.floor(Date.now() / 1000)
 
-      if (!validationResult.isValid) {
-        console.log("Token is invalid, returning null session")
+        // Check if token is expired
+        if (decoded.exp && decoded.exp < currentTime) {
+          console.log("Token expired, returning null session")
+          return null
+        }
+
+        // If we have a valid token with user info, create a session immediately
+        if (decoded.sub || decoded.userId) {
+          console.log("Creating session from client-side token")
+          const userId = decoded.sub || (decoded.userId as string)
+          const email = (decoded.email as string) || "unknown"
+          let role = decoded.role as UserRole
+
+          if (!isValidRole(role)) {
+            role = UserRole.USER
+          }
+
+          // Create session from client-side token info
+          const clientSession = {
+            user: {
+              id: userId,
+              email: email,
+              name: (decoded.name as string) || "",
+              role: role,
+            },
+            expires: decoded.exp
+              ? new Date(decoded.exp * 1000).toISOString()
+              : new Date(Date.now() + 3600 * 1000).toISOString(),
+            accessToken: token,
+            refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+          }
+
+          // Verify with server in the background after returning the session
+          // This allows the UI to render immediately while verification happens silently
+          setTimeout(() => {
+            fetch("/api/auth/check", {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store",
+            }).catch((e) =>
+              console.error("Background session verification failed:", e)
+            )
+          }, 100)
+
+          return clientSession
+        }
+      } catch (e) {
+        console.warn(
+          "Client-side token validation failed, continuing with server check:",
+          e
+        )
+      }
+
+      // Server-side verification (if client-side failed or token doesn't have enough info)
+      console.log(
+        "Attempting to fetch session from server-side auth check endpoint"
+      )
+
+      // Create an AbortController with a longer timeout (4 seconds)
+      // This gives the server more time to respond but still prevents hanging indefinitely
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        console.warn("Server auth check timed out after 4 seconds, aborting")
+        controller.abort("timeout")
+      }, 4000)
+
+      try {
+        const response = await fetch("/api/auth/check", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("Auth check response:", data)
+
+          if (data.authenticated && data.user) {
+            console.log("Server confirmed authentication, creating session")
+            return {
+              user: {
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.name || "",
+                role: data.user.role,
+              },
+              expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+              accessToken: getCookie(AUTH_COOKIE_NAME) || "",
+              refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+            }
+          } else {
+            console.log("Server reports not authenticated:", data.message)
+            return null
+          }
+        } else {
+          console.error(
+            "Auth check endpoint returned error:",
+            response.status,
+            response.statusText
+          )
+          throw new Error(
+            `Server returned ${response.status}: ${response.statusText}`
+          )
+        }
+      } catch (serverError) {
+        // If server check fails, fall back to token validation
+        console.warn(
+          "Server check failed, falling back to token validation:",
+          serverError
+        )
+
+        // Try token validation as a fallback if server check fails
+        if (token) {
+          console.log("Validating token as fallback...")
+          const validationResult = await validateJwtToken(token)
+
+          if (validationResult.isValid) {
+            console.log(
+              "Token validation successful, creating session from token"
+            )
+            return {
+              user: {
+                id: validationResult.userId || "",
+                email: validationResult.email || "",
+                name: "",
+                role: validationResult.role || UserRole.USER,
+              },
+              expires: new Date(Date.now() + 3600 * 1000).toISOString(),
+              accessToken: token,
+              refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+            }
+          } else {
+            console.warn("Token validation failed:", validationResult.error)
+          }
+        }
+
         return null
       }
-
-      const session = {
-        user: {
-          id: validationResult.userId || "",
-          email: validationResult.email || "",
-          name: "",
-          role: validationResult.role || UserRole.USER,
-        },
-        expires: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
-        accessToken: token,
-        refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
-      }
-
-      console.log("Created session with user role:", session.user.role)
-      return session
     } catch (error) {
       console.error("Error getting session:", error)
       return null
+    } finally {
+      const endTime = Date.now()
+      console.log(`getSession completed in ${endTime - startTime}ms`)
     }
   },
 

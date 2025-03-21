@@ -189,18 +189,20 @@ export function Header({ children }: { children?: React.ReactNode }) {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const hasRefreshed = useRef(false)
 
-  // Add useEffect to ensure session is refreshed only once when needed
+  // Add useEffect to ensure session is refreshed when the component mounts
   useEffect(() => {
     const refreshUserSession = async () => {
-      // Only refresh if we haven't refreshed before and status is still loading
-      if (!hasRefreshed.current && status === "loading") {
+      // Only refresh if we haven't refreshed before
+      if (!hasRefreshed.current) {
+        console.log("Header: Refreshing session")
         await refreshSession()
         hasRefreshed.current = true
+        console.log("Header: Session refreshed")
       }
     }
 
     refreshUserSession()
-  }, [refreshSession, status])
+  }, [refreshSession])
 
   const handleSignOut = async () => {
     try {

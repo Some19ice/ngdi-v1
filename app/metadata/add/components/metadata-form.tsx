@@ -247,14 +247,14 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   }
 
   // Check for storage limit
-  const isStorageFull = (): boolean => {
+  const isStorageFull = useCallback((): boolean => {
     return getStorageSize() > MAX_STORAGE_SIZE
-  }
+  }, [])
 
   // Compress data for storage
-  const compressData = (data: any): string => {
+  const compressData = useCallback((data: any): string => {
     return LZString.compressToUTF16(JSON.stringify(data))
-  }
+  }, [])
 
   // Decompress stored data
   const decompressData = (compressed: string): any => {
@@ -268,40 +268,43 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   }
 
   // Create a deep diff between old and new data
-  const createDiff = (
-    oldData: Partial<NGDIMetadataFormData>,
-    newData: Partial<NGDIMetadataFormData>
-  ) => {
-    const diff: Record<string, any> = {}
+  const createDiff = useCallback(
+    (
+      oldData: Partial<NGDIMetadataFormData>,
+      newData: Partial<NGDIMetadataFormData>
+    ) => {
+      const diff: Record<string, any> = {}
 
-    // Find changed sections
-    if (
-      newData.generalInfo &&
-      !isEqual(oldData.generalInfo, newData.generalInfo)
-    ) {
-      diff.generalInfo = newData.generalInfo
-    }
-    if (
-      newData.technicalDetails &&
-      !isEqual(oldData.technicalDetails, newData.technicalDetails)
-    ) {
-      diff.technicalDetails = newData.technicalDetails
-    }
-    if (
-      newData.dataQuality &&
-      !isEqual(oldData.dataQuality, newData.dataQuality)
-    ) {
-      diff.dataQuality = newData.dataQuality
-    }
-    if (
-      newData.accessInfo &&
-      !isEqual(oldData.accessInfo, newData.accessInfo)
-    ) {
-      diff.accessInfo = newData.accessInfo
-    }
+      // Find changed sections
+      if (
+        newData.generalInfo &&
+        !isEqual(oldData.generalInfo, newData.generalInfo)
+      ) {
+        diff.generalInfo = newData.generalInfo
+      }
+      if (
+        newData.technicalDetails &&
+        !isEqual(oldData.technicalDetails, newData.technicalDetails)
+      ) {
+        diff.technicalDetails = newData.technicalDetails
+      }
+      if (
+        newData.dataQuality &&
+        !isEqual(oldData.dataQuality, newData.dataQuality)
+      ) {
+        diff.dataQuality = newData.dataQuality
+      }
+      if (
+        newData.accessInfo &&
+        !isEqual(oldData.accessInfo, newData.accessInfo)
+      ) {
+        diff.accessInfo = newData.accessInfo
+      }
 
-    return diff
-  }
+      return diff
+    },
+    []
+  )
 
   // Save a snapshot of current form state
   const saveSnapshot = useCallback(() => {
@@ -335,7 +338,32 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     } catch (err) {
       console.error("Failed to save snapshot:", err)
     }
-  }, [formValues, snapshotKey])
+  }, [formValues, snapshotKey, compressData])
+
+  // Recovery from snapshots
+  const recoverFromSnapshots = useCallback(() => {
+    try {
+      const snapshotsData = localStorage.getItem(snapshotKey)
+      if (!snapshotsData) return false
+
+      const snapshots = decompressData(snapshotsData)
+      if (!snapshots || !snapshots.length) return false
+
+      // Use the most recent snapshot
+      const latestSnapshot = snapshots[0]
+      reset(latestSnapshot.data)
+      currentVersion.current = latestSnapshot.version
+      lastSavedData.current = latestSnapshot.data
+
+      toast.success("Recovered from snapshot", {
+        description: `Recovered data from ${new Date(latestSnapshot.timestamp).toLocaleString()}`,
+      })
+      return true
+    } catch (e) {
+      console.error("Failed to recover from snapshots:", e)
+      return false
+    }
+  }, [snapshotKey, reset])
 
   // Load form data with conflict detection
   const loadCachedData = useCallback(() => {
@@ -382,32 +410,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
     } catch (err) {
       console.error("Failed to load cached form data:", err)
     }
-  }, [cacheKey, initialData, reset])
-
-  // Recovery from snapshots
-  const recoverFromSnapshots = useCallback(() => {
-    try {
-      const snapshotsData = localStorage.getItem(snapshotKey)
-      if (!snapshotsData) return false
-
-      const snapshots = decompressData(snapshotsData)
-      if (!snapshots || !snapshots.length) return false
-
-      // Use the most recent snapshot
-      const latestSnapshot = snapshots[0]
-      reset(latestSnapshot.data)
-      currentVersion.current = latestSnapshot.version
-      lastSavedData.current = latestSnapshot.data
-
-      toast.success("Recovered from snapshot", {
-        description: `Recovered data from ${new Date(latestSnapshot.timestamp).toLocaleString()}`,
-      })
-      return true
-    } catch (e) {
-      console.error("Failed to recover from snapshots:", e)
-      return false
-    }
-  }, [snapshotKey, reset])
+  }, [cacheKey, initialData, reset, recoverFromSnapshots])
 
   // Check for conflicts with stored data
   const checkForConflicts = useCallback(() => {
@@ -476,64 +479,64 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   }
 
   // Save form data with optimization
-  const saveFormData = (
-    data: Partial<NGDIMetadataFormData>,
-    forceFullSave = false
-  ) => {
-    try {
-      // Check if storage is near limit
-      if (isStorageFull()) {
-        // Clean up old snapshots
-        localStorage.removeItem(snapshotKey)
-        toast.warning(
-          "Storage space is limited. Older snapshots have been removed."
-        )
+  const saveFormData = useCallback(
+    (data: Partial<NGDIMetadataFormData>, forceFullSave = false) => {
+      try {
+        // Check if storage is near limit
+        if (isStorageFull()) {
+          // Clean up old snapshots
+          localStorage.removeItem(snapshotKey)
+          toast.warning(
+            "Storage space is limited. Older snapshots have been removed."
+          )
+        }
+
+        // Prepare storage data
+        const now = new Date().toISOString()
+        let saveData: FormStorageData
+
+        if (forceFullSave) {
+          // Full save
+          saveData = {
+            currentVersion: currentVersion.current,
+            lastModified: now,
+            data: data,
+            snapshots: [],
+          }
+          lastSavedData.current = { ...data }
+        } else {
+          // Create differential update if possible
+          const diff = createDiff(lastSavedData.current, data)
+
+          // If diff is empty or has no sections, skip save
+          if (Object.keys(diff).length === 0) {
+            setSaveStatus(null)
+            setIsSaving(false)
+            return
+          }
+
+          // Update data with diff
+          saveData = {
+            currentVersion: currentVersion.current + 1,
+            lastModified: now,
+            data: { ...lastSavedData.current, ...diff },
+            snapshots: [],
+          }
+
+          currentVersion.current += 1
+          lastSavedData.current = { ...saveData.data }
+        }
+
+        // Compress and save
+        localStorage.setItem(cacheKey, compressData(saveData))
+      } catch (err) {
+        console.error("Failed to save form data:", err)
+        setSaveStatus("error")
+        throw err
       }
-
-      // Prepare storage data
-      const now = new Date().toISOString()
-      let saveData: FormStorageData
-
-      if (forceFullSave) {
-        // Full save
-        saveData = {
-          currentVersion: currentVersion.current,
-          lastModified: now,
-          data: data,
-          snapshots: [],
-        }
-        lastSavedData.current = { ...data }
-      } else {
-        // Create differential update if possible
-        const diff = createDiff(lastSavedData.current, data)
-
-        // If diff is empty or has no sections, skip save
-        if (Object.keys(diff).length === 0) {
-          setSaveStatus(null)
-          setIsSaving(false)
-          return
-        }
-
-        // Update data with diff
-        saveData = {
-          currentVersion: currentVersion.current + 1,
-          lastModified: now,
-          data: { ...lastSavedData.current, ...diff },
-          snapshots: [],
-        }
-
-        currentVersion.current += 1
-        lastSavedData.current = { ...saveData.data }
-      }
-
-      // Compress and save
-      localStorage.setItem(cacheKey, compressData(saveData))
-    } catch (err) {
-      console.error("Failed to save form data:", err)
-      setSaveStatus("error")
-      throw err
-    }
-  }
+    },
+    [cacheKey, snapshotKey, isStorageFull, compressData, createDiff]
+  )
 
   // Auto-save form data on change
   const debouncedSave = debounce((data: any) => {
@@ -584,8 +587,24 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
       }
     }, AUTO_SAVE_INTERVAL)
 
-    return () => clearInterval(autoSaveInterval)
-  }, [formValues, isSaving, checkForConflicts])
+    return () => {
+      clearInterval(autoSaveInterval)
+      // Get current form values before component unmounts
+      const currentValues = getValues()
+
+      // Save draft if there are any changes and we're not submitting
+      if (Object.keys(currentValues).length > 0 && !isSubmitting) {
+        saveFormData(currentValues, true)
+      }
+    }
+  }, [
+    formValues,
+    isSaving,
+    checkForConflicts,
+    getValues,
+    isSubmitting,
+    saveFormData,
+  ])
 
   // Handle snapshot creation
   useEffect(() => {

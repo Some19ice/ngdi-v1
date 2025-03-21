@@ -1,7 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { authClient, Session, User } from "./auth-client";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react"
+import { authClient, Session, User } from "./auth-client"
 import { useRouter } from "next/navigation"
 
 interface AuthContextType {
@@ -28,47 +34,129 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     "loading" | "authenticated" | "unauthenticated"
   >("loading")
   const router = useRouter()
+  const [initialized, setInitialized] = useState(false)
 
-  // Initialize session on mount
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        const session = await authClient.getSession()
-        if (session) {
-          setSession(session)
+  // Refresh session function - using useCallback to maintain stable reference
+  const refreshSession = useCallback(async () => {
+    try {
+      // Don't change status to loading during background refreshes if already authenticated
+      // This prevents UI flickering during token refresh
+      const currentStatus = status
+      const newSession = await authClient.getSession()
+
+      if (newSession) {
+        setSession(newSession)
+        if (currentStatus !== "authenticated") {
           setStatus("authenticated")
-        } else {
+        }
+      } else {
+        // Only change to unauthenticated if we were previously authenticated
+        // This makes session expiration more graceful
+        if (currentStatus === "authenticated") {
+          console.warn("Session refresh failed - user no longer authenticated")
           setSession(null)
           setStatus("unauthenticated")
         }
-      } catch (error) {
-        console.error("Failed to initialize session:", error)
-        setSession(null)
+      }
+    } catch (error) {
+      console.error("Failed to refresh session:", error)
+      // Don't automatically set to unauthenticated on network errors
+      // This prevents sidebar from disappearing due to temporary API issues
+      if (session === null) {
         setStatus("unauthenticated")
+      }
+    }
+  }, [status, session])
+
+  // Initialize session on mount with better error handling and timeout
+  useEffect(() => {
+    let isMounted = true
+    // Initialize with a timeout that will be cleared if we unmount before the effect completes
+    let initializationTimeout = setTimeout(() => {
+      if (isMounted && status === "loading") {
+        console.warn(
+          "Session initialization timed out, setting to unauthenticated"
+        )
+        setStatus("unauthenticated")
+      }
+    }, 3000) // 3 second timeout as fallback
+
+    const initSession = async () => {
+      try {
+        console.log("AuthProvider: Initializing session")
+        // First try to refresh the session to ensure we have the latest token
+        await refreshSession()
+        // Then get the session after the refresh
+        const session = await authClient.getSession()
+
+        if (isMounted) {
+          console.log("AuthProvider: Session initialized", {
+            isAuthenticated: !!session,
+            userRole: session?.user?.role,
+          })
+          setSession(session || null)
+          setStatus(session ? "authenticated" : "unauthenticated")
+        }
+      } catch (error) {
+        console.error("Error initializing session:", error)
+        if (isMounted) {
+          setStatus("unauthenticated")
+        }
+      } finally {
+        if (isMounted) {
+          setInitialized(true)
+        }
       }
     }
 
     initSession()
-  }, [])
 
-  // Set up session refresh interval
+    return () => {
+      isMounted = false
+      clearTimeout(initializationTimeout)
+    }
+  }, [refreshSession])
+
+  // Set up session refresh interval with better error handling
   useEffect(() => {
-    // Refresh session every 10 minutes
-    const refreshInterval = setInterval(
-      async () => {
-        try {
-          if (status === "authenticated") {
-            await refreshSession()
-          }
-        } catch (error) {
-          console.error("Failed to refresh session:", error)
-        }
-      },
-      10 * 60 * 1000
-    ) // 10 minutes
+    let isRefreshing = false
 
-    return () => clearInterval(refreshInterval)
-  }, [status])
+    const refreshIntervalHandler = async () => {
+      // Skip if already refreshing or not authenticated
+      if (isRefreshing || status !== "authenticated") return
+
+      try {
+        isRefreshing = true
+        console.log("Performing scheduled session refresh")
+        await refreshSession()
+      } catch (error) {
+        console.error("Scheduled session refresh failed:", error)
+        // Don't change authentication state on refresh errors
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    // Refresh session every 9 minutes (slightly less than common 10 minute expiry)
+    const refreshInterval = setInterval(refreshIntervalHandler, 9 * 60 * 1000)
+
+    // Also refresh when the tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === "visible" &&
+        status === "authenticated"
+      ) {
+        refreshIntervalHandler()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      clearInterval(refreshInterval)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [status, refreshSession])
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -121,24 +209,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout failed:", error)
       // Still clear the session even if the API call fails
-      setSession(null)
-      setStatus("unauthenticated")
-    }
-  }
-
-  // Refresh session function
-  const refreshSession = async () => {
-    try {
-      const newSession = await authClient.getSession()
-      if (newSession) {
-        setSession(newSession)
-        setStatus("authenticated")
-      } else {
-        setSession(null)
-        setStatus("unauthenticated")
-      }
-    } catch (error) {
-      console.error("Failed to refresh session:", error)
       setSession(null)
       setStatus("unauthenticated")
     }

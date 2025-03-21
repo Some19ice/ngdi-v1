@@ -25,6 +25,11 @@ interface MetadataInput {
   projection: string
   scale: number
   resolution?: string
+  coordinateUnit: string
+  minLatitude: number
+  minLongitude: number
+  maxLatitude: number
+  maxLongitude: number
   accuracyLevel: string
   completeness?: number
   consistencyCheck?: boolean
@@ -228,12 +233,12 @@ export const metadataService = {
     if (search) {
       // Enhanced search across all relevant fields
       where.OR = [
-        { dataName: { contains: search, mode: "insensitive" } },
+        { title: { contains: search, mode: "insensitive" } },
         { abstract: { contains: search, mode: "insensitive" } },
-        { dataType: { contains: search, mode: "insensitive" } },
-        // Remove fundamentalDatasets search as it's causing Prisma validation errors
-        // fundamentalDatasets is likely not a string field that supports text search
-        // { fundamentalDatasets: { contains: search, mode: "insensitive" } },
+        { purpose: { contains: search, mode: "insensitive" } },
+        { author: { contains: search, mode: "insensitive" } },
+        { organization: { contains: search, mode: "insensitive" } },
+        { frameworkType: { contains: search, mode: "insensitive" } },
         // Add a search for IDs that start with the search term
         { id: { startsWith: search } },
       ]

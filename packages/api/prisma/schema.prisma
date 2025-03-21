@@ -135,6 +135,16 @@ model Metadata {
   scale                  Int
   /// Resolution of the dataset
   resolution             String?
+  /// Coordinate unit (DD or DMS)
+  coordinateUnit         String   @default("DD")
+  /// Minimum latitude value
+  minLatitude            Float    @default(0)
+  /// Minimum longitude value
+  minLongitude           Float    @default(0)
+  /// Maximum latitude value
+  maxLatitude            Float    @default(0)
+  /// Maximum longitude value
+  maxLongitude           Float    @default(0)
   /// Accuracy level
   accuracyLevel          String
   /// Completeness percentage
