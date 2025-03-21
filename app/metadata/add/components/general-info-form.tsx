@@ -159,7 +159,7 @@ export default function GeneralInfoForm({
         thumbnail: "",
       },
       location: {
-        country: "",
+        country: "Nigeria",
         geopoliticalZone: "",
         state: "",
         lga: "",
