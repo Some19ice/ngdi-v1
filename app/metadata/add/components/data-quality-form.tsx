@@ -135,137 +135,145 @@ export default function DataQualityForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* General Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            General Section
-          </h2>
-
-          <FormField
-            control={form.control}
-            name="generalSection.logicalConsistencyReport"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Logical Consistency Report</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter logical consistency report"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescriptionWithTooltip tooltip="A description of the fidelity of relationships in the data and tests applied to ensure logical consistency. This may include topological consistency for vector data or band consistency for raster data.">
-                  Information about the logical integrity of the dataset and
-                  tests applied to ensure logical consistency
-                </FormDescriptionWithTooltip>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="generalSection.completenessReport"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Completeness Report</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter completeness report"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescriptionWithTooltip tooltip="A description of how complete the dataset is relative to its intended scope, including any known data gaps or limitations in coverage.">
-                  Information about omissions, selection criteria, or other
-                  factors affecting completeness
-                </FormDescriptionWithTooltip>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Attribute Accuracy Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            Attribute Accuracy
-          </h2>
-
-          <FormField
-            control={form.control}
-            name="attributeAccuracy.accuracyReport"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Accuracy Report</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter attribute accuracy report"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescriptionWithTooltip tooltip="A narrative assessment of how accurately the attributes in the dataset represent the real-world features they describe.">
-                  Description of the accuracy of the attributes
-                </FormDescriptionWithTooltip>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Positional Accuracy Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            Positional Accuracy
-          </h2>
-
-          <div className="border p-4 rounded-md space-y-4">
-            <h3 className="text-lg font-medium">Horizontal Accuracy</h3>
-
+      <form className="space-y-8">
+        <FormSection
+          title="General Section"
+          description="Information about the overall quality of the dataset"
+        >
+          <FormSectionGrid columns={2}>
             <FormField
               control={form.control}
-              name="positionalAccuracy.horizontal.accuracyReport"
+              name="generalSection.logicalConsistencyReport"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Accuracy Report</FormLabel>
+                  <RequiredFormLabel required={false}>
+                    Logical Consistency Report
+                  </RequiredFormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Enter horizontal accuracy report"
-                      className="min-h-[100px] border-primary/20 focus:ring-primary/20"
+                      placeholder="Enter logical consistency report"
+                      className="min-h-[100px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormDescriptionWithTooltip tooltip="A narrative assessment of how accurately the horizontal positions in the dataset represent the actual locations of features on the Earth's surface.">
-                    Description of the horizontal positional accuracy
+                  <FormDescriptionWithTooltip tooltip="A description of the fidelity of relationships in the data and tests applied to ensure logical consistency. This may include topological consistency for vector data or band consistency for raster data.">
+                    Information about the logical integrity of the dataset
                   </FormDescriptionWithTooltip>
-                  <FormMessage className="text-destructive text-xs" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
             <FormField
               control={form.control}
+              name="generalSection.completenessReport"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Completeness Report
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter completeness report"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="A description of how complete the dataset is relative to its intended scope, including any known data gaps or limitations in coverage.">
+                    Information about omissions or limitations in coverage
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <FormSectionDivider />
+
+        <FormSection
+          title="Attribute Accuracy"
+          description="Information about the accuracy of attribute data"
+        >
+          <FormSectionGrid columns={1}>
+            <FormField
+              control={form.control}
+              name="attributeAccuracy.accuracyReport"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Accuracy Report
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter attribute accuracy report"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="An assessment of the accuracy of the identification of entities and assignment of attribute values in the dataset.">
+                    Assessment of identification accuracy and attribute values
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <FormSectionDivider />
+
+        <FormSection
+          title="Positional Accuracy"
+          description="Information about the positional accuracy"
+        >
+          <FormSectionGrid columns={2}>
+            <div className="space-y-4 col-span-2">
+              <h3 className="text-base font-medium">Horizontal Accuracy</h3>
+              <FormField
+                control={form.control}
+                name="positionalAccuracy.horizontal.accuracyReport"
+                render={({ field }) => (
+                  <FormItem>
+                    <RequiredFormLabel required={false}>
+                      Accuracy Report
+                    </RequiredFormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter horizontal accuracy report"
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescriptionWithTooltip tooltip="A description of the accuracy of the horizontal coordinate measurements.">
+                      Accuracy of horizontal coordinate measurements
+                    </FormDescriptionWithTooltip>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
               name="positionalAccuracy.horizontal.percentValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>% Value</FormLabel>
+                  <RequiredFormLabel required={false}>
+                    Accuracy Percentage
+                  </RequiredFormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       placeholder="Enter percentage value"
-                      className="border-primary/20 focus:ring-primary/20"
                       {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
+                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
                     />
                   </FormControl>
-                  <FormDescription className="text-muted-foreground text-xs">
-                    Quantitative measure of horizontal accuracy
-                  </FormDescription>
-                  <FormMessage className="text-destructive text-xs" />
+                  <FormDescriptionWithTooltip tooltip="The estimated percentage of horizontal coordinate measurements that are correct within the given accuracy level.">
+                    Percentage of correct measurements
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -275,68 +283,70 @@ export default function DataQualityForm({
               name="positionalAccuracy.horizontal.explanation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Explanation</FormLabel>
+                  <RequiredFormLabel required={false}>
+                    Explanation
+                  </RequiredFormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Enter explanation"
-                      className="min-h-[100px] border-primary/20 focus:ring-primary/20"
+                      className="min-h-[100px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-muted-foreground text-xs">
-                    Details about how horizontal accuracy was determined
-                  </FormDescription>
-                  <FormMessage className="text-destructive text-xs" />
+                  <FormDescriptionWithTooltip tooltip="Additional explanation about the horizontal accuracy assessment.">
+                    Additional details about accuracy assessment
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
 
-          <div className="border p-4 rounded-md space-y-4">
-            <h3 className="text-lg font-medium">Vertical Accuracy</h3>
-
-            <FormField
-              control={form.control}
-              name="positionalAccuracy.vertical.accuracyReport"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Accuracy Report</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Enter vertical accuracy report"
-                      className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription className="text-muted-foreground text-xs">
-                    Description of the vertical positional accuracy
-                  </FormDescription>
-                  <FormMessage className="text-destructive text-xs" />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-4 col-span-2 mt-6">
+              <h3 className="text-base font-medium">Vertical Accuracy</h3>
+              <FormField
+                control={form.control}
+                name="positionalAccuracy.vertical.accuracyReport"
+                render={({ field }) => (
+                  <FormItem>
+                    <RequiredFormLabel required={false}>
+                      Accuracy Report
+                    </RequiredFormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter vertical accuracy report"
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescriptionWithTooltip tooltip="A description of the accuracy of the vertical coordinate measurements.">
+                      Accuracy of vertical coordinate measurements
+                    </FormDescriptionWithTooltip>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
               name="positionalAccuracy.vertical.percentValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>% Value</FormLabel>
+                  <RequiredFormLabel required={false}>
+                    Accuracy Percentage
+                  </RequiredFormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       placeholder="Enter percentage value"
-                      className="border-primary/20 focus:ring-primary/20"
                       {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
+                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
                     />
                   </FormControl>
-                  <FormDescription className="text-muted-foreground text-xs">
-                    Quantitative measure of vertical accuracy
-                  </FormDescription>
-                  <FormMessage className="text-destructive text-xs" />
+                  <FormDescriptionWithTooltip tooltip="The estimated percentage of vertical coordinate measurements that are correct within the given accuracy level.">
+                    Percentage of correct measurements
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -346,356 +356,351 @@ export default function DataQualityForm({
               name="positionalAccuracy.vertical.explanation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Explanation</FormLabel>
+                  <RequiredFormLabel required={false}>
+                    Explanation
+                  </RequiredFormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Enter explanation"
-                      className="min-h-[100px] border-primary/20 focus:ring-primary/20"
+                      className="min-h-[100px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription className="text-muted-foreground text-xs">
-                    Details about how vertical accuracy was determined
-                  </FormDescription>
-                  <FormMessage className="text-destructive text-xs" />
+                  <FormDescriptionWithTooltip tooltip="Additional explanation about the vertical accuracy assessment.">
+                    Additional details about accuracy assessment
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
-        </div>
+          </FormSectionGrid>
+        </FormSection>
 
-        {/* Source Information Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            Source Information
-          </h2>
+        <FormSectionDivider />
 
-          <FormField
-            control={form.control}
-            name="sourceInformation.sourceScaleDenominator"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Source Scale Denominator</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Enter scale denominator"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The scale of the source material (e.g., 24000 for a 1:24,000
-                  scale map)
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sourceInformation.sourceMediaType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type Of Source Media</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter source media type"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The medium of the source material (e.g., aerial photograph,
-                  satellite image, paper map)
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sourceInformation.sourceCitation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Source Citation</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter source citation"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  A formal citation for the source material
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sourceInformation.citationTitle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Citation Title</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter citation title"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The formal title of the source material
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sourceInformation.contractReference"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contract/Grant Reference</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter contract/grant reference"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  Identifier for any contract, grant, or project under which the
-                  source data was collected
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sourceInformation.contractDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date of Contract/Grant</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) =>
-                        field.onChange(date ? date.toISOString() : "")
-                      }
-                      initialFocus
+        <FormSection
+          title="Source Information"
+          description="Information about the source data used to create this dataset"
+        >
+          <FormSectionGrid columns={2}>
+            <FormField
+              control={form.control}
+              name="sourceInformation.sourceScaleDenominator"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Source Scale Denominator
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter scale denominator"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
                     />
-                  </PopoverContent>
-                </Popover>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The date when the contract was signed or the grant was awarded
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-        </div>
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The denominator of the representative fraction of the source data.">
+                    Scale of the source data
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Data Processing Information Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            Data Processing Information
-          </h2>
+            <FormField
+              control={form.control}
+              name="sourceInformation.sourceMediaType"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Source Media Type
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter media type" {...field} />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The medium of the source data (e.g., paper, digital, satellite imagery).">
+                    Medium of the source data
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="dataProcessingInformation.description"
-            render={({ field }) => (
-              <FormItem>
-                <RequiredFormLabel>
-                  Data Processing Description
-                </RequiredFormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter data processing description"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescriptionWithTooltip tooltip="A narrative description of the procedures, algorithms, or transformations applied to create the dataset from its sources.">
-                  A narrative description of the procedures, algorithms, or
-                  transformations applied to create the dataset from its sources
-                </FormDescriptionWithTooltip>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="dataProcessingInformation.softwareVersion"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Software Version Used</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter software version"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The name and version of any software packages used to process
-                  the data
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="dataProcessingInformation.processedDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date Processed</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) =>
-                        field.onChange(date ? date.toISOString() : "")
-                      }
-                      initialFocus
+            <FormField
+              control={form.control}
+              name="sourceInformation.sourceCitation"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Source Citation
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter source citation"
+                      className="min-h-[100px]"
+                      {...field}
                     />
-                  </PopoverContent>
-                </Popover>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The date when the processing steps were executed
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-        </div>
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="A reference to the source data used.">
+                    Reference to the source data
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Processor Contact Information Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-primary">
-            Processor Contact Information
-          </h2>
+            <FormField
+              control={form.control}
+              name="sourceInformation.citationTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Citation Title
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter citation title" {...field} />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The title of the source cited.">
+                    Title of the source cited
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="processorContactInformation.name"
-            render={({ field }) => (
-              <FormItem>
-                <RequiredFormLabel>Name</RequiredFormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter processor name"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescriptionWithTooltip tooltip="The individual who performed or supervised the data processing steps.">
-                  The individual who performed or supervised the data processing
-                  steps
-                </FormDescriptionWithTooltip>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="sourceInformation.contractReference"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Contract Reference
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter contract reference" {...field} />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="Reference to any contract under which the source data was created or acquired.">
+                    Reference to contract for source data
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="processorContactInformation.email"
-            render={({ field }) => (
-              <FormItem>
-                <RequiredFormLabel>E-mail</RequiredFormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter processor email"
-                    className="border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The electronic mail address of the person responsible for
-                  processing
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="sourceInformation.contractDate"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Contract Date
+                  </RequiredFormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(new Date(field.value), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          field.value ? new Date(field.value) : undefined
+                        }
+                        onSelect={(date) =>
+                          field.onChange(date ? date.toISOString() : "")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescriptionWithTooltip tooltip="The date of the contract under which the source data was created or acquired.">
+                    Date of contract for source data
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
 
-          <FormField
-            control={form.control}
-            name="processorContactInformation.address"
-            render={({ field }) => (
-              <FormItem>
-                <RequiredFormLabel>Address</RequiredFormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter processor address"
-                    className="min-h-[100px] border-primary/20 focus:ring-primary/20"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription className="text-muted-foreground text-xs">
-                  The physical or postal address of the person responsible for
-                  processing
-                </FormDescription>
-                <FormMessage className="text-destructive text-xs" />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormSectionDivider />
 
-        <div className="flex justify-between">
+        <FormSection
+          title="Data Processing Information"
+          description="Information about how the data was processed"
+        >
+          <FormSectionGrid columns={2}>
+            <FormField
+              control={form.control}
+              name="dataProcessingInformation.description"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Processing Description</RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter processing description"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="A description of the processing steps and methods used to produce the dataset.">
+                    Description of processing steps and methods
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dataProcessingInformation.softwareVersion"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel required={false}>
+                    Software Version
+                  </RequiredFormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter software version" {...field} />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The software and version used to process the data.">
+                    Software and version used for processing
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dataProcessingInformation.processedDate"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Processed Date</RequiredFormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(new Date(field.value), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          field.value ? new Date(field.value) : undefined
+                        }
+                        onSelect={(date) =>
+                          field.onChange(date ? date.toISOString() : "")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescriptionWithTooltip tooltip="The date when the data processing was completed.">
+                    Date when processing was completed
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <FormSectionDivider />
+
+        <FormSection
+          title="Processor Contact Information"
+          description="Contact details for the entity that processed the data"
+        >
+          <FormSectionGrid columns={2}>
+            <FormField
+              control={form.control}
+              name="processorContactInformation.name"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Processor Name</RequiredFormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter processor name" {...field} />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The name of the person or organization that processed the data.">
+                    Name of processor (person or organization)
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="processorContactInformation.email"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Email</RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter email address"
+                      type="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The email address of the processor.">
+                    Email address of the processor
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="processorContactInformation.address"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Address</RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter address"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The physical or postal address of the processor.">
+                    Physical or postal address of processor
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <div className="flex justify-between mt-8">
           <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>

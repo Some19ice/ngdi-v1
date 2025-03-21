@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { NGDIMetadataFormData } from "@/types/ngdi-metadata"
+import { Loader2 } from "lucide-react"
 
 interface ReviewFormProps {
   onBack: () => void
@@ -309,12 +310,29 @@ export default function ReviewForm({
 
       <Separator />
 
-      <div className="flex justify-between">
-        <Button type="button" variant="outline" onClick={onBack}>
+      <div className="flex justify-between mt-6">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          disabled={isSubmitting}
+        >
           Back
         </Button>
-        <Button onClick={onSave} disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit Metadata"}
+        <Button
+          type="button"
+          onClick={onSave}
+          disabled={isSubmitting}
+          className="relative"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>Submit Metadata</>
+          )}
         </Button>
       </div>
     </div>
