@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { FormSection, FormSectionGrid } from "./form-section"
+import {
+  FormSection,
+  FormSectionGrid,
+  FormSectionDivider,
+} from "./form-section"
 import { FormDescriptionWithTooltip, RequiredFormLabel } from "./form-elements"
 import {
   Select,
@@ -22,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 
 // Define form schema specific to Technical Details
 const formSchema = z.object({
@@ -36,6 +41,28 @@ const formSchema = z.object({
     fileSize: z.coerce.number().optional(),
     numFeatures: z.coerce.number().optional(),
     softwareReqs: z.string().optional(),
+  }),
+  spatialDomain: z.object({
+    coordinateUnit: z.enum(["DD", "DMS"], {
+      required_error: "Coordinate unit is required",
+    }),
+    minLatitude: z.coerce.number({
+      required_error: "Minimum latitude is required",
+    }),
+    minLongitude: z.coerce.number({
+      required_error: "Minimum longitude is required",
+    }),
+    maxLatitude: z.coerce.number({
+      required_error: "Maximum latitude is required",
+    }),
+    maxLongitude: z.coerce.number({
+      required_error: "Maximum longitude is required",
+    }),
+  }),
+  resourceConstraint: z.object({
+    accessConstraints: z.string().min(1, "Access constraints are required"),
+    useConstraints: z.string().min(1, "Use constraints are required"),
+    otherConstraints: z.string().min(1, "Other constraints are required"),
   }),
 })
 
@@ -69,6 +96,20 @@ export default function TechnicalDetailsForm({
         numFeatures:
           initialData?.technicalSpecifications?.numFeatures || undefined,
         softwareReqs: initialData?.technicalSpecifications?.softwareReqs || "",
+      },
+      spatialDomain: {
+        coordinateUnit: initialData?.spatialDomain?.coordinateUnit || undefined,
+        minLatitude: initialData?.spatialDomain?.minLatitude || 0,
+        minLongitude: initialData?.spatialDomain?.minLongitude || 0,
+        maxLatitude: initialData?.spatialDomain?.maxLatitude || 0,
+        maxLongitude: initialData?.spatialDomain?.maxLongitude || 0,
+      },
+      resourceConstraint: {
+        accessConstraints:
+          initialData?.resourceConstraint?.accessConstraints || "",
+        useConstraints: initialData?.resourceConstraint?.useConstraints || "",
+        otherConstraints:
+          initialData?.resourceConstraint?.otherConstraints || "",
       },
     },
   })
@@ -201,6 +242,144 @@ export default function TechnicalDetailsForm({
           </FormSectionGrid>
         </FormSection>
 
+        <FormSectionDivider />
+
+        <FormSection
+          title="Spatial Domain"
+          description="Define the geographic extent of the dataset"
+        >
+          <FormSectionGrid columns={2}>
+            <FormField
+              control={form.control}
+              name="spatialDomain.coordinateUnit"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Coordinate Unit</RequiredFormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select coordinate unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="DD">Decimal Degrees (DD)</SelectItem>
+                      <SelectItem value="DMS">
+                        Degrees, Minutes, Seconds (DMS)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescriptionWithTooltip tooltip="The measurement system used to express geographic coordinates">
+                    The measurement system used to express geographic
+                    coordinates
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="spatialDomain.minLatitude"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Min. Latitude X</RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter minimum latitude"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value))
+                      }
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The southernmost latitude value">
+                    The southernmost latitude value
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="spatialDomain.minLongitude"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Min. Longitude Y</RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter minimum longitude"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value))
+                      }
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The westernmost longitude value">
+                    The westernmost longitude value
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="spatialDomain.maxLatitude"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Max. Latitude X</RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter maximum latitude"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value))
+                      }
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The northernmost latitude value">
+                    The northernmost latitude value
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="spatialDomain.maxLongitude"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Max. Longitude Y</RequiredFormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter maximum longitude"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value))
+                      }
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="The easternmost longitude value">
+                    The easternmost longitude value
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <FormSectionDivider />
+
         <FormSection
           title="Technical Specifications"
           description="Provide technical details about the dataset format and structure"
@@ -306,7 +485,82 @@ export default function TechnicalDetailsForm({
           </FormSectionGrid>
         </FormSection>
 
-        <div className="flex justify-between">
+        <FormSectionDivider />
+
+        <FormSection
+          title="Resource Constraint"
+          description="Specify access and use restrictions for the dataset"
+        >
+          <FormSectionGrid columns={2}>
+            <FormField
+              control={form.control}
+              name="resourceConstraint.accessConstraints"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Access Constraints</RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter access constraints"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="Specific limitations on who is permitted to access the dataset">
+                    Specific limitations on who is permitted to access the
+                    dataset
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="resourceConstraint.useConstraints"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Use Constraints</RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter use constraints"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="Legal or policy restrictions that govern how the dataset may be used">
+                    Legal or policy restrictions that govern how the dataset may
+                    be used
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="resourceConstraint.otherConstraints"
+              render={({ field }) => (
+                <FormItem>
+                  <RequiredFormLabel>Other Constraints</RequiredFormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter other constraints"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescriptionWithTooltip tooltip="Supplementary constraints that don't fit into standard categories">
+                    Supplementary constraints that don&apos;t fit into standard
+                    categories
+                  </FormDescriptionWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormSectionGrid>
+        </FormSection>
+
+        <div className="flex justify-between mt-8">
           <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>

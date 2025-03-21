@@ -47,6 +47,7 @@ import {
   FormSectionGrid,
   FormSectionDivider,
 } from "./form-section"
+import { FormDescriptionWithTooltip, RequiredFormLabel } from "./form-elements"
 
 // Define validation schema using Zod
 const formSchema = z.object({
@@ -77,23 +78,6 @@ const formSchema = z.object({
     purpose: z.string().min(1, "Purpose is required"),
     thumbnail: z.string().min(1, "Thumbnail URL is required"),
   }),
-  spatialDomain: z.object({
-    coordinateUnit: z.enum(["DD", "DMS"], {
-      required_error: "Coordinate unit is required",
-    }),
-    minLatitude: z.coerce.number({
-      required_error: "Minimum latitude is required",
-    }),
-    minLongitude: z.coerce.number({
-      required_error: "Minimum longitude is required",
-    }),
-    maxLatitude: z.coerce.number({
-      required_error: "Maximum latitude is required",
-    }),
-    maxLongitude: z.coerce.number({
-      required_error: "Maximum longitude is required",
-    }),
-  }),
   location: z.object({
     country: z.string().min(1, "Country is required"),
     geopoliticalZone: z.string().min(1, "Geopolitical zone is required"),
@@ -120,11 +104,6 @@ const formSchema = z.object({
       }
     ),
   }),
-  resourceConstraint: z.object({
-    accessConstraints: z.string().min(1, "Access constraints are required"),
-    useConstraints: z.string().min(1, "Use constraints are required"),
-    otherConstraints: z.string().min(1, "Other constraints are required"),
-  }),
   metadataReference: z.object({
     creationDate: z.string().min(1, "Creation date is required"),
     reviewDate: z.string().min(1, "Review date is required"),
@@ -138,42 +117,6 @@ const formSchema = z.object({
 interface GeneralInfoFormProps {
   onNext: (data: Form1Data) => void
   initialData?: Partial<Form1Data>
-}
-
-// Custom FormLabel with red asterisk for required fields
-function RequiredFormLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <FormLabel>
-      {children} <span className="text-destructive">*</span>
-    </FormLabel>
-  )
-}
-
-// Create a custom FormDescription with tooltip
-function FormDescriptionWithTooltip({
-  children,
-  tooltip,
-}: {
-  children: React.ReactNode
-  tooltip: string
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <FormDescription className="text-muted-foreground text-xs">
-        {children}
-      </FormDescription>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <InfoIcon className="h-3.5 w-3.5 text-muted-foreground/70 cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm text-xs">
-            {tooltip}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </div>
-  )
 }
 
 export default function GeneralInfoForm({
@@ -209,13 +152,6 @@ export default function GeneralInfoForm({
         purpose: "",
         thumbnail: "",
       },
-      spatialDomain: {
-        coordinateUnit: undefined,
-        minLatitude: 0,
-        minLongitude: 0,
-        maxLatitude: 0,
-        maxLongitude: 0,
-      },
       location: {
         country: "",
         geopoliticalZone: "",
@@ -226,11 +162,6 @@ export default function GeneralInfoForm({
       dataStatus: {
         assessment: undefined,
         updateFrequency: undefined,
-      },
-      resourceConstraint: {
-        accessConstraints: "",
-        useConstraints: "",
-        otherConstraints: "",
       },
       metadataReference: {
         creationDate: "",
@@ -704,142 +635,6 @@ export default function GeneralInfoForm({
         <FormSectionDivider />
 
         <FormSection
-          title="Spatial Domain"
-          description="Define the geographic extent of the dataset"
-        >
-          <FormSectionGrid columns={2}>
-            <FormField
-              control={form.control}
-              name="spatialDomain.coordinateUnit"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Coordinate Unit</RequiredFormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="border-primary/20 focus:ring-primary/20">
-                        <SelectValue placeholder="Select coordinate unit" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="DD">Decimal Degrees (DD)</SelectItem>
-                      <SelectItem value="DMS">
-                        Degrees, Minutes, Seconds (DMS)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescriptionWithTooltip tooltip="The measurement system used to express geographic coordinates">
-                    The measurement system used to express geographic
-                    coordinates
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="spatialDomain.minLatitude"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Min. Latitude X</RequiredFormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter minimum latitude"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="The southernmost latitude value">
-                    The southernmost latitude value
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="spatialDomain.minLongitude"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Min. Longitude Y</RequiredFormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter minimum longitude"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="The westernmost longitude value">
-                    The westernmost longitude value
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="spatialDomain.maxLatitude"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Max. Latitude X</RequiredFormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter maximum latitude"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="The northernmost latitude value">
-                    The northernmost latitude value
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="spatialDomain.maxLongitude"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Max. Longitude Y</RequiredFormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter maximum longitude"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="The easternmost longitude value">
-                    The easternmost longitude value
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </FormSectionGrid>
-        </FormSection>
-
-        <FormSectionDivider />
-
-        <FormSection
           title="Location"
           description="Specify the geographic location of the dataset"
         >
@@ -1041,81 +836,6 @@ export default function GeneralInfoForm({
                   <FormDescriptionWithTooltip tooltip="The established schedule for reviewing and refreshing the dataset">
                     The established schedule for reviewing and refreshing the
                     dataset
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </FormSectionGrid>
-        </FormSection>
-
-        <FormSectionDivider />
-
-        <FormSection
-          title="Resource Constraint"
-          description="Specify access and use restrictions for the dataset"
-        >
-          <FormSectionGrid columns={2}>
-            <FormField
-              control={form.control}
-              name="resourceConstraint.accessConstraints"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Access Constraints</RequiredFormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Enter access constraints"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="Specific limitations on who is permitted to access the dataset">
-                    Specific limitations on who is permitted to access the
-                    dataset
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="resourceConstraint.useConstraints"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Use Constraints</RequiredFormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Enter use constraints"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="Legal or policy restrictions that govern how the dataset may be used">
-                    Legal or policy restrictions that govern how the dataset may
-                    be used
-                  </FormDescriptionWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="resourceConstraint.otherConstraints"
-              render={({ field }) => (
-                <FormItem>
-                  <RequiredFormLabel>Other Constraints</RequiredFormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Enter other constraints"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescriptionWithTooltip tooltip="Supplementary constraints that don't fit into standard categories">
-                    Supplementary constraints that don&apos;t fit into standard
-                    categories
                   </FormDescriptionWithTooltip>
                   <FormMessage />
                 </FormItem>

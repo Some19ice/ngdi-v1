@@ -150,6 +150,7 @@ export interface TechnicalDetailsData {
     softwareReqs?: string
   }
   spatialDomain: SpatialDomain
+  resourceConstraint: ResourceConstraint
 }
 
 export interface AccessInfoData {

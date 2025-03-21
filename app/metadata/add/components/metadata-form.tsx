@@ -49,7 +49,10 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
   // Handle step 2 (Technical Details) completion
   const handleTechnicalDetailsNext = (stepData: TechnicalDetailsData) => {
-    setFormData((prev) => ({ ...prev, technicalDetails: stepData }))
+    setFormData((prev) => ({
+      ...prev,
+      technicalDetails: stepData,
+    }))
     setCurrentStep(3)
   }
 
