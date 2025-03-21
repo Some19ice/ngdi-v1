@@ -99,7 +99,15 @@ const form1Schema = z.object({
       required_error: "Assessment is required",
     }),
     updateFrequency: z.enum(
-      ["Monthly", "Quarterly", "Bi-Annually", "Annually"],
+      [
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Quarterly",
+        "Bi-Annually",
+        "Annually",
+        "Others",
+      ],
       {
         required_error: "Update frequency is required",
       }

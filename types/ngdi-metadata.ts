@@ -46,7 +46,14 @@ export interface Location {
 
 export interface DataStatus {
   assessment: "Complete" | "Incomplete" // Required
-  updateFrequency: "Monthly" | "Quarterly" | "Bi-Annually" | "Annually" // Required
+  updateFrequency:
+    | "Daily"
+    | "Weekly"
+    | "Monthly"
+    | "Quarterly"
+    | "Bi-Annually"
+    | "Annually"
+    | "Others" // Required
 }
 
 export interface ResourceConstraint {

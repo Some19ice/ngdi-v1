@@ -84,12 +84,12 @@ const generalInfoSchema = z.object({
     }),
     updateFrequency: z.enum(
       [
+        "Daily",
+        "Weekly",
         "Monthly",
         "Quarterly",
         "Bi-Annually",
         "Annually",
-        "Daily",
-        "Weekly",
         "Others",
       ],
       {
@@ -516,10 +516,11 @@ export async function searchMetadata({
     // Add search filter if provided
     if (search) {
       where.OR = [
-        { dataName: { contains: search, mode: "insensitive" } },
         { title: { contains: search, mode: "insensitive" } },
         { abstract: { contains: search, mode: "insensitive" } },
         { purpose: { contains: search, mode: "insensitive" } },
+        { author: { contains: search, mode: "insensitive" } },
+        { organization: { contains: search, mode: "insensitive" } },
       ]
     }
 

@@ -165,10 +165,13 @@ export function transformApiToFormModel(
     dataStatus: {
       assessment: "Complete" as "Complete" | "Incomplete",
       updateFrequency: (apiData.updateCycle || "Annually") as
+        | "Daily"
+        | "Weekly"
         | "Monthly"
         | "Quarterly"
         | "Bi-Annually"
-        | "Annually",
+        | "Annually"
+        | "Others",
     },
     metadataReference: {
       creationDate: new Date().toISOString(),
