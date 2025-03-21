@@ -72,16 +72,22 @@ const formSchema = z.object({
 })
 
 interface DataQualityFormProps {
-  onNext: (data: Form2Data) => void
-  onBack: () => void
-  initialData?: Partial<Form2Data>
+  step: number
+  onStepChange: (step: number) => void
+  formData: Partial<any>
+  onChange: (data: Partial<any>) => void
+  isSubmitting: boolean
 }
 
 export default function DataQualityForm({
-  onNext,
-  onBack,
-  initialData,
+  step,
+  onStepChange,
+  formData,
+  onChange,
+  isSubmitting,
 }: DataQualityFormProps) {
+  const initialData = formData?.dataQuality || {}
+
   const form = useForm<Form2Data>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {
@@ -125,17 +131,32 @@ export default function DataQualityForm({
     },
   })
 
+  function onSubmit(data: Form2Data) {
+    onChange({ dataQuality: data })
+    onStepChange(step + 1)
+  }
+
+  // Handle going back
+  const handleBack = () => {
+    // Get current form values without validation
+    const currentData = form.getValues()
+    // Save current state before navigating back
+    onChange({ dataQuality: currentData })
+    onStepChange(step - 1)
+  }
+
   // Get current data and continue
   const handleContinue = () => {
     // Get current form values without validation
     const currentData = form.getValues()
     // Pass the data to the next step without validation
-    onNext(currentData)
+    onChange({ dataQuality: currentData })
+    onStepChange(step + 1)
   }
 
   return (
     <Form {...form}>
-      <form className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormSection
           title="General Section"
           description="Information about the overall quality of the dataset"
@@ -701,10 +722,10 @@ export default function DataQualityForm({
         </FormSection>
 
         <div className="flex justify-between mt-8">
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="outline" onClick={handleBack}>
             Back
           </Button>
-          <Button type="button" onClick={handleContinue}>
+          <Button type="submit" disabled={isSubmitting}>
             Continue
           </Button>
         </div>

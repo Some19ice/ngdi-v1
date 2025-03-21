@@ -115,18 +115,24 @@ const formSchema = z.object({
 })
 
 interface GeneralInfoFormProps {
-  onNext: (data: Form1Data) => void
-  initialData?: Partial<Form1Data>
+  step: number
+  onStepChange: (step: number) => void
+  formData: Partial<any>
+  onChange: (data: Partial<any>) => void
+  isSubmitting: boolean
 }
 
 export default function GeneralInfoForm({
-  onNext,
-  initialData,
+  step,
+  onStepChange,
+  formData,
+  onChange,
+  isSubmitting,
 }: GeneralInfoFormProps) {
   const [selectedState, setSelectedState] = useState<string>("")
   const form = useForm<Form1Data>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
+    defaultValues: formData?.generalInfo || {
       dataInformation: {
         dataType: undefined,
         dataName: "",
@@ -183,7 +189,8 @@ export default function GeneralInfoForm({
   }
 
   function onSubmit(data: Form1Data) {
-    onNext(data)
+    onChange({ generalInfo: data })
+    onStepChange(step + 1)
   }
 
   // Get current data and continue
@@ -191,7 +198,8 @@ export default function GeneralInfoForm({
     // Get current form values
     const currentData = form.getValues()
     // Pass the data to the next step
-    onNext(currentData)
+    onChange({ generalInfo: currentData })
+    onStepChange(step + 1)
   }
 
   return (

@@ -59,16 +59,22 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 interface AccessInfoFormProps {
-  onNext: (data: FormData) => void
-  onBack: () => void
-  initialData?: Partial<FormData>
+  step: number
+  onStepChange: (step: number) => void
+  formData: Partial<any>
+  onChange: (data: Partial<any>) => void
+  isSubmitting: boolean
 }
 
 export default function AccessInfoForm({
-  onNext,
-  onBack,
-  initialData,
+  step,
+  onStepChange,
+  formData,
+  onChange,
+  isSubmitting,
 }: AccessInfoFormProps) {
+  const initialData = formData?.accessInfo || {}
+
   // Initialize form with react-hook-form
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -96,12 +102,27 @@ export default function AccessInfoForm({
     },
   })
 
+  function onSubmit(data: FormData) {
+    onChange({ accessInfo: data })
+    onStepChange(step + 1)
+  }
+
+  // Handle going back
+  const handleBack = () => {
+    // Get current form values without validation
+    const currentData = form.getValues()
+    // Save current state before navigating back
+    onChange({ accessInfo: currentData })
+    onStepChange(step - 1)
+  }
+
   // Form submission handler
   const handleContinue = () => {
     // Get current form values without validation
     const currentData = form.getValues()
     // Pass the data to the next step without validation
-    onNext(currentData)
+    onChange({ accessInfo: currentData })
+    onStepChange(step + 1)
   }
 
   // Restriction checkboxes options
@@ -115,7 +136,7 @@ export default function AccessInfoForm({
 
   return (
     <Form {...form}>
-      <form className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormSection
           title="Distribution Information"
           description="Specify how the dataset is distributed and accessed"
@@ -455,10 +476,10 @@ export default function AccessInfoForm({
         </FormSection>
 
         <div className="flex justify-between">
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="outline" onClick={handleBack}>
             Back
           </Button>
-          <Button type="button" onClick={handleContinue}>
+          <Button type="submit" disabled={isSubmitting}>
             Continue
           </Button>
         </div>
