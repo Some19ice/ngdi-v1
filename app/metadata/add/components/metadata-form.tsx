@@ -12,9 +12,11 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import type {
   NGDIMetadataFormData,
-  Form1Data,
-  Form2Data,
-  Form3Data,
+  GeneralInfoData,
+  DataQualityData,
+  DistributionInfoData,
+  AccessInfoData,
+  TechnicalDetailsData,
 } from "@/types/ngdi-metadata"
 
 // Import the form components
@@ -46,26 +48,26 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
   const isEditing = !!metadataId
 
   // Handle step 1 (General Info) completion
-  const handleGeneralInfoNext = (stepData: Form1Data) => {
-    setFormData((prev) => ({ ...prev, form1: stepData }))
+  const handleGeneralInfoNext = (stepData: GeneralInfoData) => {
+    setFormData((prev) => ({ ...prev, generalInfo: stepData, form1: stepData }))
     setCurrentStep(2)
   }
 
   // Handle step 2 (Technical Details) completion
-  const handleTechnicalDetailsNext = (stepData: any) => {
+  const handleTechnicalDetailsNext = (stepData: TechnicalDetailsData) => {
     setFormData((prev) => ({ ...prev, technicalDetails: stepData }))
     setCurrentStep(3)
   }
 
   // Handle step 3 (Data Quality) completion
-  const handleDataQualityNext = (stepData: Form2Data) => {
-    setFormData((prev) => ({ ...prev, form2: stepData }))
+  const handleDataQualityNext = (stepData: DataQualityData) => {
+    setFormData((prev) => ({ ...prev, dataQuality: stepData, form2: stepData }))
     setCurrentStep(4)
   }
 
   // Handle step 4 (Access Info) completion
-  const handleAccessInfoNext = (stepData: any) => {
-    setFormData((prev) => ({ ...prev, form4: stepData }))
+  const handleAccessInfoNext = (stepData: AccessInfoData) => {
+    setFormData((prev) => ({ ...prev, accessInfo: stepData, form4: stepData }))
     setCurrentStep(5)
   }
 
@@ -81,20 +83,45 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
 
       // Make sure we have all required form data
       if (
-        !formData.form1 ||
-        !formData.form2 ||
+        !formData.generalInfo ||
+        !formData.dataQuality ||
         !formData.technicalDetails ||
-        !formData.form4
+        !formData.accessInfo
       ) {
         toast.error("Please complete all form sections before submitting")
         setIsSubmitting(false)
         return
       }
 
-      // Use form3 from the original structure to maintain compatibility
+      // Prepare the data with both new and old structure for backward compatibility
       const finalFormData = {
         ...formData,
-        form3: formData.form3 || ({} as Form3Data),
+        // Set old structure properties for backward compatibility
+        form1: formData.generalInfo,
+        form2: formData.dataQuality,
+        form3: formData.distributionInfo || {
+          distributorInformation: {
+            name: formData.accessInfo?.contactInfo?.contactPerson || "",
+            address: formData.accessInfo?.contactInfo?.department || "",
+            email: formData.accessInfo?.contactInfo?.email || "",
+            phoneNumber: formData.accessInfo?.contactInfo?.phone || "",
+            isCustodian: true,
+          },
+          distributionDetails: {
+            liability: formData.accessInfo?.licenseInfo?.usageTerms || "",
+            customOrderProcess: "",
+            technicalPrerequisites:
+              formData.technicalDetails?.technicalSpecifications
+                ?.softwareReqs || "",
+          },
+          standardOrderProcess: {
+            fees: "Please contact for pricing",
+            turnaroundTime: "Typically 3-5 business days",
+            orderingInstructions: "Contact via email or phone",
+            maximumResponseTime: "5 business days",
+          },
+        },
+        form4: formData.accessInfo,
       } as NGDIMetadataFormData
 
       let result
@@ -166,7 +193,7 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
               {currentStep === 1 && (
                 <GeneralInfoForm
                   onNext={handleGeneralInfoNext}
-                  initialData={formData.form1}
+                  initialData={formData.generalInfo || formData.form1}
                 />
               )}
               {currentStep === 2 && (
@@ -180,14 +207,14 @@ export function MetadataForm({ initialData, metadataId }: MetadataFormProps) {
                 <DataQualityForm
                   onNext={handleDataQualityNext}
                   onBack={handlePrevious}
-                  initialData={formData.form2}
+                  initialData={formData.dataQuality || formData.form2}
                 />
               )}
               {currentStep === 4 && (
                 <AccessInfoForm
                   onNext={handleAccessInfoNext}
                   onBack={handlePrevious}
-                  initialData={formData.form4}
+                  initialData={formData.accessInfo || formData.form4}
                 />
               )}
               {currentStep === 5 && (

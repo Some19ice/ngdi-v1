@@ -24,8 +24,11 @@ export default function ReviewForm({
   formData,
   isSubmitting,
 }: ReviewFormProps) {
-  // Extract form data sections
-  const { form1, form2, form3, form4, technicalDetails } = formData || {}
+  // Extract form data sections with backward compatibility
+  const generalInfo = formData?.generalInfo || formData?.form1
+  const dataQuality = formData?.dataQuality || formData?.form2
+  const accessInfo = formData?.accessInfo || formData?.form4
+  const { technicalDetails } = formData
 
   return (
     <div className="space-y-6">
@@ -49,31 +52,31 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Data Type</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.dataInformation?.dataType || "N/A"}
+                {generalInfo?.dataInformation?.dataType || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Data Name</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.dataInformation?.dataName || "N/A"}
+                {generalInfo?.dataInformation?.dataName || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Production Date</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.dataInformation?.productionDate || "N/A"}
+                {generalInfo?.dataInformation?.productionDate || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Abstract</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {form1?.description?.abstract || "N/A"}
+                {generalInfo?.description?.abstract || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Purpose</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {form1?.description?.purpose || "N/A"}
+                {generalInfo?.description?.purpose || "N/A"}
               </p>
             </div>
           </div>
@@ -150,27 +153,27 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Consistency Report</h4>
               <p className="text-sm text-muted-foreground">
-                {form2?.generalSection?.logicalConsistencyReport || "N/A"}
+                {dataQuality?.generalSection?.logicalConsistencyReport || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Completeness Report</h4>
               <p className="text-sm text-muted-foreground">
-                {form2?.generalSection?.completenessReport || "N/A"}
+                {dataQuality?.generalSection?.completenessReport || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Horizontal Accuracy</h4>
               <p className="text-sm text-muted-foreground">
-                {form2?.positionalAccuracy?.horizontal?.percentValue
-                  ? `${form2.positionalAccuracy.horizontal.percentValue}%`
+                {dataQuality?.positionalAccuracy?.horizontal?.percentValue
+                  ? `${dataQuality.positionalAccuracy.horizontal.percentValue}%`
                   : "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Processing Description</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {form2?.dataProcessingInformation?.description || "N/A"}
+                {dataQuality?.dataProcessingInformation?.description || "N/A"}
               </p>
             </div>
           </div>
@@ -188,39 +191,47 @@ export default function ReviewForm({
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h4 className="text-sm font-medium">Distributor Name</h4>
+              <h4 className="text-sm font-medium">Distribution Format</h4>
               <p className="text-sm text-muted-foreground">
-                {form3?.distributorInformation?.name || "N/A"}
+                {accessInfo?.distributionInfo?.distributionFormat ||
+                  formData?.form3?.distributorInformation?.name ||
+                  "N/A"}
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-medium">Distributor Email</h4>
+              <h4 className="text-sm font-medium">Contact Person</h4>
               <p className="text-sm text-muted-foreground">
-                {form3?.distributorInformation?.email || "N/A"}
+                {accessInfo?.contactInfo?.contactPerson ||
+                  formData?.form3?.distributorInformation?.name ||
+                  "N/A"}
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-medium">Liability Statement</h4>
+              <h4 className="text-sm font-medium">Contact Email</h4>
+              <p className="text-sm text-muted-foreground">
+                {accessInfo?.contactInfo?.email ||
+                  formData?.form3?.distributorInformation?.email ||
+                  "N/A"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">License Type</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {form3?.distributionDetails?.liability || "N/A"}
+                {accessInfo?.licenseInfo?.licenseType || "N/A"}
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-medium">Fees</h4>
+              <h4 className="text-sm font-medium">Usage Terms</h4>
               <p className="text-sm text-muted-foreground">
-                {form3?.standardOrderProcess?.fees || "N/A"}
+                {accessInfo?.licenseInfo?.usageTerms ||
+                  formData?.form3?.distributionDetails?.liability ||
+                  "N/A"}
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-medium">Technical Prerequisites</h4>
+              <h4 className="text-sm font-medium">Access Method</h4>
               <p className="text-sm text-muted-foreground">
-                {form3?.distributionDetails?.technicalPrerequisites || "N/A"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">Web Link</h4>
-              <p className="text-sm text-muted-foreground">
-                {form3?.distributorInformation?.webLink || "N/A"}
+                {accessInfo?.distributionInfo?.accessMethod || "N/A"}
               </p>
             </div>
           </div>
@@ -240,19 +251,19 @@ export default function ReviewForm({
             <div>
               <h4 className="text-sm font-medium">Access Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.resourceConstraint?.accessConstraints || "N/A"}
+                {generalInfo?.resourceConstraint?.accessConstraints || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Use Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.resourceConstraint?.useConstraints || "N/A"}
+                {generalInfo?.resourceConstraint?.useConstraints || "N/A"}
               </p>
             </div>
             <div>
               <h4 className="text-sm font-medium">Other Constraints</h4>
               <p className="text-sm text-muted-foreground">
-                {form1?.resourceConstraint?.otherConstraints || "N/A"}
+                {generalInfo?.resourceConstraint?.otherConstraints || "N/A"}
               </p>
             </div>
           </div>

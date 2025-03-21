@@ -198,12 +198,21 @@ export interface Form3Data {
   standardOrderProcess: StandardOrderProcess
 }
 
+export interface GeneralInfoData extends Form1Data {}
+export interface DataQualityData extends Form2Data {}
+export interface DistributionInfoData extends Form3Data {}
+
 export interface NGDIMetadataFormData {
-  form1: Form1Data
+  generalInfo: GeneralInfoData
   technicalDetails: TechnicalDetailsData
-  form2: Form2Data
-  form4: AccessInfoData
+  dataQuality: DataQualityData
+  accessInfo: AccessInfoData
+  distributionInfo?: DistributionInfoData
+
+  form1?: Form1Data
+  form2?: Form2Data
   form3?: Form3Data
+  form4?: AccessInfoData
 }
 
 export interface NGDIMetadataResponse extends NGDIMetadataFormData {
