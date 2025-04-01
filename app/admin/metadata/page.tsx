@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
+import { redirect, useSearchParams, useRouter } from "next/navigation"
 import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   MetadataStatus,
   ValidationStatus,
   AdminMetadataItem,
 } from "@/types/metadata"
-import { Permission } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
-import { redirect, useSearchParams, useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import {
   deleteMetadata,
@@ -38,10 +37,18 @@ export default function MetadataPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // If not authenticated, redirect to login
-  if (!user) {
-    redirect("/login")
-  }
+  // If not authenticated or not admin, redirect to login
+  useEffect(() => {
+    if (!user) {
+      router.push("/auth/signin?callbackUrl=/admin/metadata")
+      return
+    }
+
+    if (user.role !== UserRole.ADMIN) {
+      router.push("/unauthorized")
+      return
+    }
+  }, [user, router])
 
   // Get search parameters from URL (with null safety)
   const pageParam = searchParams?.get("page") ?? null
@@ -95,6 +102,7 @@ export default function MetadataPage() {
   const fetchMetadata = async () => {
     try {
       setIsLoading(true)
+      setError(null)
 
       // Call the server action to get data
       const result = await getAdminMetadata({
@@ -117,6 +125,7 @@ export default function MetadataPage() {
         setMetadata([])
         setTotal(0)
         setTotalPages(1)
+        setError("Invalid response format. Please try again.")
       }
 
       // Update URL parameters
@@ -153,6 +162,16 @@ export default function MetadataPage() {
     selectedStatus,
     selectedValidation,
   ])
+
+  // Render loading state if user not loaded yet
+  if (!user) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+        <p>Loading authentication...</p>
+      </div>
+    )
+  }
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
@@ -248,7 +267,7 @@ export default function MetadataPage() {
 
         toast({
           title: "Export successful",
-          description: `${itemCount} metadata items exported.`,
+          description: `Exported ${itemCount} metadata items`,
           variant: "default",
         })
       } else {
@@ -262,7 +281,8 @@ export default function MetadataPage() {
       console.error("Error exporting metadata:", err)
       toast({
         title: "Export failed",
-        description: "An unexpected error occurred during export.",
+        description:
+          "An unexpected error occurred while exporting the metadata.",
         variant: "destructive",
       })
     }
@@ -271,13 +291,13 @@ export default function MetadataPage() {
   // Handle metadata import
   const handleImport = async () => {
     try {
-      // In a real app, this would open a file picker and import the data
+      // In a real app, this would open a file picker
       const result = await importMetadata({})
 
       if (result.success) {
         toast({
           title: "Import successful",
-          description: "Metadata items have been imported.",
+          description: "The metadata has been successfully imported.",
           variant: "default",
         })
 
@@ -293,7 +313,8 @@ export default function MetadataPage() {
       console.error("Error importing metadata:", err)
       toast({
         title: "Import failed",
-        description: "An unexpected error occurred during import.",
+        description:
+          "An unexpected error occurred while importing the metadata.",
         variant: "destructive",
       })
     }
@@ -301,54 +322,52 @@ export default function MetadataPage() {
 
   return (
     <div className="space-y-6">
-      <MetadataFilters
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        selectedStatus={selectedStatus}
-        setSelectedStatus={setSelectedStatus}
-        selectedValidation={selectedValidation}
-        setSelectedValidation={setSelectedValidation}
-        onExport={handleExport}
-        onImport={handleImport}
-      />
-
       <Card>
         <CardHeader>
-          <CardTitle>All Metadata</CardTitle>
+          <CardTitle>Metadata Management</CardTitle>
           <CardDescription>
-            View and manage all metadata entries across organizations.
+            Review and manage all metadata entries in the system
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Suspense
-            fallback={
-              <div className="flex flex-col items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">Loading metadata...</p>
-              </div>
-            }
-          >
-            <MetadataTable
-              metadata={metadata}
-              isLoading={isLoading}
-              error={error}
-              onValidate={handleValidate}
-              onDelete={handleDelete}
-              onClearFilters={handleClearFilters}
-            />
-          </Suspense>
+        <CardContent>
+          <MetadataFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+            selectedValidation={selectedValidation}
+            setSelectedValidation={setSelectedValidation}
+            onExport={handleExport}
+            onImport={handleImport}
+          />
 
-          {!isLoading && !error && metadata.length > 0 && (
-            <MetadataPagination
-              currentPage={page}
-              totalPages={totalPages}
-              total={total}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 p-4 rounded-md text-red-800">{error}</div>
+          ) : (
+            <>
+              <MetadataTable
+                metadata={metadata}
+                isLoading={false}
+                error={null}
+                onValidate={handleValidate}
+                onDelete={handleDelete}
+                onClearFilters={handleClearFilters}
+              />
+              <MetadataPagination
+                currentPage={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </>
           )}
         </CardContent>
       </Card>

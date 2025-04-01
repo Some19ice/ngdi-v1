@@ -830,7 +830,7 @@ export async function getAdminMetadata({
   try {
     // Get the base metadata using direct Prisma query instead of searchMetadata
     // to avoid potential issues with the result structure
-    
+
     // Calculate pagination
     const skip = (page - 1) * limit
 
@@ -872,7 +872,10 @@ export async function getAdminMetadata({
       }
     }
 
-    // Get total count for pagination
+    // In a real application, we'd add status and validationStatus to the database query
+    // For now, we'll handle it in memory after fetching the results
+
+    // Get total count for pagination - this should ideally include all filters
     const total = await prisma.metadata.count({ where })
 
     // Get metadata items with pagination and sorting
@@ -906,9 +909,10 @@ export async function getAdminMetadata({
     })
 
     // Transform to admin metadata with status information
-    // In a real app, these would come from the database
     const adminMetadata = metadataItems.map((item: any) => ({
       ...item,
+      // In a real app, these would come from the database
+      // For now, we're using simulated data
       status: "Published", // Default status - in a real app, this would come from DB
       validationStatus: "Validated", // Default validation status
       downloads: Math.floor(Math.random() * 200), // Mock data - would be real in production
@@ -917,22 +921,31 @@ export async function getAdminMetadata({
       lastModified: item.updatedAt || item.createdAt,
     }))
 
-    // Now filter by status and validationStatus if provided
-    const filteredMetadata = adminMetadata.filter((item: any) => {
-      return (
-        (!status || status === "All Statuses" || item.status === status) &&
-        (!validationStatus || validationStatus === "All Validations" || item.validationStatus === validationStatus)
-      )
-    })
+    // Filter by status and validationStatus if provided
+    let filteredMetadata = adminMetadata
 
-    const totalPages = Math.ceil(total / limit)
+    if (status && status !== "All Statuses") {
+      filteredMetadata = filteredMetadata.filter(
+        (item: any) => item.status === status
+      )
+    }
+
+    if (validationStatus && validationStatus !== "All Validations") {
+      filteredMetadata = filteredMetadata.filter(
+        (item: any) => item.validationStatus === validationStatus
+      )
+    }
+
+    // Calculate the correct total and pages based on filtered results
+    const filteredTotal = filteredMetadata.length
+    const totalPages = Math.ceil(filteredTotal / limit)
 
     return {
       metadata: filteredMetadata,
-      total: filteredMetadata.length,
+      total: filteredTotal,
       currentPage: page,
       limit,
-      totalPages
+      totalPages,
     }
   } catch (error) {
     console.error("Error fetching admin metadata:", error)

@@ -17,13 +17,16 @@ export async function validateMetadata(id: string) {
     // In a real application, this would perform actual validation steps
     // such as checking data quality, structure, completeness, etc.
 
-    // Here, we're just updating the validation status
+    // Update the metadata with the validated status
+    // Note: Your schema may need to be updated to include validationStatus field
     const updatedMetadata = await prisma.metadata.update({
       where: { id },
       data: {
-        // This would be a real field in your database
-        // For now, we're just simulating it
+        // If validationStatus exists in your schema, uncomment this line
         // validationStatus: ValidationStatus.Validated,
+
+        // For now, updating a safe field to mark that an update happened
+        updatedAt: new Date(),
       },
     })
 

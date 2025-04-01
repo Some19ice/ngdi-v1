@@ -20,6 +20,10 @@ export function AdminPrefetcher() {
 
           // Get the API base URL from env
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+          if (!apiUrl) {
+            console.warn("API URL is not configured, skipping prefetch")
+            return
+          }
 
           // Get auth token from cookies
           const authToken = document.cookie
@@ -40,18 +44,39 @@ export function AdminPrefetcher() {
             "/metadata?page=1&limit=10",
           ]
 
+          // Create a cache-busting timestamp
+          const cacheBuster = new Date().getTime()
+
           // Use Promise.all to fetch data in parallel
           await Promise.all(
             endpoints.map((endpoint) =>
-              fetch(`${apiUrl}/api/admin${endpoint}`, {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${authToken}`,
-                  // Add a cache-busting parameter to ensure we get fresh data
-                  "x-prefetch": "true",
-                },
-              })
+              fetch(
+                `${apiUrl}/api/admin${endpoint}${endpoint.includes("?") ? "&" : "?"}_=${cacheBuster}`,
+                {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                    "x-prefetch": "true",
+                    // Prevent caching
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    Pragma: "no-cache",
+                  },
+                }
+              )
+                .then((response) => {
+                  if (!response.ok) {
+                    throw new Error(
+                      `Failed to prefetch ${endpoint}: ${response.status} ${response.statusText}`
+                    )
+                  }
+                  return response
+                })
+                .catch((error) => {
+                  console.error(`Error prefetching ${endpoint}:`, error)
+                  // Continue with other prefetches even if one fails
+                  return null
+                })
             )
           )
 
