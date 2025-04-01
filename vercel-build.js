@@ -82,17 +82,16 @@ export const runtime = 'nodejs';
   console.error("Error creating auth config:", error)
 }
 
-// Build the Next.js app
-console.log("Building Next.js app...")
-try {
-  // Use npx to ensure we're using the local Next.js installation
-  execSync("npx next build", { stdio: "inherit" })
-} catch (error) {
-  console.error("Error building Next.js app:", error)
+// Build the API
+console.log('Building API...');
+execSync('cd packages/api && npm install && npm run build', {
+  stdio: 'inherit',
+});
 
-  // Even if there are errors, we'll continue with the deployment
-  // This is because some of the auth page errors are expected
-  console.log("Continuing with deployment despite build errors...")
-}
+// Build the frontend (Next.js will handle this automatically)
+console.log('Frontend will be built by Next.js...');
+
+// Exit successfully
+process.exit(0);
 
 console.log("Custom build script completed")

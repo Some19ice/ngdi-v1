@@ -1,69 +1,91 @@
-"use server"
+"use client"
 
 import { revalidatePath } from "next/cache"
-import { prisma } from "@/lib/prisma"
-import { ValidationStatus } from "@/types/metadata"
 
 /**
- * Validates a metadata entry
- * @param id The ID of the metadata to validate
+ * Validates a metadata item
+ * @param id The ID of the metadata item to validate
  */
 export async function validateMetadata(id: string) {
-  if (!id) {
-    return { success: false, error: "Metadata ID is required" }
-  }
-
   try {
-    // In a real application, this would perform actual validation steps
-    // such as checking data quality, structure, completeness, etc.
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("auth_token="))
+      ?.split("=")[1]
 
-    // Update the metadata with the validated status
-    // Note: Your schema may need to be updated to include validationStatus field
-    const updatedMetadata = await prisma.metadata.update({
-      where: { id },
-      data: {
-        // If validationStatus exists in your schema, uncomment this line
-        // validationStatus: ValidationStatus.Validated,
-
-        // For now, updating a safe field to mark that an update happened
-        updatedAt: new Date(),
-      },
-    })
-
-    // Revalidate the metadata pages to show the updated status
-    revalidatePath("/admin/metadata")
-    revalidatePath(`/metadata/${id}`)
-
-    return { success: true, data: updatedMetadata }
-  } catch (error) {
-    console.error("Failed to validate metadata:", error)
-
-    // Better error handling with typed errors
-    if (error instanceof Error) {
-      return {
-        success: false,
-        error: error.message || "Failed to validate metadata",
-      }
+    if (!authToken) {
+      throw new Error("Authentication required")
     }
 
-    return { success: false, error: "Failed to validate metadata" }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+    const response = await fetch(
+      `${apiUrl}/api/admin/metadata/${id}/validate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to validate metadata: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.message || "Failed to validate metadata")
+    }
+
+    // Revalidate the paths to show the updated list
+    revalidatePath("/admin/metadata")
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to validate metadata:", error)
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to validate metadata",
+    }
   }
 }
 
 /**
- * Deletes a metadata entry
- * @param id The ID of the metadata to delete
+ * Deletes a metadata item
+ * @param id The ID of the metadata item to delete
  */
 export async function deleteMetadata(id: string) {
-  if (!id) {
-    return { success: false, error: "Metadata ID is required" }
-  }
-
   try {
-    // Delete the metadata from the database
-    await prisma.metadata.delete({
-      where: { id },
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("auth_token="))
+      ?.split("=")[1]
+
+    if (!authToken) {
+      throw new Error("Authentication required")
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+    const response = await fetch(`${apiUrl}/api/admin/metadata/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
     })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete metadata: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.message || "Failed to delete metadata")
+    }
 
     // Revalidate the paths to show the updated list
     revalidatePath("/admin/metadata")
@@ -71,111 +93,108 @@ export async function deleteMetadata(id: string) {
     return { success: true }
   } catch (error) {
     console.error("Failed to delete metadata:", error)
-
-    // Handle specific error types
-    if (error instanceof Error) {
-      if (error.message.includes("Record to delete does not exist")) {
-        return { success: false, error: "Metadata not found" }
-      }
-      return {
-        success: false,
-        error: error.message || "Failed to delete metadata",
-      }
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to delete metadata",
     }
-
-    return { success: false, error: "Failed to delete metadata" }
   }
 }
 
 /**
- * Exports metadata as CSV
- * @param ids Optional array of IDs to export (exports all if not provided)
+ * Exports metadata to CSV
  */
-export async function exportMetadata(ids?: string[]) {
+export async function exportMetadata() {
   try {
-    // Get the metadata to export
-    const metadata = await prisma.metadata.findMany({
-      where: ids?.length ? { id: { in: ids } } : {},
-      select: {
-        id: true,
-        title: true,
-        author: true,
-        organization: true,
-        abstract: true,
-        dateFrom: true,
-        dateTo: true,
-        createdAt: true,
-        updatedAt: true,
-        // Include any other fields you want in the export
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("auth_token="))
+      ?.split("=")[1]
+
+    if (!authToken) {
+      throw new Error("Authentication required")
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+    const response = await fetch(`${apiUrl}/api/admin/metadata/export`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
       },
     })
 
-    // In a real app, you would convert this to CSV and return it
-    // For now, we're just returning the raw data
-    return {
-      success: true,
-      data: metadata,
+    if (!response.ok) {
+      throw new Error(`Failed to export metadata: ${response.statusText}`)
     }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "metadata-export.csv"
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+
+    return { success: true }
   } catch (error) {
     console.error("Failed to export metadata:", error)
-
-    if (error instanceof Error) {
-      return {
-        success: false,
-        error: error.message || "Failed to export metadata",
-      }
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to export metadata",
     }
-
-    return { success: false, error: "Failed to export metadata" }
   }
 }
 
 /**
  * Imports metadata from CSV
- * @param data The metadata data to import
+ * @param file The CSV file to import
  */
-export async function importMetadata(data: any) {
-  if (!data) {
-    return { success: false, error: "Import data is required" }
-  }
-
+export async function importMetadata(file: File) {
   try {
-    // In a real app, you would parse the CSV and validate it
-    // Then create the metadata items in the database
-    // For now, we're just simulating it
+    const authToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("auth_token="))
+      ?.split("=")[1]
 
-    // This would be a real implementation:
-    /*
-    const importedItems = await Promise.all(
-      data.map(async (item: any) => {
-        return await prisma.metadata.create({
-          data: {
-            // Map the imported data to the database schema
-            title: item.title,
-            // ... other fields
-          }
-        })
-      })
-    )
-    */
+    if (!authToken) {
+      throw new Error("Authentication required")
+    }
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+    const response = await fetch(`${apiUrl}/api/admin/metadata/import`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to import metadata: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.message || "Failed to import metadata")
+    }
 
     // Revalidate the paths to show the updated list
     revalidatePath("/admin/metadata")
 
-    return {
-      success: true,
-      // data: importedItems
-    }
+    return { success: true }
   } catch (error) {
     console.error("Failed to import metadata:", error)
-
-    if (error instanceof Error) {
-      return {
-        success: false,
-        error: error.message || "Failed to import metadata",
-      }
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to import metadata",
     }
-
-    return { success: false, error: "Failed to import metadata" }
   }
 }

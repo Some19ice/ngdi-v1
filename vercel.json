@@ -9,20 +9,27 @@
     "NEXT_TELEMETRY_DISABLED": "1",
     "NEXT_STATIC_GENERATION_BAILOUT": "true"
   },
-  "functions": {
-    "app/api/**/*": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "app/auth/**/*": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/:path*",
-      "destination": "https://ngdi-api.vercel.app/api/:path*"
+      "src": "packages/api/dist/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["packages/api/dist/**"]
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "packages/api/dist/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ],
   "headers": [

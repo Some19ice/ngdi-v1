@@ -16,7 +16,6 @@ import {
   exportMetadata,
   importMetadata,
 } from "./actions"
-import { getAdminMetadata } from "@/app/actions/metadata"
 import {
   Card,
   CardContent,
@@ -104,22 +103,50 @@ export default function MetadataPage() {
       setIsLoading(true)
       setError(null)
 
-      // Call the server action to get data
-      const result = await getAdminMetadata({
-        page,
-        limit: pageSize,
-        search: searchQuery,
-        category: selectedCategory === "All Categories" ? "" : selectedCategory,
-        status: selectedStatus === "All Statuses" ? "" : selectedStatus,
-        validationStatus:
-          selectedValidation === "All Validations" ? "" : selectedValidation,
+      // Get auth token from cookies
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("auth_token="))
+        ?.split("=")[1]
+
+      if (!authToken) {
+        throw new Error("Authentication required")
+      }
+
+      // Call the API server
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+      const url = `${apiUrl}/api/admin/metadata`
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pageSize.toString(),
+        ...(searchQuery && { search: searchQuery }),
+        ...(selectedCategory !== "All Categories" && {
+          category: selectedCategory,
+        }),
+        ...(selectedStatus !== "All Statuses" && { status: selectedStatus }),
+        ...(selectedValidation !== "All Validations" && {
+          validationStatus: selectedValidation,
+        }),
       })
 
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch metadata: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
       // Type-safe handling of the returned data
-      if (result && Array.isArray(result.metadata)) {
-        setMetadata(result.metadata as AdminMetadataItem[])
-        setTotal(result.total || 0)
-        setTotalPages(result.totalPages || 1)
+      if (result.success && result.data) {
+        setMetadata(result.data.metadata)
+        setTotal(result.data.total || 0)
+        setTotalPages(result.data.totalPages || 1)
       } else {
         console.error("Invalid data format returned:", result)
         setMetadata([])
