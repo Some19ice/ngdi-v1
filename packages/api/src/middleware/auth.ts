@@ -6,6 +6,7 @@ import { Context } from "../types/hono.types"
 import * as jose from "jose"
 import { redisService } from "../services/redis.service"
 import { HTTPException } from "hono/http-exception"
+import { quickValidateToken } from "../utils/token-validation"
 
 const AUTH_COOKIE_NAME = "auth_token"
 
@@ -77,23 +78,27 @@ async function authenticate(c: Context, next: Next) {
       )
     }
 
-    // Check cache first
-    const cacheEntry = tokenCache.get(token)
-    const now = Math.floor(Date.now() / 1000)
-
-    // If we have a valid cache entry that hasn't expired
-    if (cacheEntry && cacheEntry.expiry > now) {
-      // Set user info in context from cache
-      c.set("userId", cacheEntry.userId)
-      c.set("userEmail", cacheEntry.email)
-      c.set("userRole", cacheEntry.role)
-
-      // Continue with request
-      await next()
-      return
+    // Perform quick validation first (faster)
+    const quickResult = quickValidateToken(token)
+    
+    // If quick validation fails, don't bother with cryptographic verification
+    if (!quickResult.isValid) {
+      if (quickResult.error?.includes("expired")) {
+        throw new AuthError(
+          AuthErrorCode.TOKEN_EXPIRED, 
+          "Token has expired", 
+          401
+        )
+      } else {
+        throw new AuthError(
+          AuthErrorCode.INVALID_TOKEN,
+          quickResult.error || "Invalid token format",
+          401
+        )
+      }
     }
 
-    // If not in cache or expired, perform full verification
+    // If quick validation passes, perform full cryptographic verification
     const decoded = await verifyToken(token)
 
     // Cache the result

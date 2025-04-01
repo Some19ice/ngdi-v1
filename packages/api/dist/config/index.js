@@ -78,9 +78,6 @@ exports.config = {
     logLevel: process.env.LOG_LEVEL || "info",
     redis: {
         url: process.env.REDIS_URL || "redis://localhost:6379",
-        options: {
-            enableReadyCheck: true,
-            maxRetriesPerRequest: 3,
-        },
+        token: process.env.REDIS_TOKEN || "",
     },
 };

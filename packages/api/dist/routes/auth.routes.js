@@ -49,8 +49,18 @@ const auth_types_1 = require("../types/auth.types");
 const jose = __importStar(require("jose"));
 // Create auth router
 const auth = new hono_1.Hono();
+// Create an error handler that conforms to Hono's expected type
+const honoErrorHandler = (err, c) => {
+    const result = (0, error_handler_1.errorHandler)(err, c);
+    // If the result contains a status and body, convert it to a Response
+    if ('status' in result && 'body' in result) {
+        return c.json(result.body, result.status);
+    }
+    // Otherwise, return the result directly (should already be a Response)
+    return result;
+};
 // Apply error handler
-auth.onError(error_handler_1.errorHandler);
+auth.onError(honoErrorHandler);
 // Apply rate limiting to auth routes
 auth.use("/login", (0, rate_limit_middleware_1.rateLimit)({
     windowSeconds: 300, // 5 minutes

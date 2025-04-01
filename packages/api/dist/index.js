@@ -17,6 +17,7 @@ const search_routes_1 = __importDefault(require("./routes/search.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 const error_handler_1 = require("./middleware/error-handler");
 const rate_limit_1 = require("./middleware/rate-limit");
+const csrf_1 = __importDefault(require("./middleware/csrf"));
 const node_server_1 = require("@hono/node-server");
 const config_1 = require("./config");
 // Create app instance
@@ -24,10 +25,27 @@ const app = new hono_1.Hono();
 // Apply global middleware
 app.use("*", (0, logger_1.logger)());
 app.use("*", (0, cors_1.cors)());
-app.use("*", (0, secure_headers_1.secureHeaders)());
+app.use("*", (0, secure_headers_1.secureHeaders)({
+    contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"], // Adjust based on your needs
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: [
+            "'self'",
+            process.env.NEXT_PUBLIC_URL || "http://localhost:3000",
+        ],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'self'"],
+    },
+}));
 app.use("*", (0, pretty_json_1.prettyJSON)());
 app.use("*", rate_limit_1.rateLimit);
 app.use("*", error_handler_1.errorMiddleware);
+// Apply CSRF protection to all non-GET routes
+app.use("*", (0, csrf_1.default)());
 // Create API router
 const apiRouter = new zod_openapi_1.OpenAPIHono();
 // Mount routes

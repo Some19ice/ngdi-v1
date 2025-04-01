@@ -43,7 +43,7 @@ swagger_1.app.onError((err, c) => {
         return c.json({
             success: false,
             message: err.message,
-            errors: err.errors,
+            details: err.details,
         }, err.status);
     }
     // Handle other errors

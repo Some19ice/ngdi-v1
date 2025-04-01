@@ -79,25 +79,46 @@ export default function AdvancedFilters({
     const initializeMap = async () => {
       if (mapInitialized || !mapPreviewRef.current) return
 
-      // Dynamically import Leaflet
-      const L = (await import("leaflet")).default
-      // CSS import handled via global import or Next.js config
+      try {
+        // Dynamically import Leaflet
+        if (typeof window !== "undefined") {
+          // Explicitly add the Leaflet CSS
+          const linkEl = document.createElement("link")
+          linkEl.rel = "stylesheet"
+          linkEl.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          linkEl.integrity =
+            "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          linkEl.crossOrigin = ""
+          document.head.appendChild(linkEl)
 
-      // Create map instance
-      mapRef.current = L.map(mapPreviewRef.current).setView([9.082, 8.6753], 6)
-      mapInitialized = true
+          // Wait for CSS to load
+          await new Promise((resolve) => setTimeout(resolve, 100))
 
-      // Add OpenStreetMap tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(mapRef.current)
+          // Import Leaflet dynamically
+          const L = await import("leaflet")
 
-      // Create bounding box if coordinates exist
-      updateBoundingBox()
+          // Create map instance
+          mapRef.current = L.map(mapPreviewRef.current).setView(
+            [9.082, 8.6753],
+            6
+          )
+          setMapInitialized(true)
 
-      // Add click handler for setting bbox
-      mapRef.current.on("click", handleMapClick)
+          // Add OpenStreetMap tile layer
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          }).addTo(mapRef.current)
+
+          // Create bounding box if coordinates exist
+          updateBoundingBox()
+
+          // Add click handler for setting bbox
+          mapRef.current.on("click", handleMapClick)
+        }
+      } catch (error) {
+        console.error("Error initializing map:", error)
+      }
     }
 
     if (typeof window !== "undefined") {
@@ -161,20 +182,32 @@ export default function AdvancedFilters({
       bboxCoordinates.maxLng
     ) {
       try {
-        const bounds = [
-          [bboxCoordinates.minLat, bboxCoordinates.minLng],
-          [bboxCoordinates.maxLat, bboxCoordinates.maxLng],
-        ]
+        // Create rectangle
+        import("leaflet")
+          .then((L) => {
+            // Create bounds with proper typing
+            const southWest = L.latLng(
+              parseFloat(bboxCoordinates.minLat),
+              parseFloat(bboxCoordinates.minLng)
+            )
+            const northEast = L.latLng(
+              parseFloat(bboxCoordinates.maxLat),
+              parseFloat(bboxCoordinates.maxLng)
+            )
+            const bounds = L.latLngBounds(southWest, northEast)
 
-        // @ts-ignore
-        bboxRectRef.current = L.rectangle(bounds, {
-          color: "#2563eb",
-          weight: 2,
-          fillOpacity: 0.2,
-        }).addTo(mapRef.current)
+            bboxRectRef.current = L.rectangle(bounds, {
+              color: "#2563eb",
+              weight: 2,
+              fillOpacity: 0.2,
+            }).addTo(mapRef.current)
 
-        // Fit map to the bounds
-        mapRef.current.fitBounds(bounds)
+            // Fit map to the bounds
+            mapRef.current.fitBounds(bounds)
+          })
+          .catch((err) => {
+            console.error("Error loading Leaflet for bounding box:", err)
+          })
       } catch (error) {
         console.error("Error creating bounding box:", error)
       }

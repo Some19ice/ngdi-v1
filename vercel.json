@@ -1,46 +1,21 @@
 {
-  "version": 2,
-  "buildCommand": "node vercel-build.js",
-  "outputDirectory": ".next",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
+  "outputDirectory": ".vercel/output",
+  "devCommand": "npm run dev",
+  "regions": ["cle1", "syd1"],
   "env": {
-    "NODE_ENV": "production",
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "NEXT_STATIC_GENERATION_BAILOUT": "true"
+    "INTERNAL_API_URL": "http://localhost:3001"
   },
-  "builds": [
-    {
-      "src": "packages/api/dist/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["packages/api/dist/**"]
-      }
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "rewrites": [
-    {
-      "source": "/api/auth/:path*",
-      "destination": "/api/auth/:path*"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "packages/api/dist/index.js"
-    }
+    { "source": "/api/(auth/.+)", "destination": "/$1" },
+    { "source": "/api/:path*", "destination": "packages/api/dist/index.js" }
   ],
   "headers": [
     {
       "source": "/auth/:path*",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
     }
   ]
 }

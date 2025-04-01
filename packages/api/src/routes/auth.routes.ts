@@ -27,12 +27,26 @@ import {
 } from "../types/auth.types"
 import * as jose from "jose"
 import { Variables } from "../types/hono.types"
+import { ErrorHandler } from "hono"
 
 // Create auth router
 const auth = new Hono<{ Variables: Variables }>()
 
+// Create an error handler that conforms to Hono's expected type
+const honoErrorHandler: ErrorHandler<{ Variables: Variables }> = (err, c) => {
+  const result = errorHandler(err, c);
+  
+  // If the result contains a status and body, convert it to a Response
+  if ('status' in result && 'body' in result) {
+    return c.json(result.body, result.status as any);
+  }
+  
+  // Otherwise, return the result directly (should already be a Response)
+  return result;
+};
+
 // Apply error handler
-auth.onError(errorHandler)
+auth.onError(honoErrorHandler)
 
 // Apply rate limiting to auth routes
 auth.use(

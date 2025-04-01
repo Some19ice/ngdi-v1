@@ -14,6 +14,7 @@ var AuthErrorCode;
     AuthErrorCode["PASSWORD_POLICY"] = "AUTH009";
     AuthErrorCode["MFA_REQUIRED"] = "AUTH010";
     AuthErrorCode["FORBIDDEN"] = "AUTH011";
+    AuthErrorCode["CSRF_TOKEN_INVALID"] = "AUTH012";
 })(AuthErrorCode || (exports.AuthErrorCode = AuthErrorCode = {}));
 class AuthError extends Error {
     constructor(code, message, status = 401, details) {

@@ -14,6 +14,7 @@ import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
 import { errorMiddleware } from "./middleware/error-handler"
 import { rateLimit } from "./middleware/rate-limit"
+import csrf from "./middleware/csrf"
 import { serve } from "@hono/node-server"
 import { config } from "./config"
 
@@ -26,10 +27,31 @@ const app = new Hono<{
 // Apply global middleware
 app.use("*", logger())
 app.use("*", cors())
-app.use("*", secureHeaders())
+app.use(
+  "*",
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Adjust based on your needs
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: [
+        "'self'",
+        process.env.NEXT_PUBLIC_URL || "http://localhost:3000",
+      ],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'self'"],
+    },
+  })
+)
 app.use("*", prettyJSON())
 app.use("*", rateLimit)
 app.use("*", errorMiddleware)
+
+// Apply CSRF protection to all non-GET routes
+app.use("*", csrf())
 
 // Create API router
 const apiRouter = new OpenAPIHono()

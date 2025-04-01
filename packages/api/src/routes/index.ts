@@ -50,7 +50,7 @@ api.onError((err, c) => {
       {
         success: false,
         message: err.message,
-        errors: err.errors,
+        details: err.details,
       },
       err.status as any
     )

@@ -3,145 +3,154 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.metadataService = void 0;
 const prisma_1 = require("../lib/prisma");
 const http_exception_1 = require("hono/http-exception");
+const cache_service_1 = require("./cache.service");
+const error_handler_1 = require("../middleware/error-handler");
 /**
- * Metadata service
+ * Metadata Service - responsible for metadata CRUD operations
+ * Uses caching to optimize database access
+ *
+ * NOTE: This is a sample service implementation to demonstrate caching.
+ * Adjust the actual fields and relations according to your Prisma schema.
  */
 exports.metadataService = {
     /**
-     * Get metadata
+     * Get metadata by ID, with caching
      */
-    getMetadata: async (params, userId) => {
-        const { page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", } = params;
+    async getMetadataById(id) {
+        // Check cache first
+        const cacheKey = `metadata:${id}`;
+        const cachedMetadata = await cache_service_1.cacheService.get(cacheKey);
+        if (cachedMetadata) {
+            console.log(`Cache hit for metadata ID: ${id}`);
+            return cachedMetadata;
+        }
+        // Not in cache, fetch from database
+        // Adjust the 'include' object based on your actual Prisma schema
+        const metadata = await prisma_1.prisma.metadata.findUnique({
+            where: { id }
+        });
+        if (!metadata) {
+            throw new error_handler_1.ApiError(`Metadata with ID ${id} not found`, 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+        }
+        // Store in cache for faster access next time
+        await cache_service_1.cacheService.set(cacheKey, metadata, 300); // Cache for 5 minutes
+        return metadata;
+    },
+    /**
+     * List metadata with pagination, filtering and caching
+     */
+    async listMetadata(params) {
+        const { page = 1, limit = 20, search, userId, sort = 'updatedAt', order = 'desc' } = params;
+        // Calculate pagination
         const skip = (page - 1) * limit;
-        const where = userId ? { userId } : {};
-        const [metadata, total] = await Promise.all([
+        // Build cache key based on query parameters
+        const cacheKey = `metadata:list:${JSON.stringify({
+            page, limit, search, userId, sort, order
+        })}`;
+        // Check cache first
+        const cachedResults = await cache_service_1.cacheService.get(cacheKey);
+        if (cachedResults) {
+            console.log(`Cache hit for metadata listing`);
+            return cachedResults;
+        }
+        // Build where clause - adjust for your schema
+        const where = {};
+        if (search) {
+            where.OR = [
+                { title: { contains: search } }
+                // Add other fields to search as needed based on your schema
+            ];
+        }
+        if (userId) {
+            where.userId = userId;
+        }
+        // Execute queries with timing
+        const startTime = Date.now();
+        // Execute count and find in parallel for better performance
+        const [total, items] = await Promise.all([
+            prisma_1.prisma.metadata.count({ where }),
             prisma_1.prisma.metadata.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: {
-                    [sortBy]: sortOrder,
-                },
-            }),
-            prisma_1.prisma.metadata.count({ where }),
+                orderBy: { [sort]: order }
+            })
         ]);
-        return {
-            data: metadata,
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
+        const queryTime = Date.now() - startTime;
+        // Calculate pagination info
+        const totalPages = Math.ceil(total / limit);
+        const result = {
+            items,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+            },
+            meta: {
+                queryTime
+            }
         };
+        // Cache results
+        // Use shorter TTL for list endpoints as they change more frequently
+        await cache_service_1.cacheService.set(cacheKey, result, 60); // Cache for 1 minute
+        return result;
     },
     /**
      * Create new metadata
      */
-    createMetadata: async (data, userId) => {
-        try {
-            const metadata = await prisma_1.prisma.metadata.create({
-                data: {
-                    userId,
-                    title: data.title,
-                    author: data.author,
-                    organization: data.organization,
-                    dateFrom: data.dateFrom,
-                    dateTo: data.dateTo,
-                    abstract: data.abstract,
-                    purpose: data.purpose,
-                    thumbnailUrl: data.thumbnailUrl,
-                    imageName: data.imageName,
-                    frameworkType: data.frameworkType,
-                    dataName: "",
-                    productionDate: new Date().toISOString(),
-                    categories: data.categories,
-                    coordinateSystem: data.coordinateSystem,
-                    projection: data.projection,
-                    scale: data.scale,
-                    resolution: data.resolution,
-                    coordinateUnit: data.coordinateUnit,
-                    minLatitude: data.minLatitude,
-                    minLongitude: data.minLongitude,
-                    maxLatitude: data.maxLatitude,
-                    maxLongitude: data.maxLongitude,
-                    accuracyLevel: data.accuracyLevel,
-                    completeness: data.completeness,
-                    consistencyCheck: data.consistencyCheck,
-                    validationStatus: data.validationStatus,
-                    fileFormat: data.fileFormat,
-                    fileSize: data.fileSize,
-                    numFeatures: data.numFeatures,
-                    softwareReqs: data.softwareReqs,
-                    updateCycle: data.updateCycle,
-                    lastUpdate: data.lastUpdate,
-                    nextUpdate: data.nextUpdate,
-                    distributionFormat: data.distributionFormat,
-                    accessMethod: data.accessMethod,
-                    downloadUrl: data.downloadUrl,
-                    apiEndpoint: data.apiEndpoint,
-                    licenseType: data.licenseType,
-                    usageTerms: data.usageTerms,
-                    attributionRequirements: data.attributionRequirements,
-                    accessRestrictions: data.accessRestrictions,
-                    contactPerson: data.contactPerson,
-                    email: data.email,
-                    department: data.department,
-                },
-            });
-            return metadata;
-        }
-        catch (error) {
-            throw new http_exception_1.HTTPException(500, { message: "Failed to create metadata" });
-        }
+    async createMetadata(data, userId) {
+        // If userId is provided, include it in the data
+        const createData = userId ? { ...data, userId } : data;
+        const metadata = await prisma_1.prisma.metadata.create({
+            data: createData
+        });
+        // Clear list caches when data changes
+        await cache_service_1.cacheService.clearByPrefix('metadata:list:');
+        return metadata;
     },
     /**
      * Update metadata
      */
-    updateMetadata: async (id, data, userId) => {
-        const metadata = await prisma_1.prisma.metadata.findUnique({
+    async updateMetadata(id, data, userId) {
+        // Check if metadata exists
+        const exists = await prisma_1.prisma.metadata.findUnique({ where: { id } });
+        if (!exists) {
+            throw new error_handler_1.ApiError(`Metadata with ID ${id} not found`, 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+        }
+        // If userId is provided, include ownership check
+        if (userId && exists.userId !== userId) {
+            throw new error_handler_1.ApiError("You don't have permission to update this metadata", 403, error_handler_1.ErrorCode.BUSINESS_RULE_VIOLATION);
+        }
+        const metadata = await prisma_1.prisma.metadata.update({
             where: { id },
+            data
         });
-        if (!metadata) {
-            throw new http_exception_1.HTTPException(404, { message: "Metadata not found" });
-        }
-        if (metadata.userId !== userId) {
-            throw new http_exception_1.HTTPException(403, {
-                message: "Not authorized to update this metadata",
-            });
-        }
-        try {
-            const updatedMetadata = await prisma_1.prisma.metadata.update({
-                where: { id },
-                data,
-            });
-            return updatedMetadata;
-        }
-        catch (error) {
-            throw new http_exception_1.HTTPException(500, { message: "Failed to update metadata" });
-        }
+        // Delete specific cache
+        await cache_service_1.cacheService.delete(`metadata:${id}`);
+        // Clear list caches when data changes
+        await cache_service_1.cacheService.clearByPrefix('metadata:list:');
+        return metadata;
     },
     /**
      * Delete metadata
      */
-    deleteMetadata: async (id, userId) => {
-        const metadata = await prisma_1.prisma.metadata.findUnique({
-            where: { id },
-        });
-        if (!metadata) {
-            throw new http_exception_1.HTTPException(404, { message: "Metadata not found" });
+    async deleteMetadata(id, userId) {
+        // Check if metadata exists
+        const exists = await prisma_1.prisma.metadata.findUnique({ where: { id } });
+        if (!exists) {
+            throw new error_handler_1.ApiError(`Metadata with ID ${id} not found`, 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
         }
-        if (metadata.userId !== userId) {
-            throw new http_exception_1.HTTPException(403, {
-                message: "Not authorized to delete this metadata",
-            });
+        // If userId is provided, include ownership check
+        if (userId && exists.userId !== userId) {
+            throw new error_handler_1.ApiError("You don't have permission to delete this metadata", 403, error_handler_1.ErrorCode.BUSINESS_RULE_VIOLATION);
         }
-        try {
-            await prisma_1.prisma.metadata.delete({
-                where: { id },
-            });
-        }
-        catch (error) {
-            throw new http_exception_1.HTTPException(500, { message: "Failed to delete metadata" });
-        }
+        await prisma_1.prisma.metadata.delete({ where: { id } });
+        // Delete specific cache
+        await cache_service_1.cacheService.delete(`metadata:${id}`);
+        // Clear list caches when data changes
+        await cache_service_1.cacheService.clearByPrefix('metadata:list:');
+        return { success: true };
     },
     /**
      * Search metadata

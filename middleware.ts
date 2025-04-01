@@ -1,60 +1,11 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { PROTECTED_ROUTES } from "./lib/auth/paths"
-import * as jose from "jose"
 import { UserRole } from "./lib/auth/constants"
-import { authClient, validateJwtToken } from "./lib/auth-client"
+import { authClient } from "./lib/auth-client"
 
 // Constants
 const AUTH_COOKIE_NAME = "auth_token"
-
-// Cache token validation results (TTL of 60 seconds)
-const tokenValidationCache = new Map<string, {
-  timestamp: number;
-  isValid: boolean;
-  userId?: string;
-  email?: string;
-  role?: string;
-}>();
-
-// Basic client-side token validation (non-blocking)
-function quickValidateToken(token: string) {
-  try {
-    // Quick format check
-    if (!token || !token.includes(".") || token.split(".").length !== 3) {
-      return { isValid: false }
-    }
-
-    // Decode without verification (fast operation)
-    const decoded = jose.decodeJwt(token)
-
-    // Check expiration
-    const currentTime = Math.floor(Date.now() / 1000)
-    if (decoded.exp && decoded.exp < currentTime) {
-      return { isValid: false }
-    }
-
-    // Extract basic user information
-    const userId =
-      typeof decoded.sub === "string"
-        ? decoded.sub
-        : typeof decoded.userId === "string"
-          ? decoded.userId
-          : ""
-
-    const email = typeof decoded.email === "string" ? decoded.email : "unknown"
-    const role = typeof decoded.role === "string" ? decoded.role : "USER"
-
-    return {
-      isValid: !!userId,
-      userId,
-      email,
-      role,
-    }
-  } catch (e) {
-    return { isValid: false }
-  }
-}
 
 async function hasCompletedOnboarding(userId: string) {
   // Check if user has completed onboarding
@@ -124,7 +75,7 @@ export async function middleware(request: NextRequest) {
     if (authToken && path === "/auth/signin") {
       // For the signin page specifically, perform a quick validation check
       try {
-        const quickResult = quickValidateToken(authToken)
+        const validationResult = await authClient.validateToken(authToken)
         // Add debug headers to help with troubleshooting
         const response = NextResponse.next()
         response.headers.set(
@@ -132,13 +83,13 @@ export async function middleware(request: NextRequest) {
           JSON.stringify({
             path,
             hasToken: true,
-            quickValidation: quickResult.isValid,
+            quickValidation: validationResult.isValid,
             timestamp: Date.now(),
           })
         )
         return response
       } catch (error) {
-        console.error("Error in auth token quick validation:", error)
+        console.error("Error in auth token validation:", error)
         // If validation fails, still allow access to signin page
       }
     }
@@ -168,48 +119,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // Check cache first for this token
-    const cachedResult = tokenValidationCache.get(authToken)
-    if (cachedResult && Date.now() - cachedResult.timestamp < 60000) {
-      // 60 second TTL
-      // Use cached result
-      if (!cachedResult.isValid) {
-        // If cached result says token is invalid, redirect to login
-        console.log(
-          `Redirecting from protected route ${path} to signin due to invalid token (cached)`
-        )
-        const redirectUrl = new URL("/auth/signin", request.url)
-        redirectUrl.searchParams.set("from", path)
-        return NextResponse.redirect(redirectUrl)
-      }
-
-      // Create response with user headers from cache
-      const response = NextResponse.next()
-      if (cachedResult.userId) {
-        response.headers.set("x-user-id", cachedResult.userId)
-        response.headers.set("x-user-email", cachedResult.email || "")
-        response.headers.set("x-user-role", cachedResult.role || "USER")
-      }
-
-      return response
-    }
-
-    // Perform quick client-side validation (synchronous)
-    const quickResult = quickValidateToken(authToken)
-
-    // Cache the result
-    tokenValidationCache.set(authToken, {
-      timestamp: Date.now(),
-      isValid: quickResult.isValid,
-      userId: quickResult.userId,
-      email: quickResult.email,
-      role: quickResult.role,
-    })
-
-    if (!quickResult.isValid) {
+    // Validate the token using our client-side validation
+    const validationResult = await authClient.validateToken(authToken)
+    
+    if (!validationResult.isValid) {
       // If token is invalid, redirect to login
       console.log(
-        `Redirecting from protected route ${path} to signin due to invalid token`
+        `Redirecting from protected route ${path} to signin due to invalid token: ${validationResult.error}`
       )
       const redirectUrl = new URL("/auth/signin", request.url)
       redirectUrl.searchParams.set("from", path)
@@ -218,14 +134,14 @@ export async function middleware(request: NextRequest) {
 
     // Create response with user headers
     const response = NextResponse.next()
-    if (quickResult.userId) {
-      response.headers.set("x-user-id", quickResult.userId)
-      response.headers.set("x-user-email", quickResult.email || "")
-      response.headers.set("x-user-role", quickResult.role || "USER")
+    if (validationResult.userId) {
+      response.headers.set("x-user-id", validationResult.userId)
+      response.headers.set("x-user-email", validationResult.email || "")
+      response.headers.set("x-user-role", validationResult.role || "USER")
     }
 
-    // Check if user is a node officer who hasn't completed onboarding
-    if (quickResult.role === UserRole.NODE_OFFICER) {
+    // Handle node officer onboarding check with userId null check
+    if (validationResult.role === UserRole.NODE_OFFICER) {
       // Check if already on new-user page or coming from new-user page to avoid loops
       if (path.startsWith("/auth/new-user")) {
         // Allow access to the new-user page
@@ -237,18 +153,24 @@ export async function middleware(request: NextRequest) {
         request.cookies.get("onboarding_complete")?.value === "true"
       if (onboardingComplete) {
         // If flag is set, skip the onboarding check
-        return NextResponse.next()
+        return response
       }
 
       // Check if the path is for root/home, as these are the likely redirect targets after onboarding
       if (path === "/" || path === "/home") {
         // For root paths, check if actually onboarded
-        const hasOnboarded = await hasCompletedOnboarding(quickResult.userId)
+        if (validationResult.userId) {
+          const hasOnboarded = await hasCompletedOnboarding(validationResult.userId)
 
-        // If not onboarded, redirect to onboarding
-        if (!hasOnboarded) {
-          console.log("Node officer needs to complete onboarding, redirecting")
-          return NextResponse.redirect(new URL("/auth/new-user", request.url))
+          // If not onboarded, redirect to onboarding
+          if (!hasOnboarded) {
+            console.log("Node officer needs to complete onboarding, redirecting")
+            return NextResponse.redirect(new URL("/auth/new-user", request.url))
+          }
+        } else {
+          // If we don't have a userId, redirect to login
+          console.log("Missing userId for node officer, redirecting to login")
+          return NextResponse.redirect(new URL("/auth/signin", request.url))
         }
       }
     }
@@ -256,7 +178,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // For non-protected routes that aren't special cases, just continue
+  // For non-protected routes, just continue
   return NextResponse.next()
 }
 

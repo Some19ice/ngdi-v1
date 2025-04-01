@@ -10,6 +10,7 @@ export enum AuthErrorCode {
   PASSWORD_POLICY = "AUTH009",
   MFA_REQUIRED = "AUTH010",
   FORBIDDEN = "AUTH011",
+  CSRF_TOKEN_INVALID = "AUTH012",
 }
 
 export class AuthError extends Error {
@@ -28,5 +29,5 @@ export interface ErrorResponse {
   success: false
   code: string
   message: string
-  details?: Record<string, any>
+  details?: Record<string, any> | any[]
 }

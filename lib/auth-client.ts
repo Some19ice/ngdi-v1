@@ -1,6 +1,7 @@
 import axios from "axios";
 import * as jose from "jose";
 import { normalizeRole, UserRole, isValidRole } from "./auth/constants"
+import { quickValidateToken, TokenValidationResult } from "../packages/api/src/utils/token-validation"
 
 // Types
 export interface User {
@@ -700,6 +701,40 @@ export const authClient = {
     } catch (error) {
       console.error("Failed to exchange code for session:", error)
       throw error
+    }
+  },
+
+  async validateToken(token: string): Promise<TokenValidationResult> {
+    return quickValidateToken(token);
+  },
+
+  async refreshSession(): Promise<Session | null> {
+    try {
+      // Call the refresh endpoint through our Next.js proxy
+      const response = await axios.post(`/api/auth/refresh-token`, {}, {
+        withCredentials: true
+      });
+      
+      if (response.data.success && response.data.data) {
+        // Construct session from response
+        const { accessToken, refreshToken, user } = response.data.data;
+        
+        // Decode the token to get expiration
+        const decoded = jose.decodeJwt(accessToken);
+        const expiresAt = decoded.exp;
+        
+        return {
+          user: user ? normalizeUserData(user) : null,
+          accessToken,
+          refreshToken,
+          expires: new Date(expiresAt! * 1000).toISOString()
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Failed to refresh session:", error);
+      return null;
     }
   },
 }

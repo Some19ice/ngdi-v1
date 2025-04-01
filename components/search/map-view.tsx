@@ -43,37 +43,40 @@ export default function MapView({ metadata, isLoading }: MapViewProps) {
     if (mapLibLoaded) return
 
     const loadLeaflet = async () => {
-      // Load CSS
-      const link = document.createElement("link")
-      link.rel = "stylesheet"
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      link.crossOrigin = ""
-      document.head.appendChild(link)
+      try {
+        // Load CSS
+        const link = document.createElement("link")
+        link.rel = "stylesheet"
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        link.crossOrigin = ""
+        document.head.appendChild(link)
 
-      // Wait for CSS to load
-      await new Promise((resolve) => setTimeout(resolve, 100))
+        // Wait for CSS to load
+        await new Promise((resolve) => setTimeout(resolve, 100))
 
-      // Load JS and initialize map
-      // @ts-ignore
-      const L = await import("leaflet")
+        // Load JS and initialize map
+        const L = await import("leaflet")
 
-      if (!mapContainerRef.current) return
+        if (!mapContainerRef.current) return
 
-      // Initialize map
-      if (!mapRef.current) {
-        mapRef.current = L.map(mapContainerRef.current).setView(
-          [9.082, 8.6753],
-          6
-        ) // Nigeria center
+        // Initialize map
+        if (!mapRef.current) {
+          mapRef.current = L.map(mapContainerRef.current).setView(
+            [9.082, 8.6753],
+            6
+          ) // Nigeria center
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "© OpenStreetMap contributors",
-        }).addTo(mapRef.current)
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "© OpenStreetMap contributors",
+          }).addTo(mapRef.current)
 
-        setMapLibLoaded(true)
-        setMapLoaded(true)
+          setMapLibLoaded(true)
+          setMapLoaded(true)
+        }
+      } catch (error) {
+        console.error("Error loading Leaflet:", error)
       }
     }
 
@@ -91,49 +94,57 @@ export default function MapView({ metadata, isLoading }: MapViewProps) {
     )
       return
 
-    const L = window.L
-    if (!L) return
-
-    // Clear existing markers
-    if (markersRef.current.length) {
-      markersRef.current.forEach((marker: any) => {
-        if (mapRef.current) mapRef.current.removeLayer(marker)
-      })
-      markersRef.current = []
-    }
-
-    // Add markers for metadata items
-    metadata.forEach((item) => {
-      // Skip if no coordinates
-      if (!item.minLatitude || !item.minLongitude) return
-
+    const addMarkers = async () => {
       try {
-        // Calculate center of item's bounding box
-        const lat =
-          (item.minLatitude + item.maxLatitude) / 2 || item.minLatitude
-        const lng =
-          (item.minLongitude + item.maxLongitude) / 2 || item.minLongitude
+        // Load the Leaflet library using dynamic import
+        const L = await import("leaflet")
 
-        const marker = L.marker([lat, lng]).addTo(mapRef.current)
+        // Clear existing markers
+        if (markersRef.current.length) {
+          markersRef.current.forEach((marker: any) => {
+            if (mapRef.current) mapRef.current.removeLayer(marker)
+          })
+          markersRef.current = []
+        }
 
-        marker.on("click", () => {
-          setSelectedMarker(item)
+        // Add markers for metadata items
+        metadata.forEach((item) => {
+          // Skip if no coordinates
+          if (!item.minLatitude || !item.minLongitude) return
+
+          try {
+            // Calculate center of item's bounding box
+            const lat =
+              (item.minLatitude + item.maxLatitude) / 2 || item.minLatitude
+            const lng =
+              (item.minLongitude + item.maxLongitude) / 2 || item.minLongitude
+
+            const marker = L.marker([lat, lng]).addTo(mapRef.current)
+
+            marker.on("click", () => {
+              setSelectedMarker(item)
+            })
+
+            // Store marker for cleanup
+            markersRef.current.push(marker)
+          } catch (error) {
+            console.error("Error adding marker:", error)
+          }
         })
 
-        // Store marker for cleanup
-        markersRef.current.push(marker)
+        // Fit bounds if we have markers
+        if (markersRef.current.length > 0) {
+          const group = L.featureGroup(markersRef.current)
+          mapRef.current.fitBounds(group.getBounds(), {
+            padding: [50, 50],
+          })
+        }
       } catch (error) {
-        console.error("Error adding marker:", error)
+        console.error("Error loading Leaflet for markers:", error)
       }
-    })
-
-    // Fit bounds if we have markers
-    if (markersRef.current.length > 0) {
-      const group = L.featureGroup(markersRef.current)
-      mapRef.current.fitBounds(group.getBounds(), {
-        padding: [50, 50],
-      })
     }
+
+    addMarkers()
   }, [metadata, mapLoaded, mapLibLoaded, isLoading])
 
   // Handle fullscreen toggle
