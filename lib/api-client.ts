@@ -188,25 +188,28 @@ export const api = {
   logout: () => authClient.logout(),
 
   // User endpoints
-  getCurrentUser: () => apiClient.get<UserProfile>("/api/users/profile"),
+  getCurrentUser: () => {
+    // Remove /api prefix since it's in the baseURL
+    return apiClient.get<UserProfile>("/users/profile")
+  },
   updateUser: (data: UserUpdateRequest) =>
-    apiClient.put<UserProfile>("/api/users/profile", data),
+    apiClient.put<UserProfile>("/users/profile", data),
   getUsers: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<UserProfile>>("/api/users", params),
+    apiClient.get<PaginatedResponse<UserProfile>>("/users", params),
 
   // Metadata endpoints
   getMetadata: (params?: PaginationParams) =>
-    apiClient.get<PaginatedResponse<MetadataResponse>>("/api/metadata", params),
+    apiClient.get<PaginatedResponse<MetadataResponse>>("/metadata", params),
   createMetadata: (data: MetadataRequest) =>
-    apiClient.post<MetadataResponse>("/api/metadata", data),
+    apiClient.post<MetadataResponse>("/metadata", data),
   updateMetadata: (id: string, data: MetadataRequest) =>
-    apiClient.put<MetadataResponse>(`/api/metadata/${id}`, data),
-  deleteMetadata: (id: string) => apiClient.delete(`/api/metadata/${id}`),
+    apiClient.put<MetadataResponse>(`/metadata/${id}`, data),
+  deleteMetadata: (id: string) => apiClient.delete(`/metadata/${id}`),
 
   // Admin endpoints
-  deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
+  deleteUser: (id: string) => apiClient.delete(`/users/${id}`),
   updateUserRole: (id: string, role: string) =>
-    apiClient.put<UserProfile>(`/api/users/${id}/role`, { role }),
+    apiClient.put<UserProfile>(`/users/${id}/role`, { role }),
 
   // Auth token helper
   getAuthToken: () => authClient.getAccessToken(),
