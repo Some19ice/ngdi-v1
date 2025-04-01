@@ -116,8 +116,15 @@ class ApiClient {
   public static getInstance(): ApiClient {
     if (!ApiClient.instance) {
       // Get proper API URL based on environment
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-      console.log("Using API URL:", apiUrl)
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+
+      // If the API URL already includes /api at the end, remove the trailing /api
+      // This ensures consistency when appending paths that include /api
+      if (apiUrl.endsWith("/api")) {
+        apiUrl = apiUrl.substring(0, apiUrl.length - 4) // Remove trailing /api
+      }
+
+      console.log("Using API base URL:", apiUrl)
       ApiClient.instance = new ApiClient({
         baseURL: apiUrl,
       })

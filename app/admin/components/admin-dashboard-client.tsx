@@ -75,7 +75,15 @@ export function AdminDashboardClient() {
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
         console.log("Prefetching admin dashboard data from:", apiUrl)
 
-        const response = await fetch(`${apiUrl}/admin/dashboard-stats`, {
+        // Adjust the URL path to avoid duplication of /api
+        // Our API URL already ends with /api, so we directly append the endpoint
+        const dashboardStatsUrl = `${apiUrl}/admin/dashboard-stats`.replace(
+          "/api/api/",
+          "/api/"
+        )
+        console.log("Fetching dashboard stats from:", dashboardStatsUrl)
+
+        const response = await fetch(dashboardStatsUrl, {
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
