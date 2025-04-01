@@ -115,8 +115,11 @@ class ApiClient {
 
   public static getInstance(): ApiClient {
     if (!ApiClient.instance) {
+      // Get proper API URL based on environment
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      console.log("Using API URL:", apiUrl)
       ApiClient.instance = new ApiClient({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
+        baseURL: apiUrl,
       })
     }
     return ApiClient.instance

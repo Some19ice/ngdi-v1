@@ -70,14 +70,16 @@ export function AdminDashboardClient() {
           throw new Error("No authentication token found")
         }
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        )
+        // Use appropriate API URL based on environment
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+        console.log("Prefetching admin dashboard data from:", apiUrl)
+
+        const response = await fetch(`${apiUrl}/admin/dashboard-stats`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        })
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
