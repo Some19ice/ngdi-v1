@@ -119,9 +119,17 @@ module.exports = {
   compiler: {
     reactRemoveProperties: process.env.NODE_ENV === "production",
   },
-  // Configure rewrites for API - All API requests handled by Hono.js
+  // Configure rewrites for API
   async rewrites() {
-    return []
+    return [
+      {
+        source: "/api/:path*",
+        destination:
+          process.env.NODE_ENV === "production"
+            ? "https://ngdi-api.vercel.app/api/:path*"
+            : "http://localhost:3001/api/:path*",
+      },
+    ]
   },
   // Configure redirects
   async redirects() {

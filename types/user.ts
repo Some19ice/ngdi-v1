@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client"
+import { UserRole } from "@/lib/auth/constants"
 
 export interface UserProfile {
   id: string
@@ -9,6 +9,7 @@ export interface UserProfile {
   createdAt: string
   updatedAt: string
   organization?: string | null
+  image?: string | null
 }
 
 export interface UserUpdateRequest {

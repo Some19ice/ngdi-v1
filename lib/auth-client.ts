@@ -11,6 +11,9 @@ import {
   areCookiesEnabled,
 } from "./utils/cookie-utils"
 
+// Re-export the Session type
+export type { Session }
+
 // Cookie constants
 export const AUTH_COOKIE_NAME = "auth_token"
 export const REFRESH_COOKIE_NAME = "refresh_token"
@@ -32,15 +35,9 @@ export interface AuthTokens {
 // Get API URL from environment or use default
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
 
-// Track session refresh state globally
-declare global {
-  interface Window {
-    __lastSessionRefresh?: number
-  }
-}
-
 // Helper function to validate JWT token structure - with local caching
-let tokenCache: Record<string, TokenValidationResult> = {}
+let tokenCache: Record<string, TokenValidationResult & { timestamp: number }> =
+  {}
 
 export const validateToken = async (
   token: string
@@ -65,11 +62,14 @@ export const validateToken = async (
       isValid: false,
       error: "Invalid token format",
       timestamp: Date.now(),
-    }
+    } as TokenValidationResult & { timestamp: number }
     tokenCache[token] = result
     return result
   }
 }
+
+// Export validateJwtToken as an alias for validateToken for backward compatibility
+export const validateJwtToken = validateToken
 
 // Helper function to normalize user data from API
 function normalizeUserData(userData: any): UserProfile {
@@ -84,7 +84,7 @@ function normalizeUserData(userData: any): UserProfile {
     id: userData.id,
     name: userData.name || "",
     email: userData.email,
-    role: normalizedRole,
+    role: normalizedRole as UserRole, // Force type as UserRole to avoid null
     organization: userData.organization || null,
     emailVerified: userData.emailVerified || null,
     createdAt: userData.createdAt || new Date().toISOString(),
@@ -211,7 +211,7 @@ export const authClient = {
 
       // Store last login timestamp
       if (typeof window !== "undefined") {
-        window.__lastSessionRefresh = Date.now()
+        ;(window as any).__lastSessionRefresh = Date.now()
       }
 
       return session
@@ -271,6 +271,193 @@ export const authClient = {
       return response.data.accessToken
     } catch (error) {
       console.error("Token refresh failed:", error)
+      throw error
+    }
+  },
+
+  // Add isAuthenticated method
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const token = getCookie(AUTH_COOKIE_NAME)
+      if (!token) {
+        return false
+      }
+
+      const validationResult = await validateToken(token)
+      return validationResult.isValid
+    } catch (error) {
+      console.error("Error checking authentication status:", error)
+      return false
+    }
+  },
+
+  // Add getSession method to retrieve the current session
+  async getSession(): Promise<Session | null> {
+    try {
+      const token = getCookie(AUTH_COOKIE_NAME)
+      if (!token) {
+        return null
+      }
+
+      const validationResult = await validateToken(token)
+      if (!validationResult.isValid) {
+        return null
+      }
+
+      // Construct a session from the token information
+      return {
+        user: {
+          id: validationResult.userId || "",
+          email: validationResult.email || "",
+          name: "", // Use empty string since name is not in validationResult
+          role: (validationResult.role as UserRole) || UserRole.USER,
+          organization: null,
+          emailVerified: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        accessToken: token,
+        refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
+        expires: validationResult.exp
+          ? new Date(validationResult.exp * 1000).toISOString()
+          : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }
+    } catch (error) {
+      console.error("Error getting session:", error)
+      return null
+    }
+  },
+
+  // Add getAccessToken method to retrieve the current access token
+  getAccessToken(): string | null {
+    return getCookie(AUTH_COOKIE_NAME)
+  },
+
+  // Add exchangeCodeForSession method for handling auth code exchange
+  async exchangeCodeForSession(code: string): Promise<Session> {
+    try {
+      console.log(
+        `Exchanging auth code for session: ${code.substring(0, 8)}...`
+      )
+
+      const response = await axios.post(
+        `${API_URL}/auth/exchange-code`,
+        { code },
+        {
+          headers: {
+            "X-Client-Version": "1.0.0",
+            "X-Request-ID": crypto.randomUUID(),
+          },
+        }
+      )
+
+      const { accessToken, refreshToken, user } = response.data
+
+      // Create the session object
+      const session: Session = {
+        user: user ? normalizeUserData(user) : null,
+        accessToken,
+        refreshToken,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      }
+
+      // Set auth cookies
+      if (accessToken) {
+        setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge: 60 * 60 * 24 }) // 1 day
+      }
+
+      if (refreshToken) {
+        setCookie(REFRESH_COOKIE_NAME, refreshToken, {
+          maxAge: 60 * 60 * 24 * 14,
+        }) // 14 days
+      }
+
+      // Update session refresh timestamp
+      if (typeof window !== "undefined") {
+        ;(window as any).__lastSessionRefresh = Date.now()
+      }
+
+      return session
+    } catch (error: any) {
+      console.error("Code exchange error:", error)
+      throw new Error(
+        error.response?.data?.message || "Failed to exchange code for session"
+      )
+    }
+  },
+
+  // Add register method for user registration
+  async register(
+    email: string,
+    password: string,
+    name?: string
+  ): Promise<Session> {
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/register`,
+        {
+          email,
+          password,
+          name: name || "",
+        },
+        {
+          headers: {
+            "X-Request-ID": crypto.randomUUID(),
+          },
+        }
+      )
+
+      const { accessToken, refreshToken, user } = response.data
+
+      // Create the session object
+      const session: Session = {
+        user: user ? normalizeUserData(user) : null,
+        accessToken,
+        refreshToken,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      }
+
+      // Set auth cookies
+      if (accessToken) {
+        setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge: 60 * 60 * 24 }) // 1 day
+      }
+
+      if (refreshToken) {
+        setCookie(REFRESH_COOKIE_NAME, refreshToken, {
+          maxAge: 60 * 60 * 24 * 14,
+        }) // 14 days
+      }
+
+      // Update session refresh timestamp
+      if (typeof window !== "undefined") {
+        ;(window as any).__lastSessionRefresh = Date.now()
+      }
+
+      return session
+    } catch (error: any) {
+      console.error("Registration error:", error)
+      throw new Error(
+        error.response?.data?.message || "Failed to register user"
+      )
+    }
+  },
+
+  // Add refreshSession method to refresh the current session
+  async refreshSession(): Promise<void> {
+    try {
+      const token = await this.refreshToken()
+
+      if (token) {
+        // Update the auth cookie with the new token
+        setCookie(AUTH_COOKIE_NAME, token, { maxAge: 60 * 60 * 24 }) // 1 day
+
+        // Update session refresh timestamp
+        if (typeof window !== "undefined") {
+          ;(window as any).__lastSessionRefresh = Date.now()
+        }
+      }
+    } catch (error) {
+      console.error("Session refresh failed:", error)
       throw error
     }
   },
