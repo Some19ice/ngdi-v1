@@ -1,64 +1,145 @@
+# NGDI Portal Project Intelligence
 
-  You are an expert in TypeScript, Node.js, Next.js App Router, React, Shadcn UI, Radix UI and Tailwind.
-  
-  Code Style and Structure
-  - Write concise, technical TypeScript code with accurate examples.
-  - Use functional and declarative programming patterns; avoid classes.
-  - Prefer iteration and modularization over code duplication.
-  - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
-  - Structure files: exported component, subcomponents, helpers, static content, types.
-  
-  Naming Conventions
-  - Use lowercase with dashes for directories (e.g., components/auth-wizard).
-  - Favor named exports for components.
-  
-  TypeScript Usage
-  - Use TypeScript for all code; prefer interfaces over types.
-  - Avoid enums; use maps instead.
-  - Use functional components with TypeScript interfaces.
-  
-  Syntax and Formatting
-  - Use the "function" keyword for pure functions.
-  - Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements.
-  - Use declarative JSX.
-  
-  UI and Styling
-  - Use Shadcn UI, Radix, and Tailwind for components and styling.
-  - Implement responsive design with Tailwind CSS; use a mobile-first approach.
-  
-  Performance Optimization
-  - Minimize 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC).
-  - Wrap client components in Suspense with fallback.
-  - Use dynamic loading for non-critical components.
-  - Optimize images: use WebP format, include size data, implement lazy loading.
-  
-  Key Conventions
-  - Use 'nuqs' for URL search parameter state management.
-  - Optimize Web Vitals (LCP, CLS, FID).
-  - Limit 'use client':
-    - Favor server components and Next.js SSR.
-    - Use only for Web API access in small components.
-    - Avoid for data fetching or state management.
-  
-  Follow Next.js docs for Data Fetching, Rendering, and Routing.
+## Project Patterns
 
-  #Git Usage
+1. **Monorepo Structure**: 
+   - Frontend: Root directory with Next.js App Router
+   - API: Located in packages/api with Hono.js
+   - Shared types and utilities across frontend and backend
 
-  use the following prefixes for commit messages followed by a colon and a space:
-  "fix" for bug fixes
-  "feat" for new features
-  "perf" for performance improvements
-  "docs" for documentation changes
-  "style" for formatting changes
-  "refactor" for code refactoring
-  "test" for adding missing tests
-  "chore" for chore tasks
-  when determining the commit message prefix, pick the most relevant prefix from the list above
-  use lower case for commit messages
-  the commit message should also include a list of the changes made in the commit after the summary line if the changes are not self explanatory
+2. **Component Organization**:
+   - Components organized by feature in /components directory
+   - Reusable UI components in /components/ui
+   - Feature-specific components in feature-named directories
+   - Layout components in /components/layout
+   - Provider components in /components/providers
 
-  #Extra
+3. **Naming Conventions**:
+   - PascalCase for component files and React components (LoginForm.tsx)
+   - camelCase for utility functions, hooks, and variables
+   - kebab-case for CSS class names (Tailwind)
+   - Path-based naming for pages (app/auth/signin/page.tsx)
 
-  Before editing a file, read it first.
+4. **Development Workflow**:
+   - Use `npm run dev` to start both frontend and API development servers
+   - Run tests with `npm run test` before submitting changes
+   - Use `npm run db:push` to update the database schema
+   - Use `npm run build` to build both frontend and API for production
 
-  
+5. **Testing Approach**:
+   - End-to-end tests with Playwright in /tests directory
+   - API tests with Jest in packages/api/tests
+   - Use test:ui for UI-based test debugging
+   - Tests should be comprehensive and pass before deployment
+
+6. **Code Style**:
+   - TypeScript for all code with explicit type annotations
+   - Follow ESLint and Prettier configurations
+   - Use explicit typings for function parameters and returns
+   - Prefer async/await over promise chains
+   - Use destructuring for props and state
+
+7. **Import Order**:
+   - External libraries first
+   - Internal modules second
+   - Relative imports last
+   - Organize by category (React, components, hooks, utilities)
+   - Group related imports together
+
+8. **State Management**:
+   - React Query for server state and caching
+   - React Context for global application state
+   - Component-level state for UI-specific state
+   - Custom hooks for reusable state logic
+
+## Critical Implementation Paths
+
+1. **Authentication Flow**:
+   - Login form in components/auth/login-form.tsx
+   - JWT validation in middleware.ts
+   - Session refreshing in components/auth/session-refresher.tsx
+   - Protected routes defined in lib/auth/paths.ts
+   - Role-based access control with UserRole enum
+   - Auth API routes in packages/api/src/routes/auth.routes.ts
+
+2. **Map Visualization**:
+   - Map component in components/map/map.tsx
+   - Multiple mapping libraries supported (choose appropriate one)
+   - Map integration with metadata for visualization
+   - Custom hooks for map functionality
+   - Map pages in app/map directory
+
+3. **Metadata Management**:
+   - Complex metadata model in prisma/schema.prisma
+   - Metadata search in components/metadata/search-form.tsx
+   - Metadata list in components/metadata/metadata-list.tsx
+   - Metadata view in components/metadata/metadata-view.tsx
+   - Metadata API routes in packages/api/src/routes/metadata.routes.ts
+   - Form validation with Zod schemas
+
+4. **Search Functionality**:
+   - Search form base in components/search/SearchFormBase.tsx
+   - Metadata search integration
+   - Search results display in components/metadata/results.tsx
+   - Search API routes in packages/api/src/routes/search.routes.ts
+   - Advanced filtering options
+
+5. **User Management**:
+   - User profile in components/user-profile.tsx
+   - Admin panels in components/admin
+   - User API routes in packages/api/src/routes/user.routes.ts
+   - Role-based permissions and access control
+
+## Tool Usage Patterns
+
+1. **Next.js App Router**:
+   - Page components in app/[route]/page.tsx
+   - Layout components in app/[route]/layout.tsx
+   - Loading states in app/[route]/loading.tsx
+   - Error handling in app/[route]/error.tsx
+   - API routes in app/api/[route]/route.ts
+   - Server actions in app/actions/[name].ts
+
+2. **Environment Variables**:
+   - Frontend: .env.local for development
+   - Shared: .env for common variables
+   - Production: .env.production for production settings
+   - API: packages/api/.env for API-specific variables
+   - Access via process.env in Node.js and process.env.NEXT_PUBLIC_* in browser
+
+3. **Database Access**:
+   - Prisma client initialization in lib/db.ts
+   - Database schema in prisma/schema.prisma
+   - Migrations managed by Prisma
+   - Model relationships defined in schema.prisma
+   - Complex metadata model with many fields
+
+4. **Component Development**:
+   - Use Radix UI primitives as base components
+   - Enhance with Tailwind CSS for styling
+   - Compose complex components from simpler ones
+   - Use class-variance-authority for component variants
+   - Create hooks for reusable logic
+
+5. **API Development**:
+   - Define routes in packages/api/src/routes
+   - Group routes by feature
+   - Validate requests with Zod schemas
+   - Use middleware for authentication and validation
+   - Return typed responses with consistent structure
+
+6. **Testing Patterns**:
+   - Write Playwright tests for UI components
+   - Create Jest tests for API endpoints
+   - Use mock data for testing
+   - Test critical user workflows
+   - Verify authentication and authorization
+
+7. **Error Handling**:
+   - Use error boundaries for React components
+   - Implement consistent API error responses
+   - Log errors with appropriate context
+   - Provide user-friendly error messages
+   - Handle edge cases explicitly
+
+This file will be updated as we discover more patterns and intelligence about the project. 
