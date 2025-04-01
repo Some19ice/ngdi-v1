@@ -1,4 +1,4 @@
-import { Prisma, User } from "@prisma/client"
+import { Prisma, User, UserRole } from "@prisma/client"
 import { prisma } from "../client"
 import { UserListQuery } from "../../types/user.types"
 
@@ -70,7 +70,7 @@ export const userRepository = {
     }
 
     if (role) {
-      where.role = role
+      where.role = role as UserRole
     }
 
     // Count total users matching the filter
@@ -126,9 +126,12 @@ export const userRepository = {
       },
     })
 
-    return usersByRole.reduce((acc, curr) => {
-      acc[curr.role] = curr._count.role
-      return acc
-    }, {} as Record<string, number>)
+    return usersByRole.reduce(
+      (acc, curr) => {
+        acc[curr.role] = curr._count.role
+        return acc
+      },
+      {} as Record<string, number>
+    )
   },
 }

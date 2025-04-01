@@ -8,6 +8,7 @@ const zod_validator_1 = require("@hono/zod-validator");
 const zod_1 = require("zod");
 const metadata_types_1 = require("../types/metadata.types");
 const prisma_1 = require("../lib/prisma");
+const json_serializer_1 = require("../utils/json-serializer");
 const metadata = new hono_1.Hono();
 exports.metadata = metadata;
 const metadataSchema = zod_1.z.object({
@@ -26,6 +27,11 @@ const metadataSchema = zod_1.z.object({
     projection: zod_1.z.string(),
     scale: zod_1.z.number().positive("Scale must be positive"),
     resolution: zod_1.z.string().optional(),
+    coordinateUnit: zod_1.z.enum(["DD", "DMS"]).default("DD"),
+    minLatitude: zod_1.z.number().default(0),
+    minLongitude: zod_1.z.number().default(0),
+    maxLatitude: zod_1.z.number().default(0),
+    maxLongitude: zod_1.z.number().default(0),
     accuracyLevel: zod_1.z.string(),
     completeness: zod_1.z.number().min(0).max(100).optional(),
     consistencyCheck: zod_1.z.boolean().optional(),
@@ -88,7 +94,12 @@ metadata.post("/", (0, zod_validator_1.zValidator)("json", metadataSchema), asyn
     const userId = c.get("userId");
     const data = await c.req.json();
     const result = await metadata_service_1.metadataService.createMetadata(data, userId);
-    return c.json(result);
+    // Use SafeJSON to handle BigInt values
+    return new Response(json_serializer_1.SafeJSON.stringify(result), {
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
 });
 /**
  * @openapi
@@ -128,8 +139,13 @@ metadata.get("/:id", (0, zod_validator_1.zValidator)("param", metadata_types_1.M
     if (!metadata) {
         return c.json({ error: "Metadata not found" }, 404);
     }
-    return c.json({
+    // Use SafeJSON to handle BigInt values
+    return new Response(json_serializer_1.SafeJSON.stringify({
         metadata,
+    }), {
+        headers: {
+            "Content-Type": "application/json",
+        },
     });
 });
 /**
@@ -176,7 +192,12 @@ metadata.put("/:id", (0, zod_validator_1.zValidator)("param", metadata_types_1.M
     const { id } = c.req.valid("param");
     const data = await c.req.json();
     const result = await metadata_service_1.metadataService.updateMetadata(id, data, userId);
-    return c.json(result);
+    // Use SafeJSON to handle BigInt values
+    return new Response(json_serializer_1.SafeJSON.stringify(result), {
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
 });
 /**
  * @openapi
@@ -293,9 +314,14 @@ metadata.get("/search", async (c) => {
         sortBy: "createdAt",
         sortOrder: "desc",
     });
-    return c.json({
+    // Use SafeJSON to handle BigInt values
+    return new Response(json_serializer_1.SafeJSON.stringify({
         success: true,
         data: result,
+    }), {
+        headers: {
+            "Content-Type": "application/json",
+        },
     });
 });
 /**
@@ -352,6 +378,11 @@ metadata.get("/user", async (c) => {
         sortBy: "createdAt",
         sortOrder: "desc",
     });
-    return c.json(result);
+    // Use SafeJSON to handle BigInt values
+    return new Response(json_serializer_1.SafeJSON.stringify(result), {
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
 });
 exports.default = metadata;

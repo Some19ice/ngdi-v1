@@ -12,7 +12,7 @@ import { UserRole } from "../types/auth.types"
 import { emailService } from "../services/email.service"
 import { AuthService } from "../services/auth.service"
 import { HTTPException } from "hono/http-exception"
-import { auth as authMiddleware } from "../middleware/auth"
+import { authMiddleware } from "../middleware/auth"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import { setCookieWithOptions } from "../utils/cookie.utils"
 import { rateLimit } from "../middleware/rate-limit.middleware"
@@ -26,9 +26,10 @@ import {
   forgotPasswordSchema,
 } from "../types/auth.types"
 import * as jose from "jose"
+import { Variables } from "../types/hono.types"
 
 // Create auth router
-const auth = new Hono()
+const auth = new Hono<{ Variables: Variables }>()
 
 // Apply error handler
 auth.onError(errorHandler)
@@ -331,12 +332,13 @@ auth.post("/logout", async (c) => {
 })
 
 // Get current user (me) endpoint
-auth.use("/me", auth.authenticate)
+auth.use("/me", authMiddleware)
 auth.get("/me", async (c) => {
+  const userId = c.var.userId
+  if (!userId) {
+    throw new HTTPException(401, { message: "Unauthorized" })
+  }
   try {
-    // Get user ID from the context (set by auth middleware)
-    const userId = c.var.userId
-
     // Get user from database
     const user = await prisma.user.findUnique({
       where: { id: userId },

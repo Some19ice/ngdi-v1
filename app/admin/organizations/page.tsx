@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuthSession } from "@/hooks/use-auth-session"
 import { Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
@@ -72,43 +72,24 @@ import {
 } from "lucide-react"
 import { redirect } from "next/navigation"
 
-// Mock data - replace with actual API call
-const mockOrganizations = [
-  {
-    id: "1",
-    name: "Federal Ministry of Environment",
-    type: "Federal Ministry",
-    location: "Abuja",
-    nodeOfficers: 5,
-    totalUsers: 25,
-    metadataCount: 245,
-    status: "Active",
-    lastActive: "2024-02-05",
-    contact: {
-      email: "info@environment.gov.ng",
-      phone: "+234 123 456 7890",
-      website: "www.environment.gov.ng",
-      address: "Federal Secretariat Complex, Abuja",
-    },
-  },
-  {
-    id: "2",
-    name: "National Space Research and Development Agency",
-    type: "Federal Agency",
-    location: "Abuja",
-    nodeOfficers: 3,
-    totalUsers: 15,
-    metadataCount: 189,
-    status: "Active",
-    lastActive: "2024-02-05",
-    contact: {
-      email: "info@nasrda.gov.ng",
-      phone: "+234 123 456 7891",
-      website: "www.nasrda.gov.ng",
-      address: "Obasanjo Space Center, Airport Road, Abuja",
-    },
-  },
-]
+// Define organization interface
+interface Organization {
+  id: string
+  name: string
+  type: string
+  location: string
+  nodeOfficers: number
+  totalUsers: number
+  metadataCount: number
+  status: string
+  lastActive: string
+  contact: {
+    email: string
+    phone: string
+    website: string
+    address: string
+  }
+}
 
 const organizationFormSchema = z.object({
   name: z.string().min(2, {
@@ -138,16 +119,70 @@ type OrganizationFormValues = z.infer<typeof organizationFormSchema>
 
 export default function OrganizationsPage() {
   const { user, isAdmin, hasRole } = useAuthSession()
-
-  if (!user) {
-    redirect("/login")
-  }
-
   const [searchQuery, setSearchQuery] = useState("")
-  const [organizations] = useState(mockOrganizations)
-  const [selectedOrg, setSelectedOrg] = useState<
-    (typeof mockOrganizations)[0] | null
-  >(null)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
+
+  // Fetch organizations
+  useEffect(() => {
+    async function fetchOrganizations() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Get auth token from cookies
+        const authToken = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("auth_token="))
+          ?.split("=")[1]
+
+        if (!authToken) {
+          throw new Error("Authentication required")
+        }
+
+        // Call the API server
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+        const response = await fetch(`${apiUrl}/api/admin/organizations`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch organizations: ${response.statusText}`
+          )
+        }
+
+        const result = await response.json()
+
+        // Handle the response data
+        if (result.success && result.data) {
+          setOrganizations(result.data.organizations)
+        } else {
+          console.error("Invalid data format returned:", result)
+          setOrganizations([])
+          setError("Invalid response format. Please try again.")
+        }
+      } catch (err) {
+        console.error("Failed to fetch organizations:", err)
+        setError("Failed to load organizations. Please try again later.")
+        setOrganizations([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Only fetch if user is authenticated
+    if (user) {
+      fetchOrganizations()
+    } else {
+      redirect("/auth/signin?callbackUrl=/admin/organizations")
+    }
+  }, [user])
 
   const form = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationFormSchema),
@@ -170,8 +205,15 @@ export default function OrganizationsPage() {
   const canManageOrganizations = isAdmin || hasRole(UserRole.ADMIN)
 
   function onSubmit(data: OrganizationFormValues) {
-    // TODO: Implement organization creation/update
+    // TODO: Implement organization creation/update via API
     console.log(data)
+  }
+
+  // If not authenticated or not admin, redirect (handled in useEffect)
+  if (!user) {
+    return (
+      <div className="flex justify-center py-8">Loading authentication...</div>
+    )
   }
 
   return (
@@ -346,89 +388,103 @@ export default function OrganizationsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {filteredOrganizations.map((org) => (
-          <Card key={org.id} className="relative">
-            {canManageOrganizations && (
-              <div className="absolute top-4 right-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                {org.name}
-              </CardTitle>
-              <CardDescription>{org.type}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Users className="mr-1 h-4 w-4" />
-                      Node Officers
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-ngdi-green-500 border-t-transparent"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 p-4 rounded-md text-red-800">{error}</div>
+        ) : (
+          filteredOrganizations.map((org) => (
+            <Card key={org.id} className="relative">
+              {canManageOrganizations && (
+                <div className="absolute top-4 right-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  {org.name}
+                </CardTitle>
+                <CardDescription>{org.type}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Users className="mr-1 h-4 w-4" />
+                        Node Officers
+                      </div>
+                      <p className="text-lg font-semibold">
+                        {org.nodeOfficers}
+                      </p>
                     </div>
-                    <p className="text-lg font-semibold">{org.nodeOfficers}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <FileText className="mr-1 h-4 w-4" />
-                      Metadata
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <FileText className="mr-1 h-4 w-4" />
+                        Metadata
+                      </div>
+                      <p className="text-lg font-semibold">
+                        {org.metadataCount}
+                      </p>
                     </div>
-                    <p className="text-lg font-semibold">{org.metadataCount}</p>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    {org.location}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      {org.location}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      {org.contact.email}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      {org.contact.phone}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      {org.contact.website}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    {org.contact.email}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    {org.contact.phone}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    {org.contact.website}
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-4">
-                  <Badge
-                    variant={org.status === "Active" ? "default" : "secondary"}
-                    className="bg-ngdi-green-500"
-                  >
-                    {org.status}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    Last active: {org.lastActive}
-                  </span>
+                  <div className="flex items-center justify-between pt-4">
+                    <Badge
+                      variant={
+                        org.status === "Active" ? "default" : "secondary"
+                      }
+                      className="bg-ngdi-green-500"
+                    >
+                      {org.status}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Last active: {org.lastActive}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )

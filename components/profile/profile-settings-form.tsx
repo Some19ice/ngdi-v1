@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { type Profile } from "./types"
-import { updateUserProfile } from "@/app/api/actions/profile"
+import { updateUserProfile } from "@/app/actions/profile"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, Moon, Sun, Monitor } from "lucide-react"
 import {

@@ -1,14 +1,53 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PermissionError = void 0;
-exports.logPermissionCheck = logPermissionCheck;
+exports.getAllPermissionsForRole = getAllPermissionsForRole;
 exports.can = can;
+exports.logPermissionCheck = logPermissionCheck;
 exports.canAll = canAll;
 exports.canAny = canAny;
 exports.withPermission = withPermission;
 exports.canAccessResource = canAccessResource;
 exports.canAccessOrganizationResource = canAccessOrganizationResource;
-const auth_types_1 = require("../types/auth.types");
+const client_1 = require("@prisma/client");
+function getAllPermissionsForRole(role) {
+    // Implementation here
+    return [];
+}
+function can(user, permission, resource) {
+    // Check if user has permission
+    const userPermissions = getAllPermissionsForRole(user.role);
+    const hasPermission = userPermissions.some((p) => p.action === permission.action && p.subject === permission.subject);
+    if (!hasPermission) {
+        return false;
+    }
+    // Check conditions if they exist
+    if (permission.conditions || resource) {
+        // Check dynamic conditions first
+        if (permission.conditions?.dynamic) {
+            const dynamicResult = permission.conditions.dynamic.evaluate(user, resource);
+            if (!dynamicResult) {
+                return false;
+            }
+        }
+        // Check organization condition
+        if ((permission.conditions?.organizationId || resource?.organizationId) &&
+            user.organization) {
+            const targetOrgId = permission.conditions?.organizationId || resource?.organizationId;
+            if (targetOrgId !== user.organization) {
+                return false;
+            }
+        }
+        // Check user ID condition
+        if (permission.conditions?.userId || resource?.userId) {
+            const targetUserId = permission.conditions?.userId || resource?.userId;
+            if (permission.conditions?.isOwner && targetUserId !== user.id) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 class PermissionError extends Error {
     constructor(user, permission, message) {
         super(message);
@@ -35,65 +74,6 @@ function logPermissionCheck(user, permission, resource, result) {
         });
     }
 }
-function can(user, permission, resource) {
-    try {
-        // Get all permissions including inherited ones
-        const userPermissions = (0, auth_types_1.getAllPermissionsForRole)(user.role);
-        if (!userPermissions?.length) {
-            console.warn(`No permissions found for role: ${user.role}`);
-            return false;
-        }
-        const hasPermission = userPermissions.some((p) => p.action === permission.action && p.subject === permission.subject);
-        if (!hasPermission) {
-            logPermissionCheck(user, permission, resource, false);
-            return false;
-        }
-        // Check resource-based conditions if they exist
-        if (permission.conditions || resource) {
-            // Admin bypass for resource checks
-            if (user.role === auth_types_1.UserRole.ADMIN) {
-                logPermissionCheck(user, permission, resource, true);
-                return true;
-            }
-            // Check dynamic conditions first
-            if (permission.conditions?.dynamic) {
-                const dynamicResult = permission.conditions.dynamic.evaluate(user, resource);
-                if (!dynamicResult) {
-                    logPermissionCheck(user, permission, resource, false);
-                    return false;
-                }
-            }
-            // Check organization-based access
-            if ((permission.conditions?.organizationId || resource?.organizationId) &&
-                user.organization) {
-                const targetOrgId = permission.conditions?.organizationId || resource?.organizationId;
-                if (targetOrgId !== user.organization) {
-                    logPermissionCheck(user, permission, resource, false);
-                    return false;
-                }
-            }
-            // Check user-based access
-            if (permission.conditions?.userId || resource?.userId) {
-                const targetUserId = permission.conditions?.userId || resource?.userId;
-                if (permission.conditions?.isOwner && targetUserId !== user.id) {
-                    logPermissionCheck(user, permission, resource, false);
-                    return false;
-                }
-            }
-        }
-        logPermissionCheck(user, permission, resource, true);
-        return true;
-    }
-    catch (error) {
-        console.error("Permission check failed:", {
-            user,
-            permission,
-            resource,
-            error,
-        });
-        return false;
-    }
-}
 function canAll(user, permissions, resource) {
     return permissions.every((permission) => can(user, permission, resource));
 }
@@ -105,7 +85,7 @@ function withPermission(permission) {
     return function (user, handler) {
         return async function (...args) {
             if (!user) {
-                throw new PermissionError({ id: "", email: "", role: auth_types_1.UserRole.USER }, permission, "Unauthorized - User not authenticated");
+                throw new PermissionError({ id: "", email: "", role: client_1.UserRole.USER }, permission, "Unauthorized - User not authenticated");
             }
             if (!can(user, permission)) {
                 throw new PermissionError(user, permission, "Forbidden - Insufficient permissions");

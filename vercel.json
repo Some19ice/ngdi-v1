@@ -22,19 +22,15 @@
       "use": "@vercel/next"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "packages/api/dist/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/api/:path*",
+      "destination": "packages/api/dist/index.js"
     }
   ],
   "headers": [
     {
-      "source": "/auth/(.*)",
+      "source": "/auth/:path*",
       "headers": [
         {
           "key": "Cache-Control",

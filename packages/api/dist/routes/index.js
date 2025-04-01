@@ -60,13 +60,11 @@ swagger_1.app.onError((err, c) => {
 });
 // Print all registered routes for debugging
 console.log("[DEBUG] Admin router routes:", admin_routes_1.default.routes.map((r) => `${r.method} ${r.path}`));
-console.log("[DEBUG] Users admin router routes:", user_routes_new_1.adminRouter.routes.map((r) => `${r.method} ${r.path}`));
 // Register routes
 swagger_1.app.route("/auth", index_1.default);
 swagger_1.app.route("/users", user_routes_new_1.userRouter);
 swagger_1.app.route("/metadata", metadata_routes_1.default);
 swagger_1.app.route("/admin", admin_routes_1.default);
-swagger_1.app.route("/admin/users", user_routes_new_1.adminRouter);
 swagger_1.app.route("/search", search_routes_1.default);
 // Print all registered routes for debugging
 console.log("[DEBUG] API server registered routes:", swagger_1.app.routes.map((r) => `${r.method} ${r.path}`));
@@ -74,6 +72,16 @@ console.log("[DEBUG] API server registered routes:", swagger_1.app.routes.map((r
 const healthCheckResponse = zod_1.z.object({
     success: zod_1.z.boolean(),
     message: zod_1.z.string(),
+});
+// Debug endpoint to view all routes
+swagger_1.app.get("/api/debug/routes", (c) => {
+    return c.json({
+        success: true,
+        routes: swagger_1.app.routes.map((r) => ({
+            method: r.method,
+            path: r.path,
+        })),
+    });
 });
 swagger_1.app.openapi({
     method: "get",

@@ -4,6 +4,7 @@ const zod_openapi_1 = require("@hono/zod-openapi");
 const auth_1 = require("../middleware/auth");
 const user_service_1 = require("../services/user.service");
 const user_types_1 = require("../types/user.types");
+const http_exception_1 = require("hono/http-exception");
 // Create user router instance
 const userRouter = new zod_openapi_1.OpenAPIHono();
 // Apply auth middleware to all routes
@@ -25,7 +26,10 @@ userRouter.openapi((0, zod_openapi_1.createRoute)({
         },
     },
 }), async (c) => {
-    const userId = c.get("userId");
+    const userId = c.var.userId;
+    if (!userId) {
+        throw new http_exception_1.HTTPException(401, { message: "Unauthorized" });
+    }
     const profile = await user_service_1.userService.getProfile(userId);
     return c.json(profile);
 });
@@ -55,7 +59,10 @@ userRouter.openapi((0, zod_openapi_1.createRoute)({
         },
     },
 }), async (c) => {
-    const userId = c.get("userId");
+    const userId = c.var.userId;
+    if (!userId) {
+        throw new http_exception_1.HTTPException(401, { message: "Unauthorized" });
+    }
     const data = await c.req.json();
     const updatedProfile = await user_service_1.userService.updateProfile(userId, data);
     return c.json(updatedProfile);
@@ -81,7 +88,10 @@ userRouter.openapi((0, zod_openapi_1.createRoute)({
         },
     },
 }), async (c) => {
-    const userId = c.get("userId");
+    const userId = c.var.userId;
+    if (!userId) {
+        throw new http_exception_1.HTTPException(401, { message: "Unauthorized" });
+    }
     const { currentPassword, newPassword } = await c.req.json();
     await user_service_1.userService.changePassword(userId, currentPassword, newPassword);
     return c.json({ message: "Password changed successfully" });

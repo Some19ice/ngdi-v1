@@ -288,13 +288,9 @@ export default function MetadataPage() {
       const result = await exportMetadata()
 
       if (result.success) {
-        // In a real app, this would download a CSV file
-        const itemCount =
-          result.data && Array.isArray(result.data) ? result.data.length : 0
-
         toast({
           title: "Export successful",
-          description: `Exported ${itemCount} metadata items`,
+          description: "Metadata has been successfully exported.",
           variant: "default",
         })
       } else {
@@ -316,32 +312,52 @@ export default function MetadataPage() {
   }
 
   // Handle metadata import
-  const handleImport = async () => {
+  const handleImport = () => {
     try {
-      // In a real app, this would open a file picker
-      const result = await importMetadata({})
+      // Open a file picker
+      const input = document.createElement("input")
+      input.type = "file"
+      input.accept = ".csv"
 
-      if (result.success) {
-        toast({
-          title: "Import successful",
-          description: "The metadata has been successfully imported.",
-          variant: "default",
-        })
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (!file) return
 
-        fetchMetadata() // Refresh the list
-      } else {
-        toast({
-          title: "Import failed",
-          description: result.error,
-          variant: "destructive",
-        })
+        try {
+          const result = await importMetadata(file)
+
+          if (result.success) {
+            toast({
+              title: "Import successful",
+              description: "The metadata has been successfully imported.",
+              variant: "default",
+            })
+
+            fetchMetadata() // Refresh the list
+          } else {
+            toast({
+              title: "Import failed",
+              description: result.error,
+              variant: "destructive",
+            })
+          }
+        } catch (importErr) {
+          console.error("Error importing metadata:", importErr)
+          toast({
+            title: "Import failed",
+            description:
+              "An unexpected error occurred while importing the metadata.",
+            variant: "destructive",
+          })
+        }
       }
+
+      input.click()
     } catch (err) {
-      console.error("Error importing metadata:", err)
+      console.error("Error opening file picker:", err)
       toast({
         title: "Import failed",
-        description:
-          "An unexpected error occurred while importing the metadata.",
+        description: "Failed to open file selector.",
         variant: "destructive",
       })
     }

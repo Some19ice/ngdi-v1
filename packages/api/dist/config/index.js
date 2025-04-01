@@ -32,7 +32,9 @@ exports.config = {
     // JWT configuration
     jwt: {
         secret: process.env.JWT_SECRET || "your-default-secret-for-dev-only",
-        refreshSecret: process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || "your-default-secret-for-dev-only",
+        refreshSecret: process.env.REFRESH_TOKEN_SECRET ||
+            process.env.JWT_SECRET ||
+            "your-default-secret-for-dev-only",
         expiresIn: process.env.JWT_EXPIRES_IN || "1h",
         refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
     },
@@ -74,4 +76,11 @@ exports.config = {
         from: process.env.EMAIL_FROM || "noreply@example.com",
     },
     logLevel: process.env.LOG_LEVEL || "info",
+    redis: {
+        url: process.env.REDIS_URL || "redis://localhost:6379",
+        options: {
+            enableReadyCheck: true,
+            maxRetriesPerRequest: 3,
+        },
+    },
 };

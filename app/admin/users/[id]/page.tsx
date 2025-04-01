@@ -1,8 +1,11 @@
+export const dynamic = "force-dynamic"
+
 import { requireAuth } from "@/lib/auth"
 import { UserRole } from "@/lib/auth/constants"
 import { notFound } from "next/navigation"
 import { format } from "date-fns"
 import Link from "next/link"
+import Image from "next/image"
 import {
   ArrowLeft,
   User as UserIcon,
@@ -202,10 +205,12 @@ export default async function UserDetailsPage({
           <div className="flex items-center gap-4">
             <div className="bg-gray-100 p-3 rounded-full">
               {userDetails.image ? (
-                <img
+                <Image
                   src={userDetails.image}
                   alt={userDetails.name || "User"}
-                  className="h-16 w-16 rounded-full"
+                  width={64}
+                  height={64}
+                  className="rounded-full"
                 />
               ) : (
                 <UserIcon className="h-16 w-16 text-gray-500" />

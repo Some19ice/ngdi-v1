@@ -1,145 +1,137 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.auth = void 0;
 const hono_1 = require("hono");
 const zod_validator_1 = require("@hono/zod-validator");
-const zod_1 = require("zod");
-const prisma_1 = require("../db/prisma");
+const prisma_1 = require("../lib/prisma");
 const error_handler_1 = require("../middleware/error-handler");
-const password_1 = require("../utils/password");
 const jwt_1 = require("../utils/jwt");
-const email_service_1 = require("../services/email.service");
 const auth_service_1 = require("../services/auth.service");
 const http_exception_1 = require("hono/http-exception");
-// Schema for login request validation
-const loginSchema = zod_1.z.object({
-    email: zod_1.z.string().email("Invalid email format"),
-    password: zod_1.z.string().min(6, "Password must be at least 6 characters"),
-});
-// Schema for registration request validation
-const registerSchema = zod_1.z.object({
-    email: zod_1.z.string().email("Invalid email format"),
-    password: zod_1.z.string().min(6, "Password must be at least 6 characters"),
-    name: zod_1.z.string().min(2, "Name must be at least 2 characters").optional(),
-});
-// Schema for email verification
-const verifyEmailSchema = zod_1.z.object({
-    token: zod_1.z.string(),
-});
-// Schema for password reset request
-const requestPasswordResetSchema = zod_1.z.object({
-    email: zod_1.z.string().email({ message: "Invalid email address" }),
-});
-// Schema for password reset
-const resetPasswordSchema = zod_1.z.object({
-    token: zod_1.z.string(),
-    password: zod_1.z
-        .string()
-        .min(6, { message: "Password must be at least 6 characters" }),
-});
+const auth_1 = require("../middleware/auth");
+const error_types_1 = require("../types/error.types");
+const cookie_utils_1 = require("../utils/cookie.utils");
+const rate_limit_middleware_1 = require("../middleware/rate-limit.middleware");
+const redis_service_1 = require("../services/redis.service");
+const auth_types_1 = require("../types/auth.types");
+const jose = __importStar(require("jose"));
 // Create auth router
 const auth = new hono_1.Hono();
-exports.auth = auth;
 // Apply error handler
 auth.onError(error_handler_1.errorHandler);
+// Apply rate limiting to auth routes
+auth.use("/login", (0, rate_limit_middleware_1.rateLimit)({
+    windowSeconds: 300, // 5 minutes
+    maxRequests: 5, // 5 attempts
+    keyPrefix: "rate:login:",
+}));
+auth.use("/register", (0, rate_limit_middleware_1.rateLimit)({
+    windowSeconds: 3600, // 1 hour
+    maxRequests: 3, // 3 attempts
+    keyPrefix: "rate:register:",
+}));
+// Helper function to get proper cookie domain based on environment
+function getCookieDomain() {
+    if (process.env.NODE_ENV === "production") {
+        // Use the COOKIE_DOMAIN env var if set, otherwise default to the production domain
+        return process.env.COOKIE_DOMAIN || process.env.VERCEL_URL || ".vercel.app";
+    }
+    // For local development, don't set domain to allow browser to handle it
+    return undefined;
+}
 // Login route
-auth.post("/login", (0, zod_validator_1.zValidator)("json", loginSchema), async (c) => {
+auth.post("/login", (0, zod_validator_1.zValidator)("json", auth_types_1.loginSchema), async (c) => {
     try {
-        console.log("Login request received");
         const data = await c.req.json();
-        console.log("Login data:", { email: data.email });
         const result = await auth_service_1.AuthService.login(data);
-        console.log("Login successful");
-        // Set cookies for authentication
-        const cookieOptions = {
-            path: "/",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
-        };
-        c.header("Set-Cookie", `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
-        c.header("Set-Cookie", `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        // Set auth cookies
+        (0, cookie_utils_1.setCookieWithOptions)(c, "auth_token", result.accessToken);
+        (0, cookie_utils_1.setCookieWithOptions)(c, "refresh_token", result.refreshToken);
         return c.json(result);
     }
     catch (error) {
-        console.error("Login error:", error);
-        if (error instanceof http_exception_1.HTTPException) {
+        if (error instanceof error_types_1.AuthError) {
             return c.json({
                 success: false,
-                message: error.message || "Authentication failed",
-                code: error_handler_1.ErrorCode.AUTHENTICATION_ERROR,
+                code: error.code,
+                message: error.message,
+                details: error.details,
             }, error.status);
         }
-        console.error("Unhandled login error:", error);
-        throw new http_exception_1.HTTPException(500, { message: "Login failed" });
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_CREDENTIALS, "Authentication failed", 401);
     }
 });
 // Register route
-auth.post("/register", (0, zod_validator_1.zValidator)("json", registerSchema), async (c) => {
+auth.post("/register", (0, zod_validator_1.zValidator)("json", auth_types_1.registerSchema), async (c) => {
     try {
         const data = await c.req.json();
         const result = await auth_service_1.AuthService.register(data);
-        // Set cookies for authentication
-        const cookieOptions = {
-            path: "/",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
-        };
-        c.header("Set-Cookie", `auth_token=${result.accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
-        c.header("Set-Cookie", `refresh_token=${result.refreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        // Set auth cookies
+        (0, cookie_utils_1.setCookieWithOptions)(c, "auth_token", result.accessToken);
+        (0, cookie_utils_1.setCookieWithOptions)(c, "refresh_token", result.refreshToken);
         return c.json(result);
     }
     catch (error) {
-        if (error instanceof http_exception_1.HTTPException) {
+        if (error instanceof error_types_1.AuthError) {
             return c.json({
                 success: false,
-                message: error.message || "Registration failed",
-                code: error_handler_1.ErrorCode.AUTHENTICATION_ERROR,
+                code: error.code,
+                message: error.message,
+                details: error.details,
             }, error.status);
         }
-        throw new http_exception_1.HTTPException(500, { message: "Registration failed" });
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_CREDENTIALS, "Registration failed", 401);
     }
 });
 // Verify email route
-auth.get("/verify-email", (0, zod_validator_1.zValidator)("query", verifyEmailSchema), async (c) => {
+auth.get("/verify-email", (0, zod_validator_1.zValidator)("query", auth_types_1.verifyEmailSchema), async (c) => {
     try {
         const { token } = await c.req.valid("query");
-        // Find verification token
-        const verificationToken = await prisma_1.prisma.verificationToken.findFirst({
-            where: {
-                token,
-                expires: {
-                    gt: new Date(),
-                },
-            },
-        });
-        if (!verificationToken) {
-            throw new error_handler_1.ApiError("Invalid token", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
-        }
-        // Update user
-        await prisma_1.prisma.user.update({
-            where: { email: verificationToken.identifier },
-            data: { emailVerified: new Date() },
-        });
-        // Delete verification token
-        await prisma_1.prisma.verificationToken.delete({
-            where: { token },
-        });
-        return c.json({
-            message: "Email verified successfully",
-        });
+        await auth_service_1.AuthService.verifyEmail(token);
+        return c.json({ success: true, message: "Email verified successfully" });
     }
     catch (error) {
-        console.error("Email verification error:", error);
-        if (error instanceof error_handler_1.ApiError) {
-            throw error;
+        if (error instanceof error_types_1.AuthError) {
+            return c.json({
+                success: false,
+                code: error.code,
+                message: error.message,
+                details: error.details,
+            }, error.status);
         }
-        throw new error_handler_1.ApiError("Email verification failed", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Email verification failed", 400);
     }
 });
 // Refresh token route
@@ -160,7 +152,7 @@ auth.post("/refresh-token", async (c) => {
         }
         // Check if we have a refresh token
         if (!refreshToken) {
-            throw new error_handler_1.ApiError("Refresh token is required", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Refresh token is required", 400);
         }
         // Verify refresh token
         const decoded = await (0, jwt_1.verifyRefreshToken)(refreshToken);
@@ -176,17 +168,9 @@ auth.post("/refresh-token", async (c) => {
             email: decoded.email,
             role: decoded.role,
         });
-        // Set cookies for authentication
-        const cookieOptions = {
-            path: "/",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            domain: process.env.NODE_ENV === "production" ? "vercel.app" : "localhost",
-        };
-        c.header("Set-Cookie", `auth_token=${accessToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
-        c.header("Set-Cookie", `refresh_token=${newRefreshToken}; ${cookieOptions.path}; ${cookieOptions.httpOnly ? "HttpOnly;" : ""} ${cookieOptions.secure ? "Secure;" : ""} SameSite=${cookieOptions.sameSite}; Max-Age=${cookieOptions.maxAge}; Domain=${cookieOptions.domain}`);
+        // Set auth cookies
+        (0, cookie_utils_1.setCookieWithOptions)(c, "auth_token", accessToken);
+        (0, cookie_utils_1.setCookieWithOptions)(c, "refresh_token", newRefreshToken);
         return c.json({
             success: true,
             message: "Token refreshed",
@@ -198,120 +182,104 @@ auth.post("/refresh-token", async (c) => {
     }
     catch (error) {
         console.error("Token refresh error:", error);
-        throw new error_handler_1.ApiError("Invalid refresh token", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Invalid refresh token", 401);
     }
 });
 // Request password reset
-auth.post("/request-password-reset", (0, zod_validator_1.zValidator)("json", requestPasswordResetSchema), async (c) => {
+auth.post("/forgot-password", (0, rate_limit_middleware_1.rateLimit)({
+    windowSeconds: 3600, // 1 hour
+    maxRequests: 3, // 3 attempts per hour
+    keyPrefix: "rate:forgotpw:",
+}), (0, zod_validator_1.zValidator)("json", auth_types_1.forgotPasswordSchema), async (c) => {
     try {
-        const { email } = await c.req.valid("json");
-        // Check if user exists
-        const user = await prisma_1.prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            // Don't reveal that the user doesn't exist for security reasons
-            return c.json({
-                success: true,
-                message: "If your email is registered, you will receive a password reset link.",
-            }, 200);
-        }
-        // Generate reset token
-        const resetToken = Math.random().toString(36).substring(2, 15) +
-            Math.random().toString(36).substring(2, 15);
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
-        // Store reset token
-        await prisma_1.prisma.verificationToken.create({
-            data: {
-                identifier: email,
-                token: resetToken,
-                expires: expiresAt,
-            },
-        });
-        // Send password reset email
-        await email_service_1.emailService.sendPasswordResetEmail(email, resetToken);
-        return c.json({
-            success: true,
-            message: "If your email is registered, you will receive a password reset link.",
-        }, 200);
+        const { email } = await c.req.json();
+        await auth_service_1.AuthService.forgotPassword(email);
+        return c.json({ success: true, message: "Password reset email sent" });
     }
     catch (error) {
-        console.error("Password reset request error:", error);
-        throw new error_handler_1.ApiError("Password reset request failed", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+        // Always return success to prevent email enumeration
+        return c.json({ success: true, message: "Password reset email sent" });
     }
 });
 // Reset password
-auth.post("/reset-password", (0, zod_validator_1.zValidator)("json", resetPasswordSchema), async (c) => {
+auth.post("/reset-password", (0, rate_limit_middleware_1.rateLimit)({
+    windowSeconds: 3600, // 1 hour
+    maxRequests: 5, // 5 attempts per hour
+    keyPrefix: "rate:resetpw:",
+}), (0, zod_validator_1.zValidator)("json", auth_types_1.resetPasswordSchema), async (c) => {
     try {
-        const { token, password } = await c.req.valid("json");
-        // Find verification token
-        const verificationRecord = await prisma_1.prisma.verificationToken.findUnique({
-            where: { token },
-        });
-        if (!verificationRecord) {
-            throw new error_handler_1.ApiError("Invalid or expired token", 400, error_handler_1.ErrorCode.BAD_REQUEST);
-        }
-        // Check if token is expired
-        if (new Date() > verificationRecord.expires) {
-            // Delete expired token
-            await prisma_1.prisma.verificationToken.delete({
-                where: { token },
-            });
-            throw new error_handler_1.ApiError("Token expired", 400, error_handler_1.ErrorCode.BAD_REQUEST);
-        }
-        // Hash new password
-        const hashedPassword = await (0, password_1.hashPassword)(password);
-        // Update user's password
-        await prisma_1.prisma.user.update({
-            where: { email: verificationRecord.identifier },
-            data: { password: hashedPassword },
-        });
-        // Delete used token
-        await prisma_1.prisma.verificationToken.delete({
-            where: { token },
-        });
-        return c.json({
-            success: true,
-            message: "Password reset successful. You can now log in with your new password.",
-        }, 200);
+        const { token, password } = await c.req.json();
+        await auth_service_1.AuthService.resetPassword(token, password);
+        return c.json({ success: true, message: "Password reset successfully" });
     }
     catch (error) {
-        console.error("Password reset error:", error);
-        if (error instanceof error_handler_1.ApiError) {
-            throw error;
+        if (error instanceof error_types_1.AuthError) {
+            return c.json({
+                success: false,
+                code: error.code,
+                message: error.message,
+                details: error.details,
+            }, error.status);
         }
-        throw new error_handler_1.ApiError("Password reset failed", 400, error_handler_1.ErrorCode.BAD_REQUEST);
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Password reset failed", 400);
     }
 });
 // Logout route
 auth.post("/logout", async (c) => {
     try {
-        // Clear authentication cookies with the same domain as set in login
-        const domain = process.env.NODE_ENV === "production" ? "vercel.app" : "localhost";
-        c.header("Set-Cookie", `auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`);
-        c.header("Set-Cookie", `refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Domain=${domain}`);
-        return c.json({
-            success: true,
-            message: "Logged out successfully",
-        });
+        // Get token from Authorization header
+        let token = c.req.header("Authorization")?.replace("Bearer ", "");
+        // If not in header, try to get from cookies
+        if (!token) {
+            const cookieHeader = c.req.raw.headers.get("cookie");
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(";");
+                const authCookie = cookies.find((c) => c.trim().startsWith("auth_token="));
+                if (authCookie) {
+                    token = authCookie.split("=")[1];
+                }
+            }
+        }
+        // If token exists, blacklist it
+        if (token) {
+            try {
+                // Verify the token first to ensure it's valid
+                const decoded = await (0, jwt_1.verifyToken)(token);
+                // Get token expiry
+                const decodedToken = jose.decodeJwt(token);
+                const expiry = decodedToken.exp - Math.floor(Date.now() / 1000);
+                // Blacklist the token for its remaining lifetime
+                if (expiry > 0) {
+                    await redis_service_1.redisService.blacklistToken(token, expiry);
+                }
+            }
+            catch (tokenError) {
+                // Token verification failed, but we still want to clear cookies
+                console.error("Token verification failed during logout:", tokenError);
+            }
+        }
+        // Clear cookies in all cases
+        (0, cookie_utils_1.setCookieWithOptions)(c, "auth_token", "", { maxAge: 0 });
+        (0, cookie_utils_1.setCookieWithOptions)(c, "refresh_token", "", { maxAge: 0 });
+        return c.json({ success: true, message: "Logged out successfully" });
     }
     catch (error) {
         console.error("Logout error:", error);
-        throw new http_exception_1.HTTPException(500, { message: "Logout failed" });
+        // Always return success for logout to prevent revealing system state
+        return c.json({ success: true, message: "Logged out successfully" });
     }
 });
 // Get current user (me) endpoint
+auth.use("/me", auth_1.authMiddleware);
 auth.get("/me", async (c) => {
+    const userId = c.var.userId;
+    if (!userId) {
+        throw new http_exception_1.HTTPException(401, { message: "Unauthorized" });
+    }
     try {
-        const authHeader = c.req.header("Authorization");
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw new error_handler_1.ApiError("Authorization header is required", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
-        }
-        const token = authHeader.replace("Bearer ", "");
-        // Verify token
-        const decoded = await (0, jwt_1.verifyToken)(token);
         // Get user from database
         const user = await prisma_1.prisma.user.findUnique({
-            where: { id: decoded.userId },
+            where: { id: userId },
             select: {
                 id: true,
                 email: true,
@@ -324,16 +292,85 @@ auth.get("/me", async (c) => {
             },
         });
         if (!user) {
-            throw new error_handler_1.ApiError("User not found", 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_CREDENTIALS, "User not found", 404);
         }
-        return c.json(user);
+        return c.json({
+            success: true,
+            data: user,
+        });
     }
     catch (error) {
         console.error("Get current user error:", error);
-        if (error instanceof error_handler_1.ApiError) {
+        if (error instanceof error_types_1.AuthError) {
             throw error;
         }
-        throw new error_handler_1.ApiError("Authentication failed", 401, error_handler_1.ErrorCode.AUTHENTICATION_ERROR);
+        throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_CREDENTIALS, "Authentication failed", 401);
+    }
+});
+// Auth check endpoint - lightweight status check for client-side apps
+auth.get("/check", async (c) => {
+    try {
+        // First try to get token from Authorization header
+        const authHeader = c.req.header("Authorization");
+        let token;
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            token = authHeader.split(" ")[1];
+        }
+        else {
+            // If not in header, try to get from cookies
+            const cookieHeader = c.req.raw.headers.get("cookie");
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(";");
+                const authCookie = cookies.find((cookie) => cookie.trim().startsWith("auth_token="));
+                if (authCookie) {
+                    token = authCookie.split("=")[1];
+                }
+            }
+        }
+        // Check if we have a token
+        if (!token) {
+            return c.json({
+                authenticated: false,
+                message: "No authentication token found",
+            }, 200); // Return 200 even for unauthenticated to avoid CORS issues
+        }
+        // Check if token is blacklisted
+        const isBlacklisted = await redis_service_1.redisService.isTokenBlacklisted(token);
+        if (isBlacklisted) {
+            return c.json({
+                authenticated: false,
+                message: "Token has been invalidated",
+            }, 200);
+        }
+        // Verify the token
+        try {
+            const decoded = await (0, jwt_1.verifyToken)(token);
+            // Return user info without sensitive data
+            return c.json({
+                authenticated: true,
+                user: {
+                    id: decoded.userId,
+                    email: decoded.email,
+                    role: decoded.role,
+                },
+            }, 200);
+        }
+        catch (tokenError) {
+            console.log("Token verification failed:", tokenError);
+            // Return clear unauthenticated state
+            return c.json({
+                authenticated: false,
+                message: "Invalid or expired token",
+            }, 200); // Return 200 to avoid CORS issues
+        }
+    }
+    catch (error) {
+        console.error("Auth check error:", error);
+        // Return generic error but still 200 to avoid disrupting client
+        return c.json({
+            authenticated: false,
+            message: "Authentication check failed",
+        }, 200);
     }
 });
 exports.default = auth;

@@ -1,5 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { UserRole } from "@/lib/auth/constants"
+import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
@@ -23,67 +27,155 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
+import { Loader2 } from "lucide-react"
 
-// Mock data - replace with actual API calls
-const metadataByCategory = [
-  { name: "Boundaries", value: 245, color: "#008751" },
-  { name: "Water Bodies", value: 189, color: "#1E88E5" },
-  { name: "Transportation", value: 156, color: "#FFC107" },
-  { name: "Environment", value: 134, color: "#4CAF50" },
-  { name: "Health", value: 98, color: "#E53935" },
-]
-
-const userActivity = [
-  { date: "2024-01", uploads: 45, downloads: 120, views: 350 },
-  { date: "2024-02", uploads: 52, downloads: 145, views: 420 },
-  { date: "2024-03", uploads: 61, downloads: 165, views: 480 },
-  { date: "2024-04", uploads: 58, downloads: 155, views: 440 },
-  { date: "2024-05", uploads: 75, downloads: 190, views: 520 },
-  { date: "2024-06", uploads: 85, downloads: 210, views: 580 },
-]
-
-const organizationActivity = [
-  {
-    name: "Federal Ministry of Environment",
-    uploads: 85,
-    downloads: 210,
-    engagement: 75,
-  },
-  {
-    name: "National Space Research Agency",
-    uploads: 65,
-    downloads: 180,
-    engagement: 65,
-  },
-  {
-    name: "Federal Ministry of Agriculture",
-    uploads: 45,
-    downloads: 150,
-    engagement: 55,
-  },
-  {
-    name: "Nigeria Hydrological Services",
-    uploads: 35,
-    downloads: 120,
-    engagement: 45,
-  },
-]
-
-const geographicDistribution = [
-  { name: "North Central", value: 25 },
-  { name: "North East", value: 15 },
-  { name: "North West", value: 20 },
-  { name: "South East", value: 18 },
-  { name: "South South", value: 22 },
-  { name: "South West", value: 30 },
-]
+// Define interfaces for the analytics data
+interface AnalyticsData {
+  metadataByCategory: Array<{
+    name: string
+    value: number
+    color: string
+  }>
+  userActivity: Array<{
+    date: string
+    uploads: number
+    downloads: number
+    views: number
+  }>
+  organizationActivity: Array<{
+    name: string
+    uploads: number
+    downloads: number
+    engagement: number
+  }>
+  geographicDistribution: Array<{
+    name: string
+    value: number
+  }>
+  dataQualityMetrics: Array<{
+    label: string
+    value: number
+    color: string
+  }>
+}
 
 export default function AnalyticsPage() {
+  const { user, isAdmin } = useAuthSession()
+  const [timePeriod, setTimePeriod] = useState("30")
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch analytics data from the API
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Get auth token from cookies
+        const authToken = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("auth_token="))
+          ?.split("=")[1]
+
+        if (!authToken) {
+          throw new Error("Authentication required")
+        }
+
+        // Call the API server
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+        const url = `${apiUrl}/api/admin/analytics?period=${timePeriod}`
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch analytics: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+
+        // Type-safe handling of the returned data
+        if (result.success && result.data) {
+          setAnalytics(result.data)
+        } else {
+          console.error("Invalid data format returned:", result)
+          setError("Invalid response format. Please try again.")
+        }
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err)
+        setError("Failed to load analytics. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Check authentication and authorization
+    if (!user) {
+      redirect("/auth/signin?callbackUrl=/admin/analytics")
+      return
+    }
+
+    if (user.role !== UserRole.ADMIN) {
+      redirect("/unauthorized")
+      return
+    }
+
+    fetchAnalytics()
+  }, [user, timePeriod])
+
+  // If loading, show loading indicator
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-ngdi-green-500" />
+          <p className="mt-2 text-sm text-gray-500">
+            Loading analytics data...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // If error, show error message
+  if (error) {
+    return (
+      <div className="bg-red-50 p-6 rounded-md text-red-800 mt-4">
+        <h3 className="text-lg font-semibold mb-2">Error Loading Analytics</h3>
+        <p>{error}</p>
+        <button
+          className="mt-4 px-4 py-2 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  // If no data, use empty arrays to prevent charts from breaking
+  const {
+    metadataByCategory = [],
+    userActivity = [],
+    organizationActivity = [],
+    geographicDistribution = [],
+    dataQualityMetrics = [],
+  } = analytics || {}
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Analytics Overview</h2>
-        <Select defaultValue="30">
+        <Select
+          value={timePeriod}
+          onValueChange={(value) => setTimePeriod(value)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select time period" />
           </SelectTrigger>

@@ -1,97 +1,66 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authResponseSchema = exports.verifyEmailSchema = exports.refreshTokenSchema = exports.changePasswordSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.registerSchema = exports.loginSchema = exports.RolePermissions = exports.InheritedPermissions = exports.PermissionGroups = exports.Permissions = exports.UserRole = void 0;
-exports.getAllPermissionsForRole = getAllPermissionsForRole;
+exports.authResponseSchema = exports.verifyEmailSchema = exports.refreshTokenSchema = exports.changePasswordSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.requestPasswordResetSchema = exports.registerSchema = exports.loginSchema = exports.passwordSchema = exports.RolePermissions = exports.RoleIncludes = exports.UserRole = void 0;
 const zod_openapi_1 = require("@hono/zod-openapi");
 /**
- * User roles enum
+ * Authentication and authorization related types
  */
 var UserRole;
 (function (UserRole) {
-    UserRole["USER"] = "USER";
     UserRole["ADMIN"] = "ADMIN";
     UserRole["NODE_OFFICER"] = "NODE_OFFICER";
+    UserRole["USER"] = "USER";
+    UserRole["GUEST"] = "GUEST";
 })(UserRole || (exports.UserRole = UserRole = {}));
-exports.Permissions = {
-    // Metadata permissions
-    CREATE_METADATA: { action: "create", subject: "metadata" },
-    READ_METADATA: { action: "read", subject: "metadata" },
-    UPDATE_METADATA: { action: "update", subject: "metadata" },
-    DELETE_METADATA: { action: "delete", subject: "metadata" },
-    VALIDATE_METADATA: { action: "validate", subject: "metadata" },
-    // User management permissions
-    CREATE_USER: { action: "create", subject: "user" },
-    READ_USER: { action: "read", subject: "user" },
-    UPDATE_USER: { action: "update", subject: "user" },
-    DELETE_USER: { action: "delete", subject: "user" },
-    ASSIGN_ROLE: { action: "assign", subject: "role" },
-    // Organization permissions
-    MANAGE_ORGANIZATION: { action: "manage", subject: "organization" },
-    READ_ORGANIZATION: { action: "read", subject: "organization" },
-    // System permissions
-    VIEW_ANALYTICS: { action: "view", subject: "analytics" },
-    MANAGE_SETTINGS: { action: "manage", subject: "settings" },
-};
-exports.PermissionGroups = {
-    METADATA_MANAGEMENT: [
-        exports.Permissions.CREATE_METADATA,
-        exports.Permissions.READ_METADATA,
-        exports.Permissions.UPDATE_METADATA,
-        exports.Permissions.DELETE_METADATA,
-        exports.Permissions.VALIDATE_METADATA,
-    ],
-    USER_MANAGEMENT: [
-        exports.Permissions.CREATE_USER,
-        exports.Permissions.READ_USER,
-        exports.Permissions.UPDATE_USER,
-        exports.Permissions.DELETE_USER,
-    ],
-    ORGANIZATION_MANAGEMENT: [
-        exports.Permissions.MANAGE_ORGANIZATION,
-        exports.Permissions.READ_ORGANIZATION,
-    ],
-    SYSTEM_MANAGEMENT: [exports.Permissions.VIEW_ANALYTICS, exports.Permissions.MANAGE_SETTINGS],
-};
-exports.InheritedPermissions = {
+/**
+ * Role inclusion hierarchy - which role includes permissions of other roles
+ */
+exports.RoleIncludes = {
     [UserRole.ADMIN]: [],
     [UserRole.NODE_OFFICER]: [UserRole.USER],
     [UserRole.USER]: [],
+    [UserRole.GUEST]: [],
 };
-// Helper function to get all inherited permissions for a role
-function getAllPermissionsForRole(role) {
-    const inheritedRoles = exports.InheritedPermissions[role];
-    const inheritedPermissions = inheritedRoles.flatMap((r) => exports.RolePermissions[r]);
-    return [...exports.RolePermissions[role], ...inheritedPermissions];
-}
+/**
+ * Basic permissions for each role
+ */
 exports.RolePermissions = {
-    [UserRole.ADMIN]: [...Object.values(exports.PermissionGroups).flat()],
-    [UserRole.NODE_OFFICER]: [
-        ...exports.PermissionGroups.METADATA_MANAGEMENT,
-        {
-            ...exports.Permissions.READ_USER,
-            conditions: {
-                organizationId: "${user.organization}",
-                dynamic: {
-                    evaluate: (user, resource) => user.organization === resource.organization,
-                    description: "Check if user belongs to the same organization",
-                },
-            },
-        },
-        {
-            ...exports.Permissions.UPDATE_USER,
-            conditions: { organizationId: "${user.organization}" },
-        },
-        {
-            ...exports.Permissions.READ_ORGANIZATION,
-            conditions: { organizationId: "${user.organization}" },
-        },
-        {
-            ...exports.Permissions.VIEW_ANALYTICS,
-            conditions: { organizationId: "${user.organization}" },
-        },
+    [UserRole.ADMIN]: [
+        { action: "create", subject: "metadata" },
+        { action: "read", subject: "metadata" },
+        { action: "update", subject: "metadata" },
+        { action: "delete", subject: "metadata" },
+        { action: "manage", subject: "metadata" },
+        { action: "create", subject: "user" },
+        { action: "read", subject: "user" },
+        { action: "update", subject: "user" },
+        { action: "delete", subject: "user" },
+        { action: "read", subject: "system" },
     ],
-    [UserRole.USER]: [exports.Permissions.READ_METADATA, exports.Permissions.READ_ORGANIZATION],
+    [UserRole.NODE_OFFICER]: [
+        { action: "create", subject: "metadata" },
+        { action: "read", subject: "metadata" },
+        { action: "update", subject: "metadata" },
+        { action: "manage", subject: "metadata" },
+        { action: "read", subject: "user" },
+        { action: "create", subject: "user" },
+    ],
+    [UserRole.USER]: [
+        { action: "read", subject: "metadata" },
+        { action: "create", subject: "metadata" },
+    ],
+    [UserRole.GUEST]: [{ action: "read", subject: "metadata" }],
 };
+/**
+ * Password schema
+ */
+exports.passwordSchema = zod_openapi_1.z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Must contain at least one special character");
 /**
  * Login request schema
  */
@@ -101,12 +70,9 @@ exports.loginSchema = zod_openapi_1.z
         example: "user@example.com",
         description: "User's email address",
     }),
-    password: zod_openapi_1.z
-        .string()
-        .min(8, "Password must be at least 8 characters")
-        .openapi({
-        example: "password123",
-        description: "User's password",
+    password: exports.passwordSchema.openapi({
+        example: "StrongP@ss123",
+        description: "User's password - must contain uppercase, lowercase, number, and special character",
     }),
 })
     .openapi("LoginRequest");
@@ -123,12 +89,9 @@ exports.registerSchema = zod_openapi_1.z
         example: "user@example.com",
         description: "User's email address",
     }),
-    password: zod_openapi_1.z
-        .string()
-        .min(8, "Password must be at least 8 characters")
-        .openapi({
-        example: "password123",
-        description: "User's password",
+    password: exports.passwordSchema.openapi({
+        example: "StrongP@ss123",
+        description: "User's password - must contain uppercase, lowercase, number, and special character",
     }),
     organization: zod_openapi_1.z.string().optional().openapi({
         example: "ACME Corp",
@@ -145,16 +108,20 @@ exports.registerSchema = zod_openapi_1.z
 })
     .openapi("RegisterRequest");
 /**
- * Password reset request schema
+ * Request password reset schema
  */
-exports.forgotPasswordSchema = zod_openapi_1.z
+exports.requestPasswordResetSchema = zod_openapi_1.z
     .object({
-    email: zod_openapi_1.z.string().email("Invalid email address").openapi({
+    email: zod_openapi_1.z.string().email().openapi({
         example: "user@example.com",
-        description: "User's email address",
+        description: "Email address to send password reset link to",
     }),
 })
-    .openapi("ForgotPasswordRequest");
+    .openapi("RequestPasswordResetRequest");
+/**
+ * Forgot password schema (alias for requestPasswordResetSchema)
+ */
+exports.forgotPasswordSchema = exports.requestPasswordResetSchema;
 /**
  * Reset password schema
  */

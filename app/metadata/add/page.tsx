@@ -9,6 +9,8 @@ export const metadata = {
   description: "Add new NGDI metadata entry",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function AddMetadataPage() {
   // Check for required role
   await requireRole([UserRole.ADMIN, UserRole.NODE_OFFICER])

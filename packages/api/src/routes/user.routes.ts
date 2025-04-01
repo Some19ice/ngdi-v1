@@ -14,6 +14,7 @@ import {
 } from "../types/user.types"
 import { Context, Variables } from "../types/hono.types"
 import { Env, MiddlewareHandler } from "hono"
+import { HTTPException } from "hono/http-exception"
 
 type AppEnv = {
   Variables: Variables
@@ -49,7 +50,10 @@ userRouter.openapi(
     },
   }),
   async (c) => {
-    const userId = c.get("userId")
+    const userId = c.var.userId
+    if (!userId) {
+      throw new HTTPException(401, { message: "Unauthorized" })
+    }
     const profile = await userService.getProfile(userId)
     return c.json(profile)
   }
@@ -83,7 +87,10 @@ userRouter.openapi(
     },
   }),
   async (c) => {
-    const userId = c.get("userId")
+    const userId = c.var.userId
+    if (!userId) {
+      throw new HTTPException(401, { message: "Unauthorized" })
+    }
     const data = await c.req.json()
     const updatedProfile = await userService.updateProfile(userId, data)
     return c.json(updatedProfile)
@@ -113,7 +120,10 @@ userRouter.openapi(
     },
   }),
   async (c) => {
-    const userId = c.get("userId")
+    const userId = c.var.userId
+    if (!userId) {
+      throw new HTTPException(401, { message: "Unauthorized" })
+    }
     const { currentPassword, newPassword } = await c.req.json()
     await userService.changePassword(userId, currentPassword, newPassword)
     return c.json({ message: "Password changed successfully" })

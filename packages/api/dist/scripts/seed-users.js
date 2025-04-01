@@ -1,18 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const prisma_1 = require("../lib/prisma");
+const prisma_client_1 = require("../shared/prisma-client");
 const bcryptjs_1 = require("bcryptjs");
 const client_1 = require("@prisma/client");
 async function main() {
     console.log("Starting to seed users...");
     try {
         // Create admin user
-        const adminExists = await prisma_1.prisma.user.findUnique({
+        const adminExists = await prisma_client_1.prisma.user.findUnique({
             where: { email: "admin@ngdi.gov.ng" },
         });
         if (!adminExists) {
             const hashedAdminPassword = await (0, bcryptjs_1.hash)("Admin123!@#", 10);
-            await prisma_1.prisma.user.create({
+            await prisma_client_1.prisma.user.create({
                 data: {
                     email: "admin@ngdi.gov.ng",
                     password: hashedAdminPassword,
@@ -28,19 +28,19 @@ async function main() {
         else {
             // Update admin password if user already exists
             const hashedAdminPassword = await (0, bcryptjs_1.hash)("Admin123!@#", 10);
-            await prisma_1.prisma.user.update({
+            await prisma_client_1.prisma.user.update({
                 where: { email: "admin@ngdi.gov.ng" },
                 data: { password: hashedAdminPassword },
             });
             console.log("Admin user password updated successfully.");
         }
         // Create test user
-        const testUserExists = await prisma_1.prisma.user.findUnique({
+        const testUserExists = await prisma_client_1.prisma.user.findUnique({
             where: { email: "test@example.com" },
         });
         if (!testUserExists) {
             const hashedTestPassword = await (0, bcryptjs_1.hash)("password123", 10);
-            await prisma_1.prisma.user.create({
+            await prisma_client_1.prisma.user.create({
                 data: {
                     email: "test@example.com",
                     password: hashedTestPassword,
@@ -57,12 +57,12 @@ async function main() {
             console.log("Test user already exists.");
         }
         // Create node officer
-        const nodeOfficerExists = await prisma_1.prisma.user.findUnique({
+        const nodeOfficerExists = await prisma_client_1.prisma.user.findUnique({
             where: { email: "nodeofficer@ngdi.gov.ng" },
         });
         if (!nodeOfficerExists) {
             const hashedPassword = await (0, bcryptjs_1.hash)("officer123", 10);
-            await prisma_1.prisma.user.create({
+            await prisma_client_1.prisma.user.create({
                 data: {
                     email: "nodeofficer@ngdi.gov.ng",
                     password: hashedPassword,
@@ -85,7 +85,7 @@ async function main() {
         process.exit(1);
     }
     finally {
-        await prisma_1.prisma.$disconnect();
+        await prisma_client_1.prisma.$disconnect();
     }
 }
 main()

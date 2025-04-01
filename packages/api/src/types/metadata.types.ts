@@ -83,49 +83,22 @@ export const MetadataRequestSchema = metadataSchema;
 export interface MetadataResponse {
   id: string
   title: string
-  author: string
-  organization: string
-  dateFrom: string
-  dateTo: string
-  abstract: string
-  purpose: string
-  thumbnailUrl: string
-  imageName: string
-  frameworkType: string
-  categories: string[]
-  coordinateSystem: string
-  projection: string
-  scale: number
-  resolution?: string
-  coordinateUnit: string
-  minLatitude: number
-  minLongitude: number
-  maxLatitude: number
-  maxLongitude: number
-  accuracyLevel: string
-  completeness?: number
-  consistencyCheck?: boolean
-  validationStatus?: string
-  fileFormat: string
-  fileSize?: number
-  numFeatures?: number
-  softwareReqs?: string
-  updateCycle?: string
-  lastUpdate?: string
-  nextUpdate?: string
-  distributionFormat: string
-  accessMethod: string
-  downloadUrl?: string
-  apiEndpoint?: string
-  licenseType: string
-  usageTerms: string
-  attributionRequirements: string
-  accessRestrictions: string[]
-  contactPerson: string
-  email: string
-  department?: string
-  userId: string
-  createdAt: string
+  author: string | null
+  organization: string | null
+  dateFrom: string | null
+  dateTo: string | null
+  abstract: string | null
+  purpose: string | null
+  thumbnailUrl: string | null
+  imageName: string | null
+  frameworkType: string | null
+  coordinateUnit?: string | null
+  minLatitude?: number | null
+  minLongitude?: number | null
+  maxLatitude?: number | null
+  maxLongitude?: number | null
+  dataName?: string | null
+  productionDate?: string | null
   updatedAt: string
 }
 

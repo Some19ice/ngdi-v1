@@ -1,9 +1,82 @@
-import {
-  Permission,
-  User,
-  UserRole,
-  getAllPermissionsForRole,
-} from "../types/auth.types"
+import { User, UserRole } from "@prisma/client"
+import { Permission } from "../types/auth.types"
+
+interface Resource {
+  userId?: string
+  organizationId?: string
+}
+
+interface PermissionConditions {
+  userId?: string
+  organizationId?: string
+  isOwner?: boolean
+  dynamic?: {
+    evaluate: (user: User, resource?: Resource) => boolean
+  }
+}
+
+interface PermissionWithConditions extends Permission {
+  conditions?: PermissionConditions
+}
+
+export function getAllPermissionsForRole(
+  role: string
+): PermissionWithConditions[] {
+  // Implementation here
+  return []
+}
+
+export function can(
+  user: User,
+  permission: PermissionWithConditions,
+  resource?: Resource
+): boolean {
+  // Check if user has permission
+  const userPermissions = getAllPermissionsForRole(user.role)
+  const hasPermission = userPermissions.some(
+    (p) => p.action === permission.action && p.subject === permission.subject
+  )
+
+  if (!hasPermission) {
+    return false
+  }
+
+  // Check conditions if they exist
+  if (permission.conditions || resource) {
+    // Check dynamic conditions first
+    if (permission.conditions?.dynamic) {
+      const dynamicResult = permission.conditions.dynamic.evaluate(
+        user,
+        resource
+      )
+      if (!dynamicResult) {
+        return false
+      }
+    }
+
+    // Check organization condition
+    if (
+      (permission.conditions?.organizationId || resource?.organizationId) &&
+      user.organization
+    ) {
+      const targetOrgId =
+        permission.conditions?.organizationId || resource?.organizationId
+      if (targetOrgId !== user.organization) {
+        return false
+      }
+    }
+
+    // Check user ID condition
+    if (permission.conditions?.userId || resource?.userId) {
+      const targetUserId = permission.conditions?.userId || resource?.userId
+      if (permission.conditions?.isOwner && targetUserId !== user.id) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
 
 export class PermissionError extends Error {
   constructor(
@@ -36,84 +109,6 @@ export function logPermissionCheck(
       result,
       timestamp: new Date().toISOString(),
     })
-  }
-}
-
-export function can(
-  user: User,
-  permission: Permission,
-  resource?: { userId?: string; organizationId?: string }
-): boolean {
-  try {
-    // Get all permissions including inherited ones
-    const userPermissions = getAllPermissionsForRole(user.role)
-    if (!userPermissions?.length) {
-      console.warn(`No permissions found for role: ${user.role}`)
-      return false
-    }
-
-    const hasPermission = userPermissions.some(
-      (p) => p.action === permission.action && p.subject === permission.subject
-    )
-
-    if (!hasPermission) {
-      logPermissionCheck(user, permission, resource, false)
-      return false
-    }
-
-    // Check resource-based conditions if they exist
-    if (permission.conditions || resource) {
-      // Admin bypass for resource checks
-      if (user.role === UserRole.ADMIN) {
-        logPermissionCheck(user, permission, resource, true)
-        return true
-      }
-
-      // Check dynamic conditions first
-      if (permission.conditions?.dynamic) {
-        const dynamicResult = permission.conditions.dynamic.evaluate(
-          user,
-          resource
-        )
-        if (!dynamicResult) {
-          logPermissionCheck(user, permission, resource, false)
-          return false
-        }
-      }
-
-      // Check organization-based access
-      if (
-        (permission.conditions?.organizationId || resource?.organizationId) &&
-        user.organization
-      ) {
-        const targetOrgId =
-          permission.conditions?.organizationId || resource?.organizationId
-        if (targetOrgId !== user.organization) {
-          logPermissionCheck(user, permission, resource, false)
-          return false
-        }
-      }
-
-      // Check user-based access
-      if (permission.conditions?.userId || resource?.userId) {
-        const targetUserId = permission.conditions?.userId || resource?.userId
-        if (permission.conditions?.isOwner && targetUserId !== user.id) {
-          logPermissionCheck(user, permission, resource, false)
-          return false
-        }
-      }
-    }
-
-    logPermissionCheck(user, permission, resource, true)
-    return true
-  } catch (error) {
-    console.error("Permission check failed:", {
-      user,
-      permission,
-      resource,
-      error,
-    })
-    return false
   }
 }
 

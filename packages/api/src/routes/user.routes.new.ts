@@ -65,14 +65,12 @@ function requireAuth() {
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.get("/profile", async (c: Context) => {
-  const userId = c.get("userId")
-
+  const userId = c.var.userId
+  if (!userId) {
+    throw new HTTPException(401, { message: "Unauthorized" })
+  }
   const user = await userService.getUserById(userId)
-
-  return c.json({
-    success: true,
-    data: user,
-  })
+  return c.json(user)
 })
 
 /**
@@ -110,15 +108,13 @@ userRouter.get("/profile", async (c: Context) => {
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.put("/profile", async (c: Context) => {
-  const userId = c.get("userId")
+  const userId = c.var.userId
+  if (!userId) {
+    throw new HTTPException(401, { message: "Unauthorized" })
+  }
   const data = await c.req.json()
-
   const updatedUser = await userService.updateProfile(userId, data)
-
-  return c.json({
-    success: true,
-    data: updatedUser,
-  })
+  return c.json(updatedUser)
 })
 
 /**
@@ -157,15 +153,13 @@ userRouter.put("/profile", async (c: Context) => {
  *         $ref: '#/components/responses/InternalServerError'
  */
 userRouter.post("/change-password", async (c: Context) => {
-  const userId = c.get("userId")
+  const userId = c.var.userId
+  if (!userId) {
+    throw new HTTPException(401, { message: "Unauthorized" })
+  }
   const { currentPassword, newPassword } = await c.req.json()
-
   await userService.changePassword(userId, currentPassword, newPassword)
-
-  return c.json({
-    success: true,
-    message: "Password changed successfully",
-  })
+  return c.json({ message: "Password changed successfully" })
 })
 
 // Admin authorization middleware

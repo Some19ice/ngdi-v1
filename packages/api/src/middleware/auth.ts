@@ -1,10 +1,11 @@
 import { Next } from "hono"
 import { verifyToken } from "../utils/jwt"
 import { AuthError, AuthErrorCode } from "../types/error.types"
-import { UserRole } from "../types/auth.types"
+import { UserRole } from "@prisma/client"
 import { Context } from "../types/hono.types"
 import * as jose from "jose"
 import { redisService } from "../services/redis.service"
+import { HTTPException } from "hono/http-exception"
 
 const AUTH_COOKIE_NAME = "auth_token"
 
@@ -154,7 +155,19 @@ async function authenticate(c: Context, next: Next) {
  */
 function authorize(roles: UserRole[]) {
   return async (c: Context, next: Next) => {
-    const userRole = c.get("userRole")
+    const userRoleString = c.get("userRole")
+
+    // Validate userRole and convert to enum
+    if (!userRoleString) {
+      throw new AuthError(
+        AuthErrorCode.FORBIDDEN,
+        "No role assigned to user",
+        403
+      )
+    }
+
+    // Type assertion after validation
+    const userRole = userRoleString as UserRole
 
     if (!roles.includes(userRole)) {
       throw new AuthError(
@@ -211,4 +224,37 @@ export const auth = {
     authenticate,
     authorizeOwnerOrAdmin(resourceUserId),
   ],
+}
+
+const userRoles = Object.values(UserRole)
+
+function isValidUserRole(role: unknown): role is UserRole {
+  return typeof role === "string" && userRoles.includes(role as UserRole)
+}
+
+const requireRoles = (roles: UserRole[]) => async (c: Context, next: Next) => {
+  const maybeRole = c.var.userRole
+
+  if (!maybeRole || typeof maybeRole !== "string") {
+    throw new HTTPException(401, { message: "Unauthorized - No role found" })
+  }
+
+  // Convert string to UserRole enum
+  let userRole: UserRole
+  try {
+    userRole = UserRole[maybeRole as keyof typeof UserRole]
+    if (!userRole) {
+      throw new Error("Invalid role")
+    }
+  } catch {
+    throw new HTTPException(403, { message: "Forbidden - Invalid role" })
+  }
+
+  if (!roles.includes(userRole)) {
+    throw new HTTPException(403, {
+      message: "Forbidden - Insufficient permissions",
+    })
+  }
+
+  await next()
 }

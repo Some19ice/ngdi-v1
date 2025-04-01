@@ -11,25 +11,6 @@ const client_1 = require("../db/client");
  */
 exports.adminService = {
     /**
-     * Get system statistics
-     */
-    getSystemStats: async () => {
-        const totalUsers = await user_repository_1.userRepository.count();
-        const totalMetadata = await metadata_repository_1.metadataRepository.count();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const newUsersLast30Days = await user_repository_1.userRepository.countCreatedAfter(thirtyDaysAgo);
-        const newMetadataLast30Days = await metadata_repository_1.metadataRepository.countCreatedAfter(thirtyDaysAgo);
-        const usersByRole = await user_repository_1.userRepository.countByRole();
-        return {
-            totalUsers,
-            totalMetadata,
-            newUsersLast30Days,
-            newMetadataLast30Days,
-            usersByRole,
-        };
-    },
-    /**
      * Get enhanced admin dashboard statistics
      */
     getAdminDashboardStats: async () => {
@@ -150,6 +131,62 @@ exports.adminService = {
         await metadata_repository_1.metadataRepository.deleteByUserId(userId);
         // Then delete the user
         await user_repository_1.userRepository.delete(userId);
+    },
+    /**
+     * Get detailed user information
+     */
+    getUserDetails: async (userId) => {
+        // Try exact match first
+        let user = await user_repository_1.userRepository.findById(userId);
+        // If not found, try case-insensitive search
+        if (!user) {
+            const allUsers = await client_1.prisma.user.findMany({
+                take: 100,
+                select: { id: true },
+            });
+            const matchedUser = allUsers.find((u) => u.id.toLowerCase() === userId.toLowerCase());
+            if (matchedUser) {
+                user = await user_repository_1.userRepository.findById(matchedUser.id);
+            }
+        }
+        if (!user) {
+            throw new error_handler_1.ApiError("User not found", 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+        }
+        // Get metadata count and recent activity
+        const [metadataCount, recentMetadata] = await Promise.all([
+            client_1.prisma.metadata.count({
+                where: { userId: user.id },
+            }),
+            client_1.prisma.metadata.findMany({
+                where: { userId: user.id },
+                orderBy: { updatedAt: "desc" },
+                take: 5,
+                select: {
+                    id: true,
+                    title: true,
+                    updatedAt: true,
+                },
+            }),
+        ]);
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name || "",
+            role: (0, role_mapper_1.mapPrismaRoleToAppRole)(user.role),
+            emailVerified: user.emailVerified !== null,
+            organization: user.organization || undefined,
+            department: user.department || undefined,
+            phone: user.phone || undefined,
+            image: user.image || undefined,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+            metadataCount,
+            recentActivity: recentMetadata.map((m) => ({
+                id: m.id,
+                title: m.title,
+                updatedAt: m.updatedAt.toISOString(),
+            })),
+        };
     },
     /**
      * Get all metadata with pagination and filtering

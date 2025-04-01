@@ -6,11 +6,12 @@ const bcryptjs_1 = require("bcryptjs");
 const jsonwebtoken_1 = require("jsonwebtoken");
 const http_exception_1 = require("hono/http-exception");
 const client_1 = require("@prisma/client");
-const auth_utils_1 = require("../utils/auth.utils");
-const error_handler_1 = require("../middleware/error-handler");
+const error_types_1 = require("../types/error.types");
 const jwt_1 = require("../utils/jwt");
 const crypto_1 = require("crypto");
 const role_mapper_1 = require("../utils/role-mapper");
+const email_service_1 = require("../services/email.service");
+const jwt_2 = require("../utils/jwt");
 class AuthService {
     constructor() { }
     static generateToken(user) {
@@ -139,10 +140,11 @@ class AuthService {
         try {
             const jwtPayload = await (0, jwt_1.verifyRefreshToken)(refreshToken);
             const tokenPayload = {
-                id: jwtPayload.userId,
+                userId: jwtPayload.userId,
+                email: jwtPayload.email,
                 role: jwtPayload.role,
             };
-            const accessToken = await (0, auth_utils_1.generateToken)(tokenPayload);
+            const accessToken = await (0, jwt_2.generateToken)(tokenPayload);
             const newRefreshToken = await (0, jwt_1.generateRefreshToken)(jwtPayload);
             return { success: true, token: accessToken };
         }
@@ -156,6 +158,7 @@ class AuthService {
             where: { email },
         });
         if (!user) {
+            // Don't reveal that the user doesn't exist
             return;
         }
         const token = (0, crypto_1.randomUUID)();
@@ -168,33 +171,91 @@ class AuthService {
                 expires,
             },
         });
-        console.log(`Password reset token for ${email}: ${token}`);
+        // Send password reset email
+        await email_service_1.emailService.sendPasswordResetEmail(email, token);
     }
     async resetPassword(token, newPassword) {
         const verificationToken = await prisma_1.prisma.verificationToken.findUnique({
             where: { token },
         });
         if (!verificationToken) {
-            throw new error_handler_1.ApiError("Invalid or expired token", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Invalid or expired token", 400);
         }
         if (verificationToken.expires < new Date()) {
             await prisma_1.prisma.verificationToken.delete({
                 where: { token },
             });
-            throw new error_handler_1.ApiError("Token has expired", 400, error_handler_1.ErrorCode.VALIDATION_ERROR);
-        }
-        const user = await prisma_1.prisma.user.findUnique({
-            where: { email: verificationToken.identifier },
-        });
-        if (!user) {
-            throw new error_handler_1.ApiError("User not found", 404, error_handler_1.ErrorCode.RESOURCE_NOT_FOUND);
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.TOKEN_EXPIRED, "Token has expired", 400);
         }
         const hashedPassword = await (0, bcryptjs_1.hash)(newPassword, 10);
         await prisma_1.prisma.user.update({
-            where: { id: user.id },
-            data: {
-                password: hashedPassword,
+            where: { email: verificationToken.identifier },
+            data: { password: hashedPassword },
+        });
+        await prisma_1.prisma.verificationToken.delete({
+            where: { token },
+        });
+    }
+    static async verifyEmail(token) {
+        const verificationToken = await prisma_1.prisma.verificationToken.findFirst({
+            where: {
+                token,
+                expires: {
+                    gt: new Date(),
+                },
             },
+        });
+        if (!verificationToken) {
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Invalid or expired token", 400);
+        }
+        // Update user
+        await prisma_1.prisma.user.update({
+            where: { email: verificationToken.identifier },
+            data: { emailVerified: new Date() },
+        });
+        // Delete verification token
+        await prisma_1.prisma.verificationToken.delete({
+            where: { token },
+        });
+    }
+    static async forgotPassword(email) {
+        const user = await prisma_1.prisma.user.findUnique({
+            where: { email },
+        });
+        if (!user) {
+            // Don't reveal that the user doesn't exist
+            return;
+        }
+        const token = (0, crypto_1.randomUUID)();
+        const expires = new Date();
+        expires.setHours(expires.getHours() + 1);
+        await prisma_1.prisma.verificationToken.create({
+            data: {
+                identifier: email,
+                token,
+                expires,
+            },
+        });
+        // Send password reset email
+        await email_service_1.emailService.sendPasswordResetEmail(email, token);
+    }
+    static async resetPassword(token, newPassword) {
+        const verificationToken = await prisma_1.prisma.verificationToken.findUnique({
+            where: { token },
+        });
+        if (!verificationToken) {
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.INVALID_TOKEN, "Invalid or expired token", 400);
+        }
+        if (verificationToken.expires < new Date()) {
+            await prisma_1.prisma.verificationToken.delete({
+                where: { token },
+            });
+            throw new error_types_1.AuthError(error_types_1.AuthErrorCode.TOKEN_EXPIRED, "Token has expired", 400);
+        }
+        const hashedPassword = await (0, bcryptjs_1.hash)(newPassword, 10);
+        await prisma_1.prisma.user.update({
+            where: { email: verificationToken.identifier },
+            data: { password: hashedPassword },
         });
         await prisma_1.prisma.verificationToken.delete({
             where: { token },

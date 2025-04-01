@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "View and manage your metadata records",
 }
 
+export const dynamic = "force-dynamic"
+
 // Try to get metadata directly from the database
 async function getMetadataFromDatabase(userId: string) {
   try {
