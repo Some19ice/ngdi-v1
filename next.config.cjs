@@ -27,7 +27,7 @@ module.exports = {
     // Configure for middleware
     instrumentationHook: true,
     // Disable static optimization for all routes
-    fallbackNodePolyfills: false
+    fallbackNodePolyfills: false,
   },
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {
@@ -119,37 +119,9 @@ module.exports = {
   compiler: {
     reactRemoveProperties: process.env.NODE_ENV === "production",
   },
-  // Configure rewrites for API
+  // Configure rewrites for API - All API requests handled by Hono.js
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination:
-          process.env.NODE_ENV === "production"
-            ? "https://ngdi-api.vercel.app/api/:path*"
-            : "http://localhost:3001/api/:path*",
-        // Exclude /api/auth paths from this rewrite because they're handled by the Next.js API routes
-        has: [
-          {
-            type: "header",
-            key: "x-skip-rewrite",
-            value: "(?!.*)",
-          },
-        ],
-      },
-      // Add a separate rule for auth endpoints
-      {
-        source: "/api/auth/:path*",
-        destination: "/api/auth/:path*",
-        has: [
-          {
-            type: "header",
-            key: "x-special-auth",
-            value: "(?!.*)",
-          },
-        ],
-      },
-    ]
+    return []
   },
   // Configure redirects
   async redirects() {

@@ -26,7 +26,8 @@ const log = {
 async function hasCompletedOnboarding(userId: string) {
   // Check if user has completed onboarding
   try {
-    const apiUrl = `${process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/profile`
+    // Call the API server directly - no internal URL needed
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "/api"}/users/profile`
     log.debug(`Checking onboarding status for user ${userId} at ${apiUrl}`)
 
     const response = await fetch(apiUrl, {
@@ -35,7 +36,6 @@ async function hasCompletedOnboarding(userId: string) {
         "Content-Type": "application/json",
         "X-User-ID": userId,
         "X-Request-ID": crypto.randomUUID(),
-        // Don't include auth headers here as we're making this call server-side in middleware
       },
       cache: "no-store",
     })

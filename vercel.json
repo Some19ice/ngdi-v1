@@ -6,16 +6,23 @@
   "devCommand": "npm run dev",
   "regions": ["cle1"],
   "env": {
-    "INTERNAL_API_URL": "http://localhost:3001"
+    "NODE_ENV": "production"
   },
   "rewrites": [
-    { "source": "/api/(auth/.+)", "destination": "/$1" },
     { "source": "/api/:path*", "destination": "packages/api/dist/index.js" }
   ],
   "headers": [
     {
       "source": "/auth/:path*",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
+      ]
     }
   ]
 }
