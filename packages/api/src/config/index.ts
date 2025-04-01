@@ -83,4 +83,11 @@ export const config = {
     from: process.env.EMAIL_FROM || "noreply@example.com",
   },
   logLevel: process.env.LOG_LEVEL || "info",
+  redis: {
+    url: process.env.REDIS_URL || "redis://localhost:6379",
+    options: {
+      enableReadyCheck: true,
+      maxRetriesPerRequest: 3,
+    },
+  },
 }

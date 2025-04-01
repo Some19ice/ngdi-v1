@@ -7,13 +7,13 @@ import {
   Profile,
   formatSupabaseUserToProfile,
 } from "@/components/profile/types"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
 export default function EditProfilePage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading } = useAuthSession()
   const [profile, setProfile] = useState<Profile | null>(null)
   const { toast } = useToast()
   const router = useRouter()
@@ -92,3 +92,4 @@ export default function EditProfilePage() {
     </div>
   )
 }
+

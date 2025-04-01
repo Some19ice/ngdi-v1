@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,11 +11,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
 export default function ForceSignoutPage() {
-  const router = useRouter()
-  const { signOut } = useAuth()
+  const { logout, navigate } = useAuthSession()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -55,7 +53,7 @@ export default function ForceSignoutPage() {
     try {
       setIsSigningOut(true)
       setError(null)
-      await signOut()
+      await logout()
       setSuccess(true)
     } catch (error) {
       console.error("Error signing out:", error)
@@ -112,10 +110,7 @@ export default function ForceSignoutPage() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button
-              onClick={() => router.push("/auth/signin")}
-              className="w-full"
-            >
+            <Button onClick={() => navigate("/auth/signin")} className="w-full">
               Go to Sign In
             </Button>
           </CardFooter>
@@ -180,7 +175,7 @@ export default function ForceSignoutPage() {
           <Button
             variant="ghost"
             className="w-full flex items-center justify-center"
-            onClick={() => router.back()}
+            onClick={() => navigate("/")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Go Back

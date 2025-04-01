@@ -213,14 +213,14 @@ export default async function MetadataPage({ params }: MetadataPageProps) {
                 </div>
               )}
 
-              {metadata.fileSize && (
+              {metadata.fileSize ? (
                 <div>
                   <h3 className="text-sm font-medium">File Size</h3>
                   <p className="text-muted-foreground">
-                    {metadata.fileSize} bytes
+                    {String(metadata.fileSize)} bytes
                   </p>
                 </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
 

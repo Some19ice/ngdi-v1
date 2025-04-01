@@ -7,16 +7,14 @@ import {
   Profile,
   formatSupabaseUserToProfile,
 } from "@/components/profile/types"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
-import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, navigate } = useAuthSession()
   const [profile, setProfile] = useState<Profile | null>(null)
   const { toast } = useToast()
-  const router = useRouter()
 
   // When user data is available, create a profile from it
   useEffect(() => {
@@ -56,12 +54,14 @@ export default function SettingsPage() {
             Please sign in to access profile settings.
           </p>
           <div className="mt-4">
-            <a
-              href="/auth/signin?callbackUrl=/profile/settings"
+            <button
+              onClick={() =>
+                navigate("/auth/signin?callbackUrl=/profile/settings")
+              }
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 inline-block"
             >
               Sign In
-            </a>
+            </button>
           </div>
         </div>
       </div>

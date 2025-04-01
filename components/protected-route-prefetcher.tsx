@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { authClient } from "@/lib/auth-client"
 
 /**
@@ -11,7 +11,7 @@ import { authClient } from "@/lib/auth-client"
  * It should be included in the layout.tsx file so it's always present.
  */
 export function ProtectedRoutePrefetcher() {
-  const { status } = useAuth()
+  const { status } = useAuthSession()
   const [prefetched, setPrefetched] = useState(false)
 
   // Prefetch authentication data when component mounts

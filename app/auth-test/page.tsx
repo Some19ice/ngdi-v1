@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { createClient } from "@supabase/supabase-js"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,7 +28,8 @@ type SupabaseSession = {
 
 export default function AuthTestPage() {
   // Use auth hook but don't trigger any refreshes
-  const { session, user, isLoading, isAuthenticated, userRole, isAdmin } = useAuth()
+  const { session, user, isLoading, isAuthenticated, hasRole, isAdmin } =
+    useAuthSession()
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [supabaseSession, setSupabaseSession] = useState<SupabaseSession | null>(null)
   const [supabaseError, setSupabaseError] = useState<string | null>(null)
@@ -84,13 +85,14 @@ export default function AuthTestPage() {
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-2xl font-bold mb-4">Authentication Test Page</h1>
-      
+
       <Alert className="mb-6">
         <InfoIcon className="h-4 w-4" />
         <AlertTitle>Read-only mode</AlertTitle>
         <AlertDescription>
-          This page only displays authentication information and does not modify your session.
-          If you experience any authentication issues after visiting this page, please sign in again.
+          This page only displays authentication information and does not modify
+          your session. If you experience any authentication issues after
+          visiting this page, please sign in again.
         </AlertDescription>
       </Alert>
 
@@ -99,20 +101,23 @@ export default function AuthTestPage() {
           <TabsTrigger value="custom">Custom Auth</TabsTrigger>
           <TabsTrigger value="supabase">Supabase Auth</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="custom">
           <Card>
             <CardHeader>
               <CardTitle>Custom Auth Status</CardTitle>
               <CardDescription>
-                Shows your current authentication state using the custom auth client
+                Shows your current authentication state using the custom auth
+                client
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-2">
                 <span
                   className={`px-2 py-1 text-sm rounded ${
-                    isAuthenticated ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                    isAuthenticated
+                      ? "bg-green-500 text-white"
+                      : "bg-red-500 text-white"
                   }`}
                 >
                   {isAuthenticated ? "Authenticated" : "Not Authenticated"}
@@ -128,7 +133,7 @@ export default function AuthTestPage() {
                   {
                     authenticated: isAuthenticated,
                     isLoading,
-                    userRole,
+                    userRole: user?.role,
                     isAdmin,
                     hasUser: !!user,
                     hasUserId: !!user?.id,
@@ -138,7 +143,7 @@ export default function AuthTestPage() {
                           name: user.name,
                           email: user.email?.substring(0, 3) + "...",
                           role: user.role,
-                          normalizedRole: userRole,
+                          normalizedRole: user.role,
                           hasImage: !!user.image,
                           // These properties might not exist on all user objects
                           hasOrganization: !!(user as any).organization,
@@ -154,15 +159,15 @@ export default function AuthTestPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="supabase">
           <Card>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
                 <span>Supabase Auth Status</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={checkSupabaseAuth}
                   disabled={isCheckingSupabase}
                 >

@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert } from "@/components/ui/alert"
@@ -44,12 +44,21 @@ type SignUpValues = z.infer<typeof signUpSchema>
 export function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { register } = useAuth()
+  const { register: authRegister, navigate } = useAuthSession()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Get return URL from query parameters
   const returnUrl = searchParams ? searchParams.get("returnUrl") || "/" : "/"
+
+  // Create a wrapper around the register function
+  const register = async (email: string, password: string) => {
+    return authRegister({
+      email,
+      password,
+      name: form.getValues().name,
+    })
+  }
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
@@ -67,14 +76,13 @@ export function SignUpForm() {
 
     try {
       console.log(`Attempting to register user: ${data.email}`)
-      await register(data.email, data.password, data.name)
+      await register(data.email, data.password)
 
       console.log("Registration successful, redirecting to:", returnUrl)
 
       // Small delay to ensure cookies are set
       setTimeout(() => {
-        router.push(returnUrl)
-        router.refresh()
+        navigate(returnUrl)
       }, 500)
     } catch (error: any) {
       console.error("Sign up error:", error)

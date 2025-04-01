@@ -1,9 +1,10 @@
 import { Next } from "hono"
 import { verifyToken } from "../utils/jwt"
-import { ApiError } from "./error-handler"
+import { AuthError, AuthErrorCode } from "../types/error.types"
 import { UserRole } from "../types/auth.types"
 import { Context } from "../types/hono.types"
 import * as jose from "jose"
+import { redisService } from "../services/redis.service"
 
 const AUTH_COOKIE_NAME = "auth_token"
 
@@ -57,10 +58,24 @@ async function authenticate(c: Context, next: Next) {
   }
 
   if (!token) {
-    throw new ApiError("Unauthorized - No valid token provided", 401)
+    throw new AuthError(
+      AuthErrorCode.INVALID_TOKEN,
+      "No valid token provided",
+      401
+    )
   }
 
   try {
+    // Check if token is blacklisted
+    const isBlacklisted = await redisService.isTokenBlacklisted(token)
+    if (isBlacklisted) {
+      throw new AuthError(
+        AuthErrorCode.TOKEN_BLACKLISTED,
+        "Token has been revoked",
+        401
+      )
+    }
+
     // Check cache first
     const cacheEntry = tokenCache.get(token)
     const now = Math.floor(Date.now() / 1000)
@@ -110,16 +125,27 @@ async function authenticate(c: Context, next: Next) {
   } catch (error) {
     console.error("Authentication error:", error)
 
-    // Provide more specific error messages based on error type
+    if (error instanceof AuthError) {
+      throw error
+    }
+
     if (error instanceof Error) {
       if (error.name === "TokenExpiredError") {
-        throw new ApiError("Unauthorized - Token has expired", 401)
+        throw new AuthError(
+          AuthErrorCode.TOKEN_EXPIRED,
+          "Token has expired",
+          401
+        )
       } else if (error.name === "JsonWebTokenError") {
-        throw new ApiError("Unauthorized - Invalid token format", 401)
+        throw new AuthError(
+          AuthErrorCode.INVALID_TOKEN,
+          "Invalid token format",
+          401
+        )
       }
     }
 
-    throw new ApiError("Unauthorized - Invalid token", 401)
+    throw new AuthError(AuthErrorCode.INVALID_TOKEN, "Invalid token", 401)
   }
 }
 
@@ -131,7 +157,11 @@ function authorize(roles: UserRole[]) {
     const userRole = c.get("userRole")
 
     if (!roles.includes(userRole)) {
-      throw new ApiError("Forbidden - Insufficient permissions", 403)
+      throw new AuthError(
+        AuthErrorCode.FORBIDDEN,
+        "Insufficient permissions",
+        403
+      )
     }
 
     await next()
@@ -147,8 +177,9 @@ function authorizeOwnerOrAdmin(resourceUserId: string) {
     const userRole = c.get("userRole")
 
     if (userId !== resourceUserId && userRole !== UserRole.ADMIN) {
-      throw new ApiError(
-        "Forbidden - You can only access your own resources",
+      throw new AuthError(
+        AuthErrorCode.FORBIDDEN,
+        "You can only access your own resources",
         403
       )
     }

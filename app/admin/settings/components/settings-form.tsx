@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
 import { Button } from "@/components/ui/button"
@@ -80,7 +80,7 @@ export interface SettingsFormProps {
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const { user, can } = useAuth()
+  const { user, isAdmin } = useAuthSession()
   const [isSaving, setIsSaving] = useState(false)
 
   if (!user) {
@@ -111,7 +111,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   }
 
-  if (!can(Permissions.MANAGE_SETTINGS)) {
+  if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">

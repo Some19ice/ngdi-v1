@@ -4,13 +4,13 @@ import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { authClient } from "@/lib/auth-client"
-import { useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
 export function AuthHandler() {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
-  const { refreshSession } = useAuth()
+  const { refreshSession } = useAuthSession()
 
   useEffect(() => {
     const handleAuthState = async () => {

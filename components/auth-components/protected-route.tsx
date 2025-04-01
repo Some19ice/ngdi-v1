@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { UserRole } from "@/lib/auth/constants"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { AUTH_PATHS } from "@/lib/auth/paths"
@@ -16,12 +16,12 @@ export function ProtectedRoute({
   children,
   allowedRoles,
 }: ProtectedRouteProps) {
-  const { user, isLoading, userRole, isAdmin } = useAuth()
+  const { user, isLoading, hasRole, isAdmin, navigate } = useAuthSession()
   const router = useRouter()
 
   console.log("ProtectedRoute rendered with:", {
     hasUser: !!user,
-    userRole,
+    userRole: user?.role,
     isAdmin,
     isLoading,
     allowedRoles,
@@ -29,36 +29,9 @@ export function ProtectedRoute({
       typeof window !== "undefined" ? window.location.pathname : "unknown",
   })
 
-  // Helper function to normalize role for comparison
-  const isRoleAllowed = (
-    role: string | null,
-    allowedRoles: UserRole[] | undefined
-  ): boolean => {
-    if (!role || !allowedRoles) return false
-
-    // Special case for admin - always allow access
-    if (
-      role.toUpperCase() === UserRole.ADMIN ||
-      role === "0" || // Some systems use numeric role codes
-      role === "admin" ||
-      role === "Admin"
-    ) {
-      console.log("Admin role detected, allowing access")
-      return true
-    }
-
-    // Convert role to uppercase for case-insensitive comparison
-    const normalizedRole = role.toUpperCase()
-
-    // Check if the normalized role is in the allowed roles (case-insensitive)
-    return allowedRoles.some(
-      (allowedRole) => allowedRole.toUpperCase() === normalizedRole
-    )
-  }
-
   useEffect(() => {
     console.log("Protected Route - User:", user)
-    console.log("Protected Route - User role:", userRole)
+    console.log("Protected Route - User role:", user?.role)
     console.log("Protected Route - Is admin:", isAdmin)
     console.log("Protected Route - Allowed roles:", allowedRoles)
     console.log("Protected Route - Is loading:", isLoading)
@@ -71,7 +44,8 @@ export function ProtectedRoute({
 
     if (!isLoading && !user) {
       console.log("Protected Route - No user, redirecting to signin")
-      router.push(AUTH_PATHS.SIGNIN)
+      // Use navigate from useAuthSession to handle navigation consistently
+      navigate(AUTH_PATHS.SIGNIN)
       return
     }
 
@@ -81,18 +55,14 @@ export function ProtectedRoute({
       return
     }
 
-    if (
-      !isLoading &&
-      user &&
-      allowedRoles &&
-      !isRoleAllowed(userRole, allowedRoles)
-    ) {
+    if (!isLoading && user && allowedRoles && !hasRole(allowedRoles)) {
       console.log(
-        `Protected Route - User role ${userRole} not in allowed roles, redirecting to home`
+        `Protected Route - User role ${user.role} not in allowed roles, redirecting to home`
       )
-      router.push("/")
+      // Use navigate from useAuthSession for consistent navigation handling
+      navigate("/")
     }
-  }, [user, isLoading, router, allowedRoles, userRole, isAdmin])
+  }, [user, isLoading, router, allowedRoles, isAdmin, hasRole, navigate])
 
   if (isLoading) {
     return (
@@ -111,7 +81,7 @@ export function ProtectedRoute({
     return <>{children}</>
   }
 
-  if (allowedRoles && !isRoleAllowed(userRole, allowedRoles)) {
+  if (allowedRoles && !hasRole(allowedRoles)) {
     return null
   }
 

@@ -1,23 +1,21 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
 export default function ProfileMetadataPage() {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
+  const { user, isLoading, navigate } = useAuthSession()
 
   useEffect(() => {
     // Redirect to metadata page if user is authenticated
     if (!isLoading && user) {
-      router.push("/metadata")
+      navigate("/metadata")
     } else if (!isLoading && !user) {
       // Redirect to login if not authenticated
-      router.push("/login?returnUrl=/metadata")
+      navigate("/login?returnUrl=/metadata")
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, navigate])
 
   // Show loading state while checking authentication
   return (

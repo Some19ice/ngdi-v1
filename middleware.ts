@@ -117,13 +117,39 @@ export async function middleware(request: NextRequest) {
   // For auth routes, allow access regardless of authentication status
   if (isAuthRoute) {
     console.log(`Auth route detected: ${path}, allowing access`)
+    // If the user is trying to access an auth route with a valid token,
+    // we'll let the client-side logic handle redirection to prevent conflicts
+    const authToken = request.cookies.get(AUTH_COOKIE_NAME)?.value
+
+    if (authToken && path === "/auth/signin") {
+      // For the signin page specifically, perform a quick validation check
+      try {
+        const quickResult = quickValidateToken(authToken)
+        // Add debug headers to help with troubleshooting
+        const response = NextResponse.next()
+        response.headers.set(
+          "x-auth-debug",
+          JSON.stringify({
+            path,
+            hasToken: true,
+            quickValidation: quickResult.isValid,
+            timestamp: Date.now(),
+          })
+        )
+        return response
+      } catch (error) {
+        console.error("Error in auth token quick validation:", error)
+        // If validation fails, still allow access to signin page
+      }
+    }
+
     return NextResponse.next()
   }
 
   // Special handling for the home page (landing page)
-  // Always allow access to home page regardless of auth status
+  // Always allow access to home page - app/page.tsx will handle redirect for authenticated users
   if (path === "/" || path === "/home") {
-    console.log("Home page - allowing access regardless of auth status")
+    console.log("Home page - allowing access")
     return NextResponse.next()
   }
 

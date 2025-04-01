@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ImageCarousel } from "@/components/landing/image-carousel"
 import { landingImages } from "@/lib/landing-images"
@@ -13,8 +14,7 @@ export default async function HomePage() {
   const cookieStore = cookies()
   const authToken = cookieStore.get("auth_token")
 
-  // If user is already authenticated, show a different CTA
-  const isAuthenticated = !!authToken
+  // No redirect - allow authenticated users to see the landing page
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -39,16 +39,7 @@ export default async function HomePage() {
                 accurate spatial information.
               </p>
               <div className="flex flex-wrap gap-4">
-                {isAuthenticated ? (
-                  <Link href="/search">
-                    <Button
-                      size="lg"
-                      className="bg-white text-primary hover:bg-white/90"
-                    >
-                      Explore the Portal
-                    </Button>
-                  </Link>
-                ) : (
+                {!authToken ? (
                   <>
                     <Link href="/auth/signin">
                       <Button
@@ -58,16 +49,25 @@ export default async function HomePage() {
                         Sign In
                       </Button>
                     </Link>
-                    <Link href="/auth/signup">
+                    <Link href="/register">
                       <Button
                         size="lg"
-                        variant="secondary"
-                        className="bg-white/90 text-primary hover:bg-white border border-white"
+                        variant="outline"
+                        className="border-white text-white hover:bg-white/10"
                       >
                         Create Account
                       </Button>
                     </Link>
                   </>
+                ) : (
+                  <Link href="/search">
+                    <Button
+                      size="lg"
+                      className="bg-white text-primary hover:bg-white/90"
+                    >
+                      Search Datasets
+                    </Button>
+                  </Link>
                 )}
               </div>
             </div>

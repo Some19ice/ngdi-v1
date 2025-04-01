@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -41,6 +41,14 @@ import {
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 
 const formSchema = z.object({
   keyword: z.string().optional(),
@@ -57,7 +65,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 interface MetadataSearchFormProps {
-  searchParams: MetadataSearchParams
+  initialQ?: string
 }
 
 // Group categories for better organization
@@ -125,34 +133,83 @@ const sortOrderOptions = [
   { value: "asc", label: "Ascending" },
 ]
 
-export default function MetadataSearchForm({
-  searchParams,
-}: MetadataSearchFormProps) {
+// Common search suggestions
+const searchSuggestions = [
+  "Boundaries",
+  "Population",
+  "Land use",
+  "Hydrography",
+  "Transportation network",
+  "Administrative regions",
+  "Census data",
+  "Flood map",
+  "Elevation model",
+  "Road network",
+  "Utilities",
+  "Satellite imagery",
+  "Lagos",
+  "Abuja",
+  "Rivers",
+  "Environmental data",
+]
+
+export default function MetadataSearchForm({ initialQ = "" }: MetadataSearchFormProps) {
   const router = useRouter()
   const [isPending, setIsPending] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [filteredSuggestions, setFilteredSuggestions] =
+    useState(searchSuggestions)
+  const [inputValue, setInputValue] = useState(initialQ || "")
+
+  // Filter suggestions based on input
+  useEffect(() => {
+    if (inputValue) {
+      const filtered = searchSuggestions.filter((suggestion) =>
+        suggestion.toLowerCase().includes(inputValue.toString().toLowerCase())
+      )
+      setFilteredSuggestions(filtered)
+    } else {
+      setFilteredSuggestions(searchSuggestions)
+    }
+  }, [inputValue])
+
+  // Add click outside listener to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest(".search-suggestion-container")) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      keyword: searchParams.search || "",
-      author: searchParams.author || "",
-      organization: searchParams.organization || "",
-      dateFrom: searchParams.dateFrom || "",
-      dateTo: searchParams.dateTo || "",
-      categories: searchParams.categories
-        ? Array.isArray(searchParams.categories)
-          ? searchParams.categories
-          : [searchParams.categories]
-        : [],
-      dataTypes: searchParams.dataTypes
-        ? Array.isArray(searchParams.dataTypes)
-          ? searchParams.dataTypes
-          : [searchParams.dataTypes]
-        : [],
-      sortBy: searchParams.sortBy || "createdAt",
-      sortOrder: (searchParams.sortOrder as "asc" | "desc") || "desc",
+      keyword: initialQ || "",
+      author: "",
+      organization: "",
+      dateFrom: "",
+      dateTo: "",
+      categories: [],
+      dataTypes: [],
+      sortBy: "createdAt",
+      sortOrder: "desc",
     },
   })
+
+  // Handle suggestion selection
+  const handleSelectSuggestion = (suggestion: string) => {
+    form.setValue("keyword", suggestion)
+    setInputValue(suggestion)
+    setShowSuggestions(false)
+  }
 
   const onSubmit = useCallback(
     async (values: FormValues) => {
@@ -216,16 +273,56 @@ export default function MetadataSearchForm({
                 control={form.control}
                 name="keyword"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="relative">
                     <LabelWithTooltip
                       label="Keyword Search"
                       tooltip={tooltips.keyword}
                     />
                     <FormControl>
-                      <Input
-                        placeholder="Search by title, description..."
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          placeholder="Search by title, description..."
+                          {...field}
+                          value={inputValue}
+                          onChange={(e) => {
+                            field.onChange(e)
+                            setInputValue(e.target.value)
+                            setShowSuggestions(true)
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          className="w-full"
+                        />
+                        {showSuggestions && inputValue && (
+                          <div
+                            className="absolute top-full left-0 right-0 bg-white shadow-md rounded-md border border-input z-50 mt-1 max-h-60 overflow-y-auto search-suggestion-container"
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <Command>
+                              <CommandList>
+                                <CommandGroup heading="Suggestions">
+                                  {filteredSuggestions.length === 0 ? (
+                                    <CommandEmpty>
+                                      No suggestions found
+                                    </CommandEmpty>
+                                  ) : (
+                                    filteredSuggestions.map((suggestion) => (
+                                      <CommandItem
+                                        key={suggestion}
+                                        onSelect={() =>
+                                          handleSelectSuggestion(suggestion)
+                                        }
+                                        className="cursor-pointer hover:bg-muted"
+                                      >
+                                        {suggestion}
+                                      </CommandItem>
+                                    ))
+                                  )}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -196,14 +196,14 @@ export const metadataServerService = {
         metadata: metadata.map((item) => ({
           id: item.id,
           title: item.title,
-          author: item.author,
-          organization: item.organization,
+          author: item.author || undefined,
+          organization: item.organization || undefined,
           dateFrom: item.dateFrom || "",
           dateTo: item.dateTo || "",
           abstract: item.abstract || "",
-          frameworkType: item.frameworkType,
-          dataType: item.frameworkType, // Map frameworkType to dataType for UI compatibility
-          thumbnailUrl: item.thumbnailUrl,
+          frameworkType: item.frameworkType || undefined,
+          dataType: item.frameworkType || undefined, // Map frameworkType to dataType for UI compatibility
+          thumbnailUrl: item.thumbnailUrl || undefined,
           categories: item.categories || [],
           updatedAt: item.updatedAt,
         })),

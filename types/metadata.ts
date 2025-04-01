@@ -76,19 +76,39 @@ export interface MetadataResponse extends MetadataRequest {
 }
 
 export interface MetadataSearchParams {
+  q?: string
   page?: number
   limit?: number
+  sortBy?: string
+  sortOrder?: "asc" | "desc"
+
+  // Search parameters
   search?: string
   category?: string
   author?: string
   organization?: string
-  categories?: string[] | string
-  dataTypes?: string[] | string
+  categories?: string[]
+  dataTypes?: string[]
   frameworkType?: string
   dateFrom?: string
   dateTo?: string
-  sortBy?: string
-  sortOrder?: "asc" | "desc"
+
+  // View mode options
+  viewMode?: "list" | "map"
+
+  // Advanced filtering options
+  advancedFilters?: {
+    quality?: "low" | "medium" | "high"
+    validationStatus?: "pending" | "validated" | "rejected"
+    dateFrom?: string
+    dateTo?: string
+    organizations?: string[]
+    resourceTypes?: string[]
+    topics?: string[]
+  }
+
+  // Spatial filtering
+  bbox?: number[] // [minX, minY, maxX, maxY]
 }
 
 export interface MetadataSearchResponse {

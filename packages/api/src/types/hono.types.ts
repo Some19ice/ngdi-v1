@@ -4,11 +4,11 @@ import { UserRole } from "./auth.types"
 /**
  * Custom variables stored in Hono context
  */
-export interface Variables {
+interface Variables {
   userId: string
   userEmail: string
   userRole: UserRole
-  secureHeadersNonce?: string
+  [key: string]: unknown
 }
 
 /**

@@ -108,12 +108,12 @@ export function MetadataView({ metadata, canEdit }: MetadataViewProps) {
               <h3 className="font-semibold">File Format</h3>
               <p>{metadata.fileFormat}</p>
             </div>
-            {metadata.fileSize && (
+            {metadata.fileSize ? (
               <div>
                 <h3 className="font-semibold">File Size</h3>
-                <p>{metadata.fileSize} MB</p>
+                <p>{String(metadata.fileSize)} bytes</p>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 

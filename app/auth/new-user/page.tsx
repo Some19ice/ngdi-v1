@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession, useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import api from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,8 +41,7 @@ type OnboardingValues = z.infer<typeof onboardingSchema>
 
 export default function NewUserPage() {
   const router = useRouter()
-  const { data: session } = useSession()
-  const { refreshSession } = useAuth()
+  const { session, user, refreshSession } = useAuthSession()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -69,9 +68,7 @@ export default function NewUserPage() {
 
       // Ensure name is at least 2 characters
       const userName =
-        session?.user?.name && session.user.name.length >= 2
-          ? session.user.name
-          : "User Profile" // Default name that meets 2 character minimum
+        user?.name && user.name.length >= 2 ? user.name : "User Profile" // Default name that meets 2 character minimum
 
       const response = await fetch(`${apiUrl}/api/users/profile`, {
         method: "PUT",
@@ -81,7 +78,7 @@ export default function NewUserPage() {
         },
         body: JSON.stringify({
           name: userName,
-          email: session?.user?.email || "",
+          email: user?.email || "",
           organization: data.organization,
           department: data.department || undefined,
           phone: data.phone || undefined,
@@ -104,7 +101,7 @@ export default function NewUserPage() {
 
       // Refresh the session to get updated user data
       await refreshSession()
-      
+
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
@@ -118,7 +115,8 @@ export default function NewUserPage() {
         // Redirect to home
         router.push("/")
       }, 500)
-    } catch (error: any) { // Type error as any to fix TypeScript error
+    } catch (error: any) {
+      // Type error as any to fix TypeScript error
       console.error("Error updating profile:", error)
       toast({
         title: "Error",

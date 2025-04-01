@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
 import { Button } from "@/components/ui/button"
@@ -137,7 +137,7 @@ const organizationFormSchema = z.object({
 type OrganizationFormValues = z.infer<typeof organizationFormSchema>
 
 export default function OrganizationsPage() {
-  const { user, can } = useAuth()
+  const { user, isAdmin, hasRole } = useAuthSession()
 
   if (!user) {
     redirect("/login")
@@ -166,6 +166,9 @@ export default function OrganizationsPage() {
     org.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Check if user can manage organizations
+  const canManageOrganizations = isAdmin || hasRole(UserRole.ADMIN)
+
   function onSubmit(data: OrganizationFormValues) {
     // TODO: Implement organization creation/update
     console.log(data)
@@ -183,7 +186,7 @@ export default function OrganizationsPage() {
             className="pl-8"
           />
         </div>
-        {can(Permissions.MANAGE_ORGANIZATION) && (
+        {canManageOrganizations && (
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -345,7 +348,7 @@ export default function OrganizationsPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {filteredOrganizations.map((org) => (
           <Card key={org.id} className="relative">
-            {can(Permissions.MANAGE_ORGANIZATION) && (
+            {canManageOrganizations && (
               <div className="absolute top-4 right-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

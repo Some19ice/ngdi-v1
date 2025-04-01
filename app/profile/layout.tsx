@@ -3,20 +3,18 @@
 import { ReactNode } from "react"
 import { Card } from "@/components/ui/card"
 import { ProfileTabs } from "@/components/profile/profile-tabs"
-import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { useEffect } from "react"
 
 export default function ProfileLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
+  const { user, isLoading, navigate } = useAuthSession()
 
   // Redirect to sign in if not authenticated after loading is complete
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/auth/signin?callbackUrl=/profile")
+      navigate("/auth/signin?callbackUrl=/profile")
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, navigate])
 
   // Return the layout regardless of auth state (children components will handle auth checks)
   return (

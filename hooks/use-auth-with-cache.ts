@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useSession, useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { type Permission } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
 import { can, canAll, canAny } from "@/lib/auth/rbac"
@@ -28,8 +28,7 @@ const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 const permissionCache = new Map<string, CachedPermission>()
 
 export function useAuthWithCache() {
-  const { data: session, status } = useSession()
-  const { refreshSession: refresh } = useAuth()
+  const { session, user: sessionUser, refreshSession } = useAuthSession()
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   // Clear cache when session changes
@@ -39,19 +38,19 @@ export function useAuthWithCache() {
   }, [session])
 
   // Convert session user to RBAC user
-  const user = session?.user?.role
-    ? {
-        id: session.user.id,
-        email: session.user.email || "",
-        name: session.user.name || "",
-        role: session.user.role as UserRole,
+  const user = sessionUser?.role
+    ? ({
+        id: sessionUser.id,
+        email: sessionUser.email || "",
+        name: sessionUser.name || "",
+        role: sessionUser.role as UserRole,
         // These fields might not exist in the session user
-        organization: (session.user as any).organization || null,
-        department: (session.user as any).department || null,
-        phone: (session.user as any).phone || null,
+        organization: (sessionUser as any).organization || null,
+        department: (sessionUser as any).department || null,
+        phone: (sessionUser as any).phone || null,
         createdAt: null,
-        image: session.user.image || null,
-      } as RbacUser
+        image: sessionUser.image || null,
+      } as RbacUser)
     : null
 
   const getCacheKey = (permission: Permission | Permission[]) => {
@@ -127,20 +126,20 @@ export function useAuthWithCache() {
     [user]
   )
 
-  const refreshSession = useCallback(async () => {
+  const refresh = useCallback(async () => {
     permissionCache.clear()
-    await refresh()
+    await refreshSession()
     setLastUpdate(Date.now())
-  }, [refresh])
+  }, [refreshSession])
 
   return {
     user,
     isAuthenticated: !!user,
-    isLoading: status === "loading",
+    isLoading: !session && !sessionUser,
     can: checkPermission,
     canAll: checkAllPermissions,
     canAny: checkAnyPermission,
-    refreshSession,
+    refreshSession: refresh,
     lastUpdate,
   }
 }

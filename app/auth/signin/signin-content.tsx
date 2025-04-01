@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,10 +14,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
-export function SignInContent() {
+interface SignInContentProps {
+  initiallyAuthenticated?: boolean
+}
+
+export function SignInContent({
+  initiallyAuthenticated = false,
+}: SignInContentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -25,7 +31,50 @@ export function SignInContent() {
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const returnUrl = searchParams?.get("from") || "/"
-  const { login } = useAuth()
+
+  // Use our unified authentication hook
+  const { login, isLoggingIn, navigate, isAuthenticated } = useAuthSession()
+
+  // Clean the return URL to avoid redirection loops
+  const safeReturnUrl =
+    returnUrl && returnUrl !== "/auth/signin" ? returnUrl : "/"
+
+  // Check if we're already authenticated and redirect if needed
+  useEffect(() => {
+    if (initiallyAuthenticated || isAuthenticated) {
+      console.log(
+        "User is already authenticated, redirecting to:",
+        safeReturnUrl
+      )
+
+      // Add a direct check for cookie existence to double-verify authentication
+      const hasAuthCookie = document.cookie.includes("auth_token")
+      if (!hasAuthCookie) {
+        console.log(
+          "No auth cookie found despite authenticated state, waiting for session refresh"
+        )
+        return // Don't redirect if the cookie is missing
+      }
+
+      // Force a router refresh to update UI state
+      router.refresh()
+
+      // Delay redirect to ensure state is properly updated
+      const redirectTimer = setTimeout(() => {
+        console.log(`Executing redirect to ${safeReturnUrl}`)
+
+        if (safeReturnUrl === "/auth/signin") {
+          // Avoid redirection loops by going to home
+          console.log("Avoiding redirect loop, going to home instead")
+          router.push("/")
+        } else {
+          router.push(safeReturnUrl)
+        }
+      }, 200)
+
+      return () => clearTimeout(redirectTimer)
+    }
+  }, [initiallyAuthenticated, isAuthenticated, safeReturnUrl, router])
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,32 +82,17 @@ export function SignInContent() {
       return
     }
 
+    if (isLoggingIn) {
+      return // Prevent multiple submission attempts
+    }
+
     setIsLoading(true)
 
     try {
-      const session = await login(email, password)
+      // Use the async login function for better error handling
+      await login({ email, password })
 
-      toast.success("Signed in successfully")
-
-      console.log(`Redirecting to ${returnUrl} after successful login`)
-
-      setTimeout(() => {
-        if (
-          typeof window !== "undefined" &&
-          window.__authGlobals?.isNavigating
-        ) {
-          console.log(
-            "Navigation already in progress, skipping duplicate redirect"
-          )
-          return
-        }
-
-        if (returnUrl === "/" || returnUrl.startsWith("/auth")) {
-          window.location.href = "/"
-        } else {
-          window.location.href = returnUrl
-        }
-      }, 300)
+      // The navigation will be handled by the useEffect
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message ||
@@ -129,10 +163,10 @@ export function SignInContent() {
             <Button
               type="button"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoggingIn || isLoading}
               onClick={handleLogin}
             >
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoggingIn || isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </CardContent>

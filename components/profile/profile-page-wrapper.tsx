@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 interface ProfilePageWrapperProps {
@@ -12,7 +12,7 @@ interface ProfilePageWrapperProps {
 export default function ProfilePageWrapper({
   children,
 }: ProfilePageWrapperProps) {
-  const { data: session, status } = useSession()
+  const { session, status, user, isLoading } = useAuthSession()
   const router = useRouter()
 
   useEffect(() => {

@@ -33,7 +33,7 @@ import { UserRole } from "@/lib/auth/constants"
 import { LucideIcon } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { useSession, useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -223,8 +223,16 @@ export function Sidebar({
   isOpen = false,
   onOpenChange = () => {},
 }: SidebarProps) {
-  const { data: session, status } = useSession()
-  const { logout, refreshSession } = useAuth()
+  const {
+    session,
+    status,
+    logout,
+    refreshSession,
+    isLoading,
+    hasRole,
+    isAdmin,
+    isNodeOfficer,
+  } = useAuthSession()
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)

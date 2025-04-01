@@ -289,176 +289,50 @@ export async function createMetadata(data: any) {
       validatedData as NGDIMetadataFormData
     )
 
-    // Create the metadata record in both the NGDIMetadata table (for backward compatibility)
-    // and in the consolidated Metadata table
-    const [ngdiMetadata, metadata] = await Promise.all([
-      // Create in NGDIMetadata (original table)
-      prisma.nGDIMetadata.create({
-        data: {
-          // General Information
-          dataType: validatedData.generalInfo.dataInformation.dataType,
-          dataName: validatedData.generalInfo.dataInformation.dataName,
-          cloudCoverPercentage:
-            validatedData.generalInfo.dataInformation.cloudCoverPercentage,
-          productionDate:
-            validatedData.generalInfo.dataInformation.productionDate,
+    // First prepare the combined data without duplication
+    const metadataData = {
+      // Required fields for the Metadata table
+      title: validatedData.generalInfo.dataInformation.dataName, // Use dataName as title
+      dataName: validatedData.generalInfo.dataInformation.dataName,
+      userId,
 
-          // Fundamental Datasets (stored as JSON)
-          fundamentalDatasets: validatedData.generalInfo.fundamentalDatasets,
+      // Rest of the fields from validatedData
+      dataType: validatedData.generalInfo.dataInformation.dataType,
+      productionDate: validatedData.generalInfo.dataInformation.productionDate,
+      cloudCoverPercentage:
+        validatedData.generalInfo.dataInformation.cloudCoverPercentage,
 
-          // Description
-          abstract: validatedData.generalInfo.description.abstract,
-          purpose: validatedData.generalInfo.description.purpose,
-          thumbnailUrl: validatedData.generalInfo.description.thumbnail,
+      // Ensure these fields are properly set
+      fundamentalDatasets: validatedData.generalInfo.fundamentalDatasets,
+      abstract: validatedData.generalInfo.description.abstract,
+      purpose: validatedData.generalInfo.description.purpose,
+      thumbnailUrl: validatedData.generalInfo.description.thumbnail,
 
-          // Spatial Domain
-          coordinateUnit:
-            validatedData.technicalDetails.spatialDomain.coordinateUnit,
-          minLatitude: validatedData.technicalDetails.spatialDomain.minLatitude,
-          minLongitude:
-            validatedData.technicalDetails.spatialDomain.minLongitude,
-          maxLatitude: validatedData.technicalDetails.spatialDomain.maxLatitude,
-          maxLongitude:
-            validatedData.technicalDetails.spatialDomain.maxLongitude,
+      // Other required fields
+      author: validatedData.accessInfo.contactInfo.contactPerson,
+      organization: validatedData.accessInfo.contactInfo.department || "",
+    }
 
-          // Location
-          country: validatedData.generalInfo.location.country,
-          geopoliticalZone: validatedData.generalInfo.location.geopoliticalZone,
-          state: validatedData.generalInfo.location.state,
-          lga: validatedData.generalInfo.location.lga,
-          townCity: validatedData.generalInfo.location.townCity,
-
-          // Data Status
-          assessment: validatedData.generalInfo.dataStatus.assessment,
-          updateFrequency: validatedData.generalInfo.dataStatus.updateFrequency,
-
-          // Resource Constraint
-          accessConstraints:
-            validatedData.technicalDetails.resourceConstraint.accessConstraints,
-          useConstraints:
-            validatedData.technicalDetails.resourceConstraint.useConstraints,
-          otherConstraints:
-            validatedData.technicalDetails.resourceConstraint.otherConstraints,
-
-          // Metadata Reference
-          metadataCreationDate:
-            validatedData.generalInfo.metadataReference.creationDate,
-          metadataReviewDate:
-            validatedData.generalInfo.metadataReference.reviewDate,
-          metadataContactName:
-            validatedData.generalInfo.metadataReference.contactName,
-          metadataContactAddress:
-            validatedData.generalInfo.metadataReference.address,
-          metadataContactEmail:
-            validatedData.generalInfo.metadataReference.email,
-          metadataContactPhone:
-            validatedData.generalInfo.metadataReference.phoneNumber,
-
-          // Data Quality Information
-          // General Section
-          logicalConsistencyReport:
-            validatedData.dataQuality.generalSection.logicalConsistencyReport,
-          completenessReport:
-            validatedData.dataQuality.generalSection.completenessReport,
-
-          // Attribute Accuracy
-          attributeAccuracyReport:
-            validatedData.dataQuality.attributeAccuracy.accuracyReport,
-
-          // Positional Accuracy (stored as JSON)
-          positionalAccuracy: validatedData.dataQuality.positionalAccuracy,
-
-          // Source Information (stored as JSON)
-          sourceInformation: validatedData.dataQuality.sourceInformation,
-
-          // Data Processing Information
-          processingDescription:
-            validatedData.dataQuality.dataProcessingInformation.description,
-          softwareVersion:
-            validatedData.dataQuality.dataProcessingInformation.softwareVersion,
-          processedDate:
-            validatedData.dataQuality.dataProcessingInformation.processedDate,
-
-          // Processor Contact Information
-          processorName:
-            validatedData.dataQuality.processorContactInformation.name,
-          processorEmail:
-            validatedData.dataQuality.processorContactInformation.email,
-          processorAddress:
-            validatedData.dataQuality.processorContactInformation.address,
-
-          // Distribution Information
-          // Distributor Information
-          distributorName:
-            validatedData.distributionInfo?.distributorInformation.name ||
-            validatedData.accessInfo.contactInfo.contactPerson,
-          distributorAddress:
-            validatedData.distributionInfo?.distributorInformation.address ||
-            validatedData.accessInfo.contactInfo.department ||
-            "",
-          distributorEmail:
-            validatedData.distributionInfo?.distributorInformation.email ||
-            validatedData.accessInfo.contactInfo.email,
-          distributorPhone:
-            validatedData.distributionInfo?.distributorInformation
-              .phoneNumber ||
-            validatedData.accessInfo.contactInfo.phone ||
-            "",
-          distributorWebLink:
-            validatedData.distributionInfo?.distributorInformation.webLink ||
-            null,
-          distributorSocialMedia:
-            validatedData.distributionInfo?.distributorInformation
-              .socialMediaHandle || "",
-
-          // Distribution Details
-          distributionLiability:
-            validatedData.distributionInfo?.distributionDetails.liability ||
-            validatedData.accessInfo.licenseInfo.usageTerms,
-          customOrderProcess:
-            validatedData.distributionInfo?.distributionDetails
-              .customOrderProcess || "Contact for custom orders",
-          technicalPrerequisites:
-            validatedData.distributionInfo?.distributionDetails
-              .technicalPrerequisites ||
-            validatedData.technicalDetails.technicalSpecifications
-              .softwareReqs ||
-            "",
-
-          // Standard Order Process
-          fees:
-            validatedData.distributionInfo?.standardOrderProcess.fees ||
-            "Please contact for pricing",
-          turnaroundTime:
-            validatedData.distributionInfo?.standardOrderProcess
-              .turnaroundTime || "Typically 3-5 business days",
-          orderingInstructions:
-            validatedData.distributionInfo?.standardOrderProcess
-              .orderingInstructions || "Contact via email or phone",
-          maximumResponseTime:
-            validatedData.distributionInfo?.standardOrderProcess
-              .maximumResponseTime || "5 business days",
-
-          // User reference
-          userId: userId,
-        },
-      }),
-
-      // Create in Metadata (unified table)
-      prisma.metadata.create({
-        data: {
-          ...apiMetadata,
-          userId,
-        },
-      }),
-    ])
+    // Then create the consolidated record
+    const metadata = await prisma.metadata.create({
+      data: {
+        ...metadataData,
+        // Only add fields from apiMetadata that don't conflict with metadataData
+        ...Object.entries(apiMetadata).reduce((acc, [key, value]) => {
+          if (!(key in metadataData)) {
+            acc[key] = value
+          }
+          return acc
+        }, {} as any),
+      },
+    })
 
     revalidatePath("/metadata")
     revalidatePath("/search/metadata")
     return {
       success: true,
       data: {
-        id: ngdiMetadata.id,
+        id: metadata.id,
         // Other fields as needed
       },
     }
@@ -735,8 +609,11 @@ export async function updateMetadata(id: string, data: any) {
     // Update the metadata record - creates a new version in the original table
     // and updates the consolidated table
     const [_, updatedMetadata] = await Promise.all([
-      prisma.nGDIMetadata.create({
+      prisma.metadata.create({
         data: {
+          // Required title field - using dataName as title
+          title: validatedData.generalInfo.dataInformation.dataName,
+
           // General Information
           dataType: validatedData.generalInfo.dataInformation.dataType,
           dataName: validatedData.generalInfo.dataInformation.dataName,

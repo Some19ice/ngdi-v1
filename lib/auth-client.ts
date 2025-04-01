@@ -250,67 +250,71 @@ export const authClient = {
       const response = await axios.post(`/api/auth/login`, {
         email,
         password,
+        rememberMe,
       })
 
-      console.log("Login API response received:", {
-        status: response.status,
+      // Log response to help with debugging
+      console.log("Login response received:", {
         hasAccessToken: !!response.data.accessToken,
         hasRefreshToken: !!response.data.refreshToken,
         hasUser: !!response.data.user,
+        status: response.status,
       })
 
-      // Extract tokens from response
-      const { accessToken, refreshToken } = response.data
+      // Extract data from response
+      const { accessToken, refreshToken, user } = response.data
 
-      // Get user data
-      const userData = response.data.user || {}
-      const user = normalizeUserData(userData)
-
-      // Create and return session
-      const session = {
-        user,
-        expires:
-          response.data.expires ||
-          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      // Create the session object
+      const session: Session = {
+        user: user ? normalizeUserData(user) : null,
         accessToken,
         refreshToken,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
       }
 
-      // For debugging purposes, log the token info
-      console.log("Login successful, token info:", {
-        tokenLength: accessToken.length,
-        userRole: user.role,
-      })
+      // Verify we have valid tokens before returning
+      if (!accessToken || !refreshToken) {
+        console.error("Login response missing tokens:", response.data)
+        throw new Error("Invalid login response: missing tokens")
+      }
 
-      // Verify that cookies were properly set after login
-      // Short timeout to allow cookies to be set by the browser
-      setTimeout(() => {
-        if (typeof document !== "undefined") {
-          const hasAuthCookie = document.cookie.includes("auth_token")
-          const hasRefreshCookie = document.cookie.includes("refresh_token")
+      // Verify cookies were set by checking for them directly
+      const manualCookieCheck = () => {
+        // Check if cookies exist in document
+        const hasAuthCookie = getCookie(AUTH_COOKIE_NAME) !== null
+        const hasRefreshCookie = getCookie(REFRESH_COOKIE_NAME) !== null
 
-          if (!hasAuthCookie || !hasRefreshCookie) {
-            console.warn(
-              "Warning: Authentication cookies not detected after login"
-            )
+        console.log("Cookie verification:", {
+          hasAuthCookie,
+          hasRefreshCookie,
+          authTokenLength: accessToken?.length || 0,
+        })
 
-            // If needed, we could try to set cookies directly here as a fallback
-            // But that's typically handled by the server via Set-Cookie headers
-          }
+        if (!hasAuthCookie && accessToken) {
+          console.log("Auth cookie not set by server, setting manually")
+          document.cookie = `${AUTH_COOKIE_NAME}=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax;`
         }
-      }, 100)
+
+        if (!hasRefreshCookie && refreshToken) {
+          console.log(
+            "Refresh cookie not set by server, setting manually (httpOnly not possible)"
+          )
+          document.cookie = `${REFRESH_COOKIE_NAME}=${refreshToken}; path=/; max-age=${60 * 60 * 24 * 14}; samesite=lax;`
+        }
+      }
+
+      // Check immediately and after a small delay to ensure cookies are set
+      manualCookieCheck()
+      setTimeout(manualCookieCheck, 100)
+
+      // Store last login timestamp
+      if (typeof window !== "undefined") {
+        window.__lastSessionRefresh = Date.now()
+      }
 
       return session
     } catch (error: any) {
-      console.error("Login failed:", error.message || error)
-
-      if (error.response) {
-        console.error("Error response:", {
-          status: error.response.status,
-          data: error.response.data,
-        })
-      }
-
+      console.error("Login error:", error.response?.data || error.message)
       throw error
     }
   },

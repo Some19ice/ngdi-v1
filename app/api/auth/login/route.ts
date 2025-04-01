@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       nextResponse.cookies.set({
         name: "auth_token",
         value: authToken,
-        httpOnly: false,
+        httpOnly: false, // Allow JavaScript access so client can read token
         path: "/",
         secure: isProduction,
         sameSite: "lax",
@@ -84,14 +84,19 @@ export async function POST(req: NextRequest) {
       nextResponse.cookies.set({
         name: "refresh_token",
         value: refreshToken,
-        httpOnly: true,
+        httpOnly: true, // Protect refresh token from JavaScript access
         path: "/",
         secure: isProduction,
         sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 14, // 14 days for refresh token
       })
     }
 
+    // Add Cache-Control header to prevent caching of auth responses
+    nextResponse.headers.set("Cache-Control", "no-store, max-age=0")
+
+    // Also set the tokens in response body for client-side fallback
+    // This helps ensure tokens are available even if cookies fail
     return nextResponse
   } catch (error: any) {
     console.error("Login proxy error:", error)

@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.login(data)
       localStorage.setItem("token", response.token)
       setUser(response.user)
-      router.push("/dashboard")
+      router.push("/search")
     } catch (error) {
       toast({
         title: "Login failed",
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.register(data)
       localStorage.setItem("token", response.token)
       setUser(response.user)
-      router.push("/dashboard")
+      router.push("/search")
     } catch (error) {
       toast({
         title: "Registration failed",

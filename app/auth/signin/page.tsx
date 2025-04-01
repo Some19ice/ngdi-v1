@@ -1,20 +1,23 @@
 import { SuspenseSearchParams } from "@/components/wrappers/suspense-search-params"
 import { SignInContent } from "./signin-content"
-import { redirectIfAuthenticated } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { cookies } from "next/headers"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Sign In - NGDI Portal",
+  description: "Sign in to your NGDI Portal account",
+}
 
 export default async function SignInPage() {
-  try {
-    // Redirect if already authenticated
-    await redirectIfAuthenticated()
-  } catch (error) {
-    console.error("Error in redirectIfAuthenticated:", error)
-    // Continue rendering the page if there's an error with redirect
-  }
+  // Check auth status but don't redirect on the server
+  // (we'll handle redirects client-side to avoid the redirect error)
+  const user = await getCurrentUser()
+  const initiallyAuthenticated = !!user
 
   return (
     <SuspenseSearchParams>
-      <SignInContent />
+      <SignInContent initiallyAuthenticated={initiallyAuthenticated} />
     </SuspenseSearchParams>
   )
 }

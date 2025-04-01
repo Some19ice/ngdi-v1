@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
-import { Permission } from "@/lib/auth/types"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   MetadataStatus,
   ValidationStatus,
@@ -64,7 +63,7 @@ export function MetadataTable({
   onDelete,
   onClearFilters,
 }: MetadataTableProps) {
-  const { can } = useAuth()
+  const { hasRole, isAdmin } = useAuthSession()
   const router = useRouter()
   const [openConfirmDelete, setOpenConfirmDelete] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
@@ -251,19 +250,19 @@ export function MetadataTable({
                       <Eye className="mr-2 h-4 w-4" />
                       View
                     </DropdownMenuItem>
-                    {can(Permission.UPDATE_METADATA) && (
+                    {isAdmin && (
                       <DropdownMenuItem onClick={() => handleEdit(item.id)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                     )}
-                    {can(Permission.UPDATE_METADATA) && (
+                    {isAdmin && (
                       <DropdownMenuItem onClick={() => handleValidate(item.id)}>
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Validate
                       </DropdownMenuItem>
                     )}
-                    {can(Permission.DELETE_METADATA) && (
+                    {isAdmin && (
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => confirmDelete(item.id)}

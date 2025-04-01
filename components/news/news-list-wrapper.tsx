@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { NewsList } from "./news-list"
 import { type NewsItem, type NewsFilters } from "./types"
 
 export function NewsListWrapper() {
-  const { user } = useAuth()
+  const { user } = useAuthSession()
   const [filters, setFilters] = useState<NewsFilters>({})
   const [items, setItems] = useState<NewsItem[]>([]) // Replace with actual data fetching
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   MetadataStatus,
   ValidationStatus,
@@ -33,7 +33,7 @@ import { MetadataTable } from "./components/MetadataTable"
 import { MetadataPagination } from "./components/MetadataPagination"
 
 export default function MetadataPage() {
-  const { user, can } = useAuth()
+  const { user, isAdmin, hasRole } = useAuthSession()
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()

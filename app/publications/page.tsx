@@ -22,7 +22,7 @@ import {
 export const metadata: Metadata = {
   title: "Publications | National Geo-Spatial Data Infrastructure",
   description:
-    "Download official publications, research papers, and documentation related to Nigeria's geospatial data infrastructure.",
+    "Download official publications, research papers, and documentation related to National Geospatial Data Infrastructure.",
 }
 
 interface Publication {
@@ -166,7 +166,7 @@ export default function PublicationsPage() {
           <div className="mt-6 mb-8 bg-card p-5 rounded-lg border shadow-sm">
             <p className="text-lg">
               Browse our collection of downloadable publications related to
-              Nigeria&apos;s geospatial data infrastructure. All documents are
+              National Geospatial Data Infrastructure. All documents are
               available in PDF format and can be downloaded free of charge.
             </p>
           </div>

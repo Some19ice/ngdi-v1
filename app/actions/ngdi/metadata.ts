@@ -243,9 +243,11 @@ export async function createNGDIMetadata(data: NGDIMetadataFormData) {
     const validatedData = ngdiMetadataSchema.parse(data)
 
     // Create the metadata record in the database
-    const metadata = await prisma.nGDIMetadata.create({
+    const metadata = await prisma.metadata.create({
       data: {
-        id: uuidv4(),
+        // Required title field for the Metadata model
+        title: validatedData.form1.dataInformation.dataName,
+
         // Form 1: General Information
         // Data Information
         dataType: validatedData.form1.dataInformation.dataType,

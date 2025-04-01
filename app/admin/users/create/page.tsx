@@ -1,29 +1,27 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { AdminRegistrationForm } from "@/components/admin/admin-registration-form"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
-import { useSession } from "@/hooks/use-session"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { UserRole } from "@/lib/auth/constants"
 import { useEffect } from "react"
 import { AuthLoading } from "@/components/ui/auth-loading"
 
 export default function CreateAdminPage() {
-  const router = useRouter()
-  const { user, isLoading, hasRole } = useSession()
+  const { user, isLoading, hasRole, navigate } = useAuthSession()
 
   // Check if user is admin
   useEffect(() => {
     if (!isLoading && user && !hasRole(UserRole.ADMIN)) {
-      router.push("/unauthorized")
+      navigate("/unauthorized")
     }
-  }, [user, isLoading, hasRole, router])
+  }, [user, isLoading, hasRole, navigate])
 
   // Handle successful user creation
   const handleSuccess = () => {
     // Redirect to users list
-    router.push("/admin/users")
+    navigate("/admin/users")
   }
 
   // Show loading state
@@ -46,7 +44,7 @@ export default function CreateAdminPage() {
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
-          onClick={() => router.push("/admin/users")}
+          onClick={() => navigate("/admin/users")}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />

@@ -28,7 +28,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
 import { AuthLoadingButton } from "@/components/ui/auth-loading"
-import { useSession } from "@/hooks/use-session"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -42,7 +42,7 @@ export function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
-  const { login, isLoggingIn, isAuthenticated } = useSession()
+  const { login, isLoggingIn, isAuthenticated, navigate } = useAuthSession()
   const [showPassword, setShowPassword] = useState(false)
 
   // Get return URL from query params
@@ -61,9 +61,17 @@ export function LoginForm() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push(returnUrl)
+      // Add a small delay to ensure all state is properly updated
+      const redirectTimer = setTimeout(() => {
+        console.log(
+          `Redirecting to ${returnUrl} after successful authentication`
+        )
+        navigate(returnUrl)
+      }, 150)
+
+      return () => clearTimeout(redirectTimer)
     }
-  }, [isAuthenticated, router, returnUrl])
+  }, [isAuthenticated, returnUrl, navigate])
 
   // Additional check for cookie existence when the component mounts
   // This helps when browser data is cleared but the app hasn't detected it yet
@@ -78,14 +86,14 @@ export function LoginForm() {
           console.log(
             "Login form detected missing cookies but authenticated state - refreshing"
           )
-          // We can force a session refresh here if needed
-          // This is a backup mechanism, as the useSession hook should handle this
+          // Force a router refresh to update all components with latest auth state
+          router.refresh()
         }
       }
     }
 
     checkAuthCookies()
-  }, [isAuthenticated])
+  }, [isAuthenticated, router])
 
   // Handle form submission
   async function onSubmit(data: LoginFormValues) {
@@ -99,13 +107,13 @@ export function LoginForm() {
         localStorage.removeItem("rememberedEmail")
       }
 
-      // Login
+      // Login using our enhanced hook
       await login({ email: data.email, password: data.password })
 
       // Redirect will happen automatically in the useEffect
     } catch (error: any) {
       console.error("Login error:", error)
-      // Error handling is done in the useSession hook
+      // Error handling is done in the useAuthSession hook
     }
   }
 

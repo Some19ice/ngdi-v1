@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   checkAuthStatus,
   resetAuthState,
@@ -42,7 +42,8 @@ interface DiagnosticResult {
 }
 
 export default function AuthDiagnosticPage() {
-  const { user, userRole, isLoading, isAuthenticated } = useAuth()
+  const { user, status, isLoading, isAuthenticated, session } = useAuthSession()
+  const userRole = user?.role
   const [diagnosticResults, setDiagnosticResults] = useState<
     DiagnosticResult[]
   >([])

@@ -10,6 +10,8 @@ import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ClientOnly } from "@/components/ui/client-only"
+import { OnboardingInitializer } from "@/components/onboarding/onboarding-initializer"
 
 // Sidebar loading fallback component
 const SidebarSkeleton = ({
@@ -18,10 +20,7 @@ const SidebarSkeleton = ({
   isCollapsed?: boolean
 }) => (
   <div
-    className={cn(
-      "hidden lg:block h-full",
-      isCollapsed ? "w-[60px]" : "w-[240px]"
-    )}
+    className={cn("h-full", isCollapsed ? "w-[60px]" : "w-full lg:w-[240px]")}
   >
     <Skeleton className="h-full w-full" />
   </div>
@@ -68,52 +67,61 @@ export default function RootLayoutClient({
   }, [children])
 
   return (
-    <div className="flex min-h-screen">
-      {/* Desktop Sidebar */}
-      <Suspense fallback={<SidebarSkeleton isCollapsed={isSidebarCollapsed} />}>
-        <div className="hidden lg:block">
+    <div className="flex flex-col min-h-screen">
+      {/* Wrap OnboardingInitializer with ClientOnly to prevent hydration errors */}
+      <ClientOnly>
+        <OnboardingInitializer />
+      </ClientOnly>
+
+      <Banner />
+      <Header>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 lg:hidden text-white hover:bg-green-700"
+          onClick={() => setIsMobileMenuOpen(true)}
+          aria-label="Toggle sidebar menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </Header>
+
+      <div className="flex flex-1">
+        {/* Desktop Sidebar */}
+        <Suspense
+          fallback={<SidebarSkeleton isCollapsed={isSidebarCollapsed} />}
+        >
+          <div className="hidden lg:block">
+            <Sidebar
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedChange={setIsSidebarCollapsed}
+            />
+          </div>
+        </Suspense>
+
+        {/* Mobile Sidebar */}
+        <div className="lg:hidden">
           <Sidebar
-            isCollapsed={isSidebarCollapsed}
-            onCollapsedChange={setIsSidebarCollapsed}
+            isMobile
+            isOpen={isMobileMenuOpen}
+            onOpenChange={setIsMobileMenuOpen}
+            isCollapsed={false}
+            onCollapsedChange={() => {}}
           />
+
+          {/* Backdrop */}
+          {isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+          )}
         </div>
-      </Suspense>
 
-      {/* Mobile Sidebar */}
-      <div className="lg:hidden">
-        <Sidebar
-          isMobile
-          isOpen={isMobileMenuOpen}
-          onOpenChange={setIsMobileMenuOpen}
-          isCollapsed={false}
-          onCollapsedChange={() => {}}
-        />
-
-        {/* Backdrop */}
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-      </div>
-
-      <div className="flex-1 flex flex-col">
-        <Banner />
-        <Header>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mr-2 lg:hidden text-white hover:bg-green-700"
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Toggle sidebar menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </Header>
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">{children}</main>
-        <Footer />
       </div>
+
+      <Footer />
     </div>
   )
 }

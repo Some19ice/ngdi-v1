@@ -1,148 +1,107 @@
 import { z } from "@hono/zod-openapi"
 
 /**
- * User roles enum
+ * Authentication and authorization related types
  */
 export enum UserRole {
-  USER = "USER",
   ADMIN = "ADMIN",
   NODE_OFFICER = "NODE_OFFICER",
+  USER = "USER",
+  GUEST = "GUEST",
 }
 
+/**
+ * Basic user interface
+ */
 export interface User {
   id: string
+  name?: string
   email: string
-  name?: string | null
   role: UserRole
-  organization?: string | null
-  department?: string | null
-  phone?: string | null
-  createdAt?: string | null
-  image?: string | null
+  image?: string
+  organizationId?: string
 }
 
-export type Subject =
-  | "metadata"
-  | "user"
-  | "role"
-  | "organization"
-  | "analytics"
-  | "settings"
-
-export type Action =
-  | "create"
-  | "read"
-  | "update"
-  | "delete"
-  | "validate"
-  | "manage"
-  | "view"
-  | "assign"
-
-export interface DynamicCondition {
-  evaluate: (user: User, resource: any) => boolean
-  description: string
-}
-
+/**
+ * Simple permission definition
+ */
 export interface Permission {
-  action: Action
-  subject: Subject
-  conditions?: {
-    organizationId?: string
-    userId?: string
-    isOwner?: boolean
-    dynamic?: DynamicCondition
-  }
+  action: string
+  subject: string
 }
 
-export const Permissions = {
-  // Metadata permissions
-  CREATE_METADATA: { action: "create", subject: "metadata" } as const,
-  READ_METADATA: { action: "read", subject: "metadata" } as const,
-  UPDATE_METADATA: { action: "update", subject: "metadata" } as const,
-  DELETE_METADATA: { action: "delete", subject: "metadata" } as const,
-  VALIDATE_METADATA: { action: "validate", subject: "metadata" } as const,
-
-  // User management permissions
-  CREATE_USER: { action: "create", subject: "user" } as const,
-  READ_USER: { action: "read", subject: "user" } as const,
-  UPDATE_USER: { action: "update", subject: "user" } as const,
-  DELETE_USER: { action: "delete", subject: "user" } as const,
-  ASSIGN_ROLE: { action: "assign", subject: "role" } as const,
-
-  // Organization permissions
-  MANAGE_ORGANIZATION: { action: "manage", subject: "organization" } as const,
-  READ_ORGANIZATION: { action: "read", subject: "organization" } as const,
-
-  // System permissions
-  VIEW_ANALYTICS: { action: "view", subject: "analytics" } as const,
-  MANAGE_SETTINGS: { action: "manage", subject: "settings" } as const,
-} as const
-
-export const PermissionGroups = {
-  METADATA_MANAGEMENT: [
-    Permissions.CREATE_METADATA,
-    Permissions.READ_METADATA,
-    Permissions.UPDATE_METADATA,
-    Permissions.DELETE_METADATA,
-    Permissions.VALIDATE_METADATA,
-  ],
-  USER_MANAGEMENT: [
-    Permissions.CREATE_USER,
-    Permissions.READ_USER,
-    Permissions.UPDATE_USER,
-    Permissions.DELETE_USER,
-  ],
-  ORGANIZATION_MANAGEMENT: [
-    Permissions.MANAGE_ORGANIZATION,
-    Permissions.READ_ORGANIZATION,
-  ],
-  SYSTEM_MANAGEMENT: [Permissions.VIEW_ANALYTICS, Permissions.MANAGE_SETTINGS],
-} as const
-
-export const InheritedPermissions: Record<UserRole, UserRole[]> = {
+/**
+ * Role inclusion hierarchy - which role includes permissions of other roles
+ */
+export const RoleIncludes: Record<UserRole, UserRole[]> = {
   [UserRole.ADMIN]: [],
   [UserRole.NODE_OFFICER]: [UserRole.USER],
   [UserRole.USER]: [],
+  [UserRole.GUEST]: [],
 }
 
-// Helper function to get all inherited permissions for a role
-export function getAllPermissionsForRole(role: UserRole): Permission[] {
-  const inheritedRoles = InheritedPermissions[role]
-  const inheritedPermissions = inheritedRoles.flatMap((r) => RolePermissions[r])
-  return [...RolePermissions[role], ...inheritedPermissions]
-}
-
+/**
+ * Basic permissions for each role
+ */
 export const RolePermissions: Record<UserRole, Permission[]> = {
-  [UserRole.ADMIN]: [...Object.values(PermissionGroups).flat()],
-  [UserRole.NODE_OFFICER]: [
-    ...PermissionGroups.METADATA_MANAGEMENT,
-    {
-      ...Permissions.READ_USER,
-      conditions: {
-        organizationId: "${user.organization}",
-        dynamic: {
-          evaluate: (user, resource) =>
-            user.organization === resource.organization,
-          description: "Check if user belongs to the same organization",
-        },
-      },
-    },
-    {
-      ...Permissions.UPDATE_USER,
-      conditions: { organizationId: "${user.organization}" },
-    },
-    {
-      ...Permissions.READ_ORGANIZATION,
-      conditions: { organizationId: "${user.organization}" },
-    },
-    {
-      ...Permissions.VIEW_ANALYTICS,
-      conditions: { organizationId: "${user.organization}" },
-    },
+  [UserRole.ADMIN]: [
+    { action: "create", subject: "metadata" },
+    { action: "read", subject: "metadata" },
+    { action: "update", subject: "metadata" },
+    { action: "delete", subject: "metadata" },
+    { action: "manage", subject: "metadata" },
+    { action: "create", subject: "user" },
+    { action: "read", subject: "user" },
+    { action: "update", subject: "user" },
+    { action: "delete", subject: "user" },
+    { action: "read", subject: "system" },
   ],
-  [UserRole.USER]: [Permissions.READ_METADATA, Permissions.READ_ORGANIZATION],
+  [UserRole.NODE_OFFICER]: [
+    { action: "create", subject: "metadata" },
+    { action: "read", subject: "metadata" },
+    { action: "update", subject: "metadata" },
+    { action: "manage", subject: "metadata" },
+    { action: "read", subject: "user" },
+    { action: "create", subject: "user" },
+  ],
+  [UserRole.USER]: [
+    { action: "read", subject: "metadata" },
+    { action: "create", subject: "metadata" },
+  ],
+  [UserRole.GUEST]: [{ action: "read", subject: "metadata" }],
 }
+
+/**
+ * Authentication result interface
+ */
+export interface AuthResult {
+  success: boolean
+  message?: string
+  user?: User
+  token?: string
+}
+
+/**
+ * JWT payload structure
+ */
+export interface JWTPayload {
+  sub: string
+  email: string
+  role: string
+  iat: number
+  exp: number
+}
+
+/**
+ * Password schema
+ */
+export const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Must contain at least one special character")
 
 /**
  * Login request schema
@@ -153,13 +112,11 @@ export const loginSchema = z
       example: "user@example.com",
       description: "User's email address",
     }),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .openapi({
-        example: "password123",
-        description: "User's password",
-      }),
+    password: passwordSchema.openapi({
+      example: "StrongP@ss123",
+      description:
+        "User's password - must contain uppercase, lowercase, number, and special character",
+    }),
   })
   .openapi("LoginRequest")
 
@@ -178,13 +135,11 @@ export const registerSchema = z
       example: "user@example.com",
       description: "User's email address",
     }),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .openapi({
-        example: "password123",
-        description: "User's password",
-      }),
+    password: passwordSchema.openapi({
+      example: "StrongP@ss123",
+      description:
+        "User's password - must contain uppercase, lowercase, number, and special character",
+    }),
     organization: z.string().optional().openapi({
       example: "ACME Corp",
       description: "User's organization",
@@ -203,18 +158,25 @@ export const registerSchema = z
 export type RegisterRequest = z.infer<typeof registerSchema>
 
 /**
- * Password reset request schema
+ * Request password reset schema
  */
-export const forgotPasswordSchema = z
+export const requestPasswordResetSchema = z
   .object({
-    email: z.string().email("Invalid email address").openapi({
+    email: z.string().email().openapi({
       example: "user@example.com",
-      description: "User's email address",
+      description: "Email address to send password reset link to",
     }),
   })
-  .openapi("ForgotPasswordRequest")
+  .openapi("RequestPasswordResetRequest")
 
-export type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>
+export type RequestPasswordResetRequest = z.infer<
+  typeof requestPasswordResetSchema
+>
+
+/**
+ * Forgot password schema (alias for requestPasswordResetSchema)
+ */
+export const forgotPasswordSchema = requestPasswordResetSchema
 
 /**
  * Reset password schema

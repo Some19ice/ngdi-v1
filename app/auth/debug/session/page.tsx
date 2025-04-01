@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { createClient } from "@/lib/supabase-client"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -21,7 +21,7 @@ import { toast } from "sonner"
 
 export default function SessionDebugPage() {
   const router = useRouter()
-  const { user, session } = useAuth()
+  const { user, session } = useAuthSession()
   const [supabaseSession, setSupabaseSession] = useState<any>(null)
   const [refreshToken, setRefreshToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
