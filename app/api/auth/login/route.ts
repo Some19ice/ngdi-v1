@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Define API base URL - in production, use internal API URL to avoid loops
-const API_BASE_URL = process.env.NODE_ENV === "production" 
-  ? process.env.INTERNAL_API_URL || "http://localhost:3001" 
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+// Define API base URL
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? process.env.INTERNAL_API_URL || "https://ngdi-api.vercel.app"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 export async function POST(request: NextRequest) {
   console.log(`[AUTH PROXY - LOGIN] Environment: ${process.env.NODE_ENV}`)
+  console.log(`[AUTH PROXY - LOGIN] API URL: ${API_BASE_URL}`)
   
   try {
     // First, make a GET request to get a CSRF token
