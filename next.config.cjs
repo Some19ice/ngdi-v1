@@ -20,10 +20,14 @@ module.exports = {
   experimental: {
     serverActions: true,
     serverComponentsExternalPackages: [],
-    // Skip static generation for auth pages
+    // Force dynamic rendering and skip static generation
+    appDir: true,
     skipTrailingSlashRedirect: true,
-    // Skip middleware URL normalization
     skipMiddlewareUrlNormalize: true,
+    // Configure for middleware
+    instrumentationHook: true,
+    // Disable static optimization for all routes
+    fallbackNodePolyfills: false
   },
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {

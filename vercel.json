@@ -4,7 +4,7 @@
   "framework": "nextjs",
   "outputDirectory": ".vercel/output",
   "devCommand": "npm run dev",
-  "regions": ["cle1", "syd1"],
+  "regions": ["cle1"],
   "env": {
     "INTERNAL_API_URL": "http://localhost:3001"
   },
