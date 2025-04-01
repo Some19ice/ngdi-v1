@@ -1,17 +1,39 @@
 import { NextRequest, NextResponse } from "next/server"
 
 // Get API URL from environment variables
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+// In production, this should point to the internal API route
+const API_URL = process.env.NODE_ENV === "production" 
+  ? process.env.NEXT_PUBLIC_API_URL || "https://ngdi-v1.vercel.app/api" 
+  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(`Proxying refresh token request to ${API_URL}/api/auth/refresh`)
+    // Log the environment and API URL for debugging
+    console.log(
+      `[refresh proxy] Environment: ${process.env.NODE_ENV}, API URL: ${API_URL}`
+    )
+    console.log(
+      `[refresh proxy] Forwarding request to ${API_URL}/api/auth/refresh`
+    )
 
     // Get the request body as JSON
-    const body = await request.json().catch(() => ({}))
+    const body = await request.json().catch(() => {
+      console.error("[refresh proxy] Failed to parse request body")
+      return {}
+    })
+
+    // In production on Vercel, we need to use the internal API directly
+    let apiUrl = `${API_URL}/api/auth/refresh`
+
+    // If we're already at /api in the URL, don't duplicate it
+    if (API_URL.endsWith("/api")) {
+      apiUrl = `${API_URL}/auth/refresh`
+    }
+
+    console.log(`[refresh proxy] Final API URL: ${apiUrl}`)
 
     // Forward the request to the actual API server
-    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -20,8 +42,14 @@ export async function POST(request: NextRequest) {
       duplex: "half" as const,
     } as RequestInit)
 
+    // Log response status for debugging
+    console.log(`[refresh proxy] Response status: ${response.status}`)
+
     // Get the response data
-    const data = await response.json().catch(() => ({}))
+    const data = await response.json().catch((error) => {
+      console.error(`[refresh proxy] Failed to parse response JSON:`, error)
+      return { success: false, message: "Failed to parse API response" }
+    })
 
     // Forward the status code
     const responseInit = {
@@ -33,11 +61,12 @@ export async function POST(request: NextRequest) {
 
     // Log success or failure for debugging
     if (response.ok) {
-      console.log("Refresh token proxy successful:", {
+      console.log("[refresh proxy] Successful:", {
         statusCode: response.status,
+        hasToken: !!data.accessToken,
       })
     } else {
-      console.error("Refresh token proxy error:", {
+      console.error("[refresh proxy] Error:", {
         statusCode: response.status,
         error: data,
       })
@@ -46,11 +75,13 @@ export async function POST(request: NextRequest) {
     // Return the response with the same status code
     return NextResponse.json(data, responseInit)
   } catch (error) {
-    console.error("Refresh token proxy fetch error:", error)
+    console.error("[refresh proxy] Fetch error:", error)
     return NextResponse.json(
       {
         success: false,
         message: "An error occurred while connecting to the API server",
+        error:
+          process.env.NODE_ENV === "development" ? String(error) : undefined,
       },
       { status: 500 }
     )
