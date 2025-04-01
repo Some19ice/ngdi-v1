@@ -70,24 +70,29 @@ export function AdminDashboardClient() {
           throw new Error("No authentication token found")
         }
 
-        // Attempt to fetch from API but provide mock data since endpoints appear to be missing
-        console.log(
-          "Admin dashboard - using mock data since API endpoints are not available"
-        )
+        // Get the API base URL from env and construct the proper endpoint URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+        const statsUrl = `${apiUrl}/api/admin/dashboard-stats`
+        console.log("Fetching dashboard stats from:", statsUrl)
 
-        // Set mock data instead of trying to fetch from non-existent endpoints
-        setStats({
-          totalUsers: 15,
-          totalMetadata: 42,
-          userRoleDistribution: [
-            { _count: { id: 3 }, role: "ADMIN" },
-            { _count: { id: 12 }, role: "USER" },
-          ],
-          recentMetadataCount: 8,
-          userGrowthPoints: 12,
-          metadataByFrameworkCount: 18,
-          topOrganizationsCount: 7,
+        const response = await fetch(statsUrl, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
         })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || "Failed to fetch stats")
+        }
+
+        const result = await response.json()
+
+        if (result && result.totalUsers !== undefined) {
+          setStats(result)
+        } else {
+          throw new Error("Invalid response format")
+        }
       } catch (error) {
         console.error("Error fetching stats:", error)
         setError(

@@ -18,21 +18,36 @@ export function AdminPrefetcher() {
         if (pathname === "/admin" || pathname === "/admin/dashboard") {
           console.log("Prefetching admin dashboard data...")
 
+          // Get the API base URL from env
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+
+          // Get auth token from cookies
+          const authToken = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("auth_token="))
+            ?.split("=")[1]
+
+          if (!authToken) {
+            console.warn("No auth token found for API prefetching")
+            return
+          }
+
           // Prefetch common data used in the admin dashboard
           const endpoints = [
-            "/api/admin/dashboard-stats",
-            "/api/admin/stats",
-            "/api/admin/users?page=1&limit=10",
-            "/api/admin/metadata?page=1&limit=10",
+            "/dashboard-stats",
+            "/stats",
+            "/users?page=1&limit=10",
+            "/metadata?page=1&limit=10",
           ]
 
           // Use Promise.all to fetch data in parallel
           await Promise.all(
             endpoints.map((endpoint) =>
-              fetch(endpoint, {
+              fetch(`${apiUrl}/api/admin${endpoint}`, {
                 method: "GET",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${authToken}`,
                   // Add a cache-busting parameter to ensure we get fresh data
                   "x-prefetch": "true",
                 },

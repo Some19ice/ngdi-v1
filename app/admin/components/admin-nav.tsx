@@ -67,14 +67,18 @@ export function AdminNav({ user }: AdminNavProps) {
           throw new Error("No authentication token found")
         }
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard-stats`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        )
+        // Get the API base URL from env
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+
+        // Construct the correct API URL
+        const statsUrl = `${apiUrl}/api/admin/dashboard-stats`
+        console.log("Fetching admin stats from:", statsUrl)
+
+        const response = await fetch(statsUrl, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        })
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
