@@ -128,6 +128,26 @@ module.exports = {
           process.env.NODE_ENV === "production"
             ? "https://ngdi-api.vercel.app/api/:path*"
             : "http://localhost:3001/api/:path*",
+        // Exclude /api/auth paths from this rewrite because they're handled by the Next.js API routes
+        has: [
+          {
+            type: "header",
+            key: "x-skip-rewrite",
+            value: "(?!.*)",
+          },
+        ],
+      },
+      // Add a separate rule for auth endpoints
+      {
+        source: "/api/auth/:path*",
+        destination: "/api/auth/:path*",
+        has: [
+          {
+            type: "header",
+            key: "x-special-auth",
+            value: "(?!.*)",
+          },
+        ],
       },
     ]
   },

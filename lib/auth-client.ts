@@ -2,6 +2,14 @@ import axios from "axios";
 import * as jose from "jose";
 import { normalizeRole, UserRole, isValidRole } from "./auth/constants"
 import { quickValidateToken, TokenValidationResult } from "../packages/api/src/utils/token-validation"
+import { UserProfile } from "../types/user"
+import { Session } from "../types/auth"
+import {
+  setCookie,
+  getCookie,
+  deleteCookie,
+  areCookiesEnabled,
+} from "./utils/cookie-utils"
 
 // Types
 export interface User {
@@ -10,13 +18,6 @@ export interface User {
   name: string | null
   role: UserRole
   image?: string | null
-}
-
-export interface Session {
-  user: User | null
-  expires: string
-  accessToken: string
-  refreshToken: string
 }
 
 export interface AuthTokens {
@@ -30,85 +31,94 @@ const isProduction = process.env.NODE_ENV === "production"
 const API_URL = isProduction
   ? process.env.NEXT_PUBLIC_API_URL || "/api"
   : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-const AUTH_COOKIE_NAME = "auth_token"
-const REFRESH_COOKIE_NAME = "refresh_token"
 
 // Track session refresh state globally
-let lastSessionRefreshTimestamp = 0;
-let pendingSessionRefresh: Promise<Session | null> | null = null;
+let lastSessionRefreshTimestamp = 0
+let pendingSessionRefresh: Promise<Session | null> | null = null
 
 // Track token validation locally
 interface TokenValidationCache {
-  token: string;
+  token: string
   result: {
-    isValid: boolean;
-    userId?: string;
-    email?: string;
-    role?: UserRole;
-  };
-  timestamp: number;
+    isValid: boolean
+    userId?: string
+    email?: string
+    role?: UserRole
+  }
+  timestamp: number
 }
 
-const localValidationCache: TokenValidationCache[] = [];
-const MAX_CACHE_SIZE = 5;
+const localValidationCache: TokenValidationCache[] = []
+const MAX_CACHE_SIZE = 5
 
 // Helper to cached validation for a token - reduces expensive decode operations
 function getCachedValidation(token: string) {
   // Clean old cache entries (older than 5 minutes)
-  const now = Date.now();
+  const now = Date.now()
   const validEntries = localValidationCache.filter(
-    entry => now - entry.timestamp < 5 * 60 * 1000
-  );
-  
+    (entry) => now - entry.timestamp < 5 * 60 * 1000
+  )
+
   // If we cleaned any entries, update the cache
   if (validEntries.length < localValidationCache.length) {
-    localValidationCache.length = 0;
-    localValidationCache.push(...validEntries);
+    localValidationCache.length = 0
+    localValidationCache.push(...validEntries)
   }
-  
+
   // Find cached result for this token
-  const cacheEntry = localValidationCache.find(entry => entry.token === token);
-  
+  const cacheEntry = localValidationCache.find((entry) => entry.token === token)
+
   if (cacheEntry) {
-    return cacheEntry.result;
+    return cacheEntry.result
   }
-  
-  return null;
+
+  return null
 }
 
 // Store validation result in cache
-function cacheValidationResult(token: string, result: { 
-  isValid: boolean; 
-  userId?: string; 
-  email?: string; 
-  role?: UserRole; 
-}) {
+function cacheValidationResult(
+  token: string,
+  result: {
+    isValid: boolean
+    userId?: string
+    email?: string
+    role?: UserRole
+  }
+) {
   // Remove oldest entry if at capacity
   if (localValidationCache.length >= MAX_CACHE_SIZE) {
-    localValidationCache.shift();
+    localValidationCache.shift()
   }
-  
+
   // Add new entry
   localValidationCache.push({
     token,
     result,
-    timestamp: Date.now()
-  });
+    timestamp: Date.now(),
+  })
 }
 
-// Helper functions to get cookies on the client side
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null
+// Helper to get domain settings for cookies
+const getCookieDomain = () => {
+  if (typeof window === "undefined") return undefined
 
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  
-  if (parts.length === 2) {
-    const cookieValue = parts.pop()?.split(";").shift() || null
-    return cookieValue
+  // Use environment variable if available
+  if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) {
+    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN
   }
-  
-  return null
+
+  // Otherwise try to determine from hostname
+  const hostname = window.location.hostname
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return undefined // No domain for localhost
+  }
+
+  // For production, use the top domain (e.g., vercel.app)
+  const parts = hostname.split(".")
+  if (parts.length > 2) {
+    return `.${parts[parts.length - 2]}.${parts[parts.length - 1]}`
+  }
+  return hostname
 }
 
 // Helper function to validate JWT token structure - with local caching
@@ -205,7 +215,7 @@ export async function validateJwtToken(token: string): Promise<{
 }
 
 // Helper function to normalize user data from API
-function normalizeUserData(userData: any): User {
+function normalizeUserData(userData: any): UserProfile {
   // Ensure role is uppercase for consistency
   const rawRole = userData.role || UserRole.USER
   const normalizedRole = normalizeRole(rawRole) || UserRole.USER
@@ -218,11 +228,11 @@ function normalizeUserData(userData: any): User {
 
   return {
     id: userData.id,
+    name: userData.name || "",
     email: userData.email,
-    name: userData.name || null,
-    // Use the normalized role
     role: normalizedRole,
-    image: userData.image || null,
+    organization: userData.organization || undefined,
+    department: userData.department || undefined,
   }
 }
 
@@ -245,14 +255,41 @@ export const authClient = {
   ): Promise<Session> {
     console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
 
+    // First check if cookies are enabled
+    if (!areCookiesEnabled()) {
+      throw new Error(
+        "Cookies are required for authentication but are disabled in your browser."
+      )
+    }
+
     try {
+      // Measure network performance
+      const startTime = Date.now()
+
       // Call the login API through our Next.js proxy
       console.log(`Making API request to /api/auth/login`)
-      const response = await axios.post(`/api/auth/login`, {
-        email,
-        password,
-        rememberMe,
-      })
+      const response = await axios.post(
+        `/api/auth/login`,
+        {
+          email,
+          password,
+          rememberMe,
+        },
+        {
+          // Add extra headers to help with debugging
+          headers: {
+            "X-Client-Version": "1.0.0",
+            "X-Client-Platform":
+              typeof navigator !== "undefined" ? navigator.platform : "unknown",
+          },
+          // Set timeout from environment or default to 15 seconds
+          timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
+        }
+      )
+
+      // Record performance metrics
+      const networkTime = Date.now() - startTime
+      console.log(`Network request completed in ${networkTime}ms`)
 
       // Log response to help with debugging
       console.log("Login response received:", {
@@ -260,6 +297,7 @@ export const authClient = {
         hasRefreshToken: !!response.data.refreshToken,
         hasUser: !!response.data.user,
         status: response.status,
+        responseTime: networkTime,
       })
 
       // Extract data from response
@@ -279,9 +317,9 @@ export const authClient = {
         throw new Error("Invalid login response: missing tokens")
       }
 
-      // Verify cookies were set by checking for them directly
-      const manualCookieCheck = () => {
-        // Check if cookies exist in document
+      // Enhanced cookie verification with cross-domain support
+      const verifyCookies = () => {
+        // Check if cookies exist
         const hasAuthCookie = getCookie(AUTH_COOKIE_NAME) !== null
         const hasRefreshCookie = getCookie(REFRESH_COOKIE_NAME) !== null
 
@@ -293,20 +331,37 @@ export const authClient = {
 
         if (!hasAuthCookie && accessToken) {
           console.log("Auth cookie not set by server, setting manually")
-          document.cookie = `${AUTH_COOKIE_NAME}=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax;`
+          // Set for 1 day (24 hours) or 7 days if remember me is true
+          const maxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24
+          setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge })
         }
 
         if (!hasRefreshCookie && refreshToken) {
           console.log(
             "Refresh cookie not set by server, setting manually (httpOnly not possible)"
           )
-          document.cookie = `${REFRESH_COOKIE_NAME}=${refreshToken}; path=/; max-age=${60 * 60 * 24 * 14}; samesite=lax;`
+          // Set for 14 days
+          setCookie(REFRESH_COOKIE_NAME, refreshToken, {
+            maxAge: 60 * 60 * 24 * 14,
+          })
         }
       }
 
-      // Check immediately and after a small delay to ensure cookies are set
-      manualCookieCheck()
-      setTimeout(manualCookieCheck, 100)
+      // Verify cookies immediately after login
+      verifyCookies()
+
+      // And after a delay to catch any race conditions with cookie setting
+      setTimeout(verifyCookies, 100)
+
+      // Try one more time after longer delay if needed
+      setTimeout(() => {
+        if (!getCookie(AUTH_COOKIE_NAME)) {
+          console.warn(
+            "Auth cookie still not set after delay, trying one more time"
+          )
+          verifyCookies()
+        }
+      }, 1000)
 
       // Store last login timestamp
       if (typeof window !== "undefined") {
@@ -315,7 +370,30 @@ export const authClient = {
 
       return session
     } catch (error: any) {
-      console.error("Login error:", error.response?.data || error.message)
+      // Enhanced error reporting
+      const errorDetails = {
+        message: error.message || "Unknown error",
+        status: error.response?.status,
+        data: error.response?.data,
+        network: !!error.isAxiosError,
+        timeout: error.code === "ECONNABORTED",
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      }
+
+      console.error("Login error:", errorDetails)
+
+      // Report error to monitoring system if enabled
+      if (
+        process.env.NEXT_PUBLIC_ENABLE_ERROR_REPORTING === "true" &&
+        typeof window !== "undefined"
+      ) {
+        window.dispatchEvent(
+          new CustomEvent("auth:error", {
+            detail: { type: "login_failed", ...errorDetails },
+          })
+        )
+      }
+
       throw error
     }
   },
@@ -386,11 +464,15 @@ export const authClient = {
   },
 
   async logout(): Promise<void> {
+    // Clear cookies using the utility function
+    deleteCookie(AUTH_COOKIE_NAME)
+    deleteCookie(REFRESH_COOKIE_NAME)
+
     try {
-      // Use our Next.js proxy endpoint instead of the direct API
-      await axios.post(`/api/auth/logout`, {})
+      // Call logout API
+      await axios.post("/api/auth/logout")
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error("Error during logout:", error)
     }
   },
 
@@ -705,36 +787,40 @@ export const authClient = {
   },
 
   async validateToken(token: string): Promise<TokenValidationResult> {
-    return quickValidateToken(token);
+    return quickValidateToken(token)
   },
 
   async refreshSession(): Promise<Session | null> {
     try {
       // Call the refresh endpoint through our Next.js proxy
-      const response = await axios.post(`/api/auth/refresh-token`, {}, {
-        withCredentials: true
-      });
-      
+      const response = await axios.post(
+        `/api/auth/refresh-token`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+
       if (response.data.success && response.data.data) {
         // Construct session from response
-        const { accessToken, refreshToken, user } = response.data.data;
-        
+        const { accessToken, refreshToken, user } = response.data.data
+
         // Decode the token to get expiration
-        const decoded = jose.decodeJwt(accessToken);
-        const expiresAt = decoded.exp;
-        
+        const decoded = jose.decodeJwt(accessToken)
+        const expiresAt = decoded.exp
+
         return {
           user: user ? normalizeUserData(user) : null,
           accessToken,
           refreshToken,
-          expires: new Date(expiresAt! * 1000).toISOString()
-        };
+          expires: new Date(expiresAt! * 1000).toISOString(),
+        }
       }
-      
-      return null;
+
+      return null
     } catch (error) {
-      console.error("Failed to refresh session:", error);
-      return null;
+      console.error("Failed to refresh session:", error)
+      return null
     }
   },
 }

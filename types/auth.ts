@@ -21,3 +21,10 @@ export interface ChangePasswordRequest {
   currentPassword: string
   newPassword: string
 }
+
+export interface Session {
+  user: UserProfile | null
+  expires: string
+  accessToken: string
+  refreshToken: string
+}
