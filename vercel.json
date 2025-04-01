@@ -2,7 +2,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": ".vercel/output",
+  "outputDirectory": ".next",
   "devCommand": "npm run dev",
   "regions": ["cle1"],
   "env": {
