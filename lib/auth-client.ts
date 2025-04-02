@@ -105,6 +105,27 @@ function normalizeUserData(userData: any): UserProfile {
 
 // Auth client
 export const authClient = {
+  // Add a test function to check API connectivity
+  async testApiConnection(): Promise<boolean> {
+    try {
+      console.log(
+        "Testing direct API connection to: https://ngdi-api.vercel.app/api/auth/login"
+      )
+      const response = await axios.get("https://ngdi-api.vercel.app/health", {
+        timeout: 5000,
+      })
+      console.log(
+        "Direct API connection test result:",
+        response.status,
+        response.data
+      )
+      return response.status === 200
+    } catch (error) {
+      console.error("API connection test failed:", error)
+      return false
+    }
+  },
+
   async login(
     email: string,
     password: string,
@@ -139,19 +160,46 @@ export const authClient = {
       // Call the API directly
       const loginEndpoint = getAuthEndpoint("login")
       console.log(`Making API request to ${loginEndpoint}`)
-      const response = await axios.post(
-        loginEndpoint,
-        {
-          email,
-          password,
-          rememberMe,
-        },
-        {
-          headers,
-          timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
-          withCredentials: true, // Essential for CORS with cookies
+
+      let response
+      try {
+        // First attempt with rewritten route
+        response = await axios.post(
+          loginEndpoint,
+          {
+            email,
+            password,
+            rememberMe,
+          },
+          {
+            headers,
+            timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
+            withCredentials: true, // Essential for CORS with cookies
+          }
+        )
+      } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+          console.log(
+            "Rewritten API route failed with 404, trying direct API URL"
+          )
+          // If rewritten route fails with 404, try direct API URL
+          response = await axios.post(
+            "https://ngdi-api.vercel.app/api/auth/login",
+            {
+              email,
+              password,
+              rememberMe,
+            },
+            {
+              headers,
+              timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
+              withCredentials: true,
+            }
+          )
+        } else {
+          throw error
         }
-      )
+      }
 
       // Record performance metrics
       const networkTime = Date.now() - startTime

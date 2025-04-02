@@ -63,6 +63,7 @@ apiRouter.route("/search", searchRouter)
 apiRouter.route("/admin", adminRouter)
 
 // Mount API router
+app.route("/", apiRouter)
 app.route("/api", apiRouter)
 
 // Swagger UI
