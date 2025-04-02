@@ -29,7 +29,7 @@ app.use("*", logger())
 app.use(
   "*",
   cors({
-    origin: config.corsOrigins,
+    origin: ["https://ngdi-v1.vercel.app", "http://localhost:3000"],
     credentials: true, // Important for cookies
     exposeHeaders: ["Content-Length", "X-CSRF-Token"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
