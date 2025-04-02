@@ -109,9 +109,9 @@ export const authClient = {
   async testApiConnection(): Promise<boolean> {
     try {
       console.log(
-        "Testing direct API connection to: https://ngdi-api.vercel.app/api/auth/login"
+        "Testing direct API connection to: https://ngdi-v1.vercel.app/api/auth/login"
       )
-      const response = await axios.get("https://ngdi-api.vercel.app/health", {
+      const response = await axios.get("https://ngdi-v1.vercel.app/health", {
         timeout: 5000,
       })
       console.log(
@@ -184,7 +184,7 @@ export const authClient = {
           )
           // If rewritten route fails with 404, try direct API URL
           response = await axios.post(
-            "https://ngdi-api.vercel.app/api/auth/login",
+            "https://ngdi-v1.vercel.app/api/auth/login",
             {
               email,
               password,
