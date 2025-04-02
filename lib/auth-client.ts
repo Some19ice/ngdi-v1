@@ -109,20 +109,11 @@ export const authClient = {
   // Add a test function to check API connectivity
   async testApiConnection(): Promise<boolean> {
     try {
-      console.log(
-        "Testing direct API connection to: https://ngdi-v1.vercel.app/api/health"
-      )
-      const response = await axios.get(
-        "https://ngdi-v1.vercel.app/api/health",
-        {
-          timeout: 5000,
-        }
-      )
-      console.log(
-        "Direct API connection test result:",
-        response.status,
-        response.data
-      )
+      console.log("Testing API connection to: /api/health")
+      const response = await axios.get("/api/health", {
+        timeout: 5000,
+      })
+      console.log("API connection test result:", response.status, response.data)
       return response.status === 200
     } catch (error) {
       console.error("API connection test failed:", error)
@@ -162,10 +153,7 @@ export const authClient = {
       }
 
       // In production, always use the direct API URL
-      const loginEndpoint =
-        process.env.NODE_ENV === "production"
-          ? "https://ngdi-v1.vercel.app/api/auth/login"
-          : getAuthEndpoint("login")
+      const loginEndpoint = getAuthEndpoint("login")
 
       console.log(`Making API request to ${loginEndpoint}`)
 
