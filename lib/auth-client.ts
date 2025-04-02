@@ -32,8 +32,8 @@ export interface AuthTokens {
   refreshToken: string
 }
 
-// Get API URL from environment or use default
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
+// Get API URL from environment or use default - empty string means relative URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL === "" ? "" : (process.env.NEXT_PUBLIC_API_URL || "")
 
 // Helper function to get the correct auth endpoint
 function getAuthEndpoint(path: string): string {
@@ -42,7 +42,7 @@ function getAuthEndpoint(path: string): string {
     return `http://localhost:3001/api/auth/${path}`
   }
 
-  // For production, use relative URL (will be handled by Vercel rewrite)
+  // For production, use the rewritten API URL via vercel.json
   return `/api/auth/${path}`
 }
 

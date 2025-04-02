@@ -26,11 +26,11 @@ const log = {
 async function hasCompletedOnboarding(userId: string) {
   // Check if user has completed onboarding
   try {
-    // Call the API server directly - no internal URL needed
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "/api"}/users/profile`
-    log.debug(`Checking onboarding status for user ${userId} at ${apiUrl}`)
+    // Use the rewritten API path for consistency
+    const endpoint = `/api/users/profile`
+    log.debug(`Checking onboarding status for user ${userId} at ${endpoint}`)
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
