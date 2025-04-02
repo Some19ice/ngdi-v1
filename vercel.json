@@ -8,6 +8,9 @@
   "env": {
     "NODE_ENV": "production"
   },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/packages/api/dist/index.js" }
+  ],
   "headers": [
     {
       "source": "/auth/:path*",

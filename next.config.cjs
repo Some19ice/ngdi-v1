@@ -121,15 +121,7 @@ module.exports = {
   },
   // Configure rewrites for API
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination:
-          process.env.NODE_ENV === "production"
-            ? "https://ngdi-v1.vercel.app/api/:path*"
-            : "http://localhost:3001/api/:path*",
-      },
-    ]
+    return []
   },
   // Configure redirects
   async redirects() {

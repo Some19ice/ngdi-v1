@@ -33,8 +33,7 @@ export interface AuthTokens {
 }
 
 // Get API URL from environment or use default
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.ngdi-v1.vercel.app"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
 // Helper function to get the correct auth endpoint
 function getAuthEndpoint(path: string): string {
@@ -43,8 +42,8 @@ function getAuthEndpoint(path: string): string {
     return `http://localhost:3001/api/auth/${path}`
   }
 
-  // For production, use the API_URL
-  return `${API_URL}/api/auth/${path}`
+  // For production, use relative URL (will be handled by Vercel rewrite)
+  return `/api/auth/${path}`
 }
 
 // Helper function to validate JWT token structure - with local caching
