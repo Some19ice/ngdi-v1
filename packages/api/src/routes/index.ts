@@ -31,9 +31,19 @@ api.use("*", async (c, next) => {
 api.use(
   "*",
   cors({
-    origin: config.corsOrigins,
+    origin: "http://localhost:3000",
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-CSRF-Token",
+      "X-Client-Version",
+      "X-Client-Platform",
+    ],
+    credentials: true,
+    exposeHeaders: ["Content-Length", "X-CSRF-Token"],
+    maxAge: 86400,
   })
 )
 

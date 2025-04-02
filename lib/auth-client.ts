@@ -35,6 +35,20 @@ export interface AuthTokens {
 // Get API URL from environment or use default
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
 
+// Helper function to get the correct auth endpoint
+function getAuthEndpoint(path: string): string {
+  // For local development, always use the full URL to avoid CORS issues
+  if (process.env.NODE_ENV !== 'production') {
+    return `http://localhost:3001/api/auth/${path}`
+  }
+  // For production with relative URLs
+  if (API_URL.startsWith('/')) {
+    return `${API_URL}/auth/${path}`
+  }
+  // For production with absolute URLs
+  return `${API_URL}/api/auth/${path}`
+}
+
 // Helper function to validate JWT token structure - with local caching
 let tokenCache: Record<string, TokenValidationResult & { timestamp: number }> =
   {}
@@ -112,24 +126,33 @@ export const authClient = {
       // Measure network performance
       const startTime = Date.now()
 
-      // Call the API directly - no need for proxy anymore
-      console.log(`Making API request to ${API_URL}/auth/login`)
+      // Get CSRF token if available
+      const csrfToken = getCookie("csrf_token")
+      const headers: Record<string, string> = {
+        "X-Client-Version": "1.0.0",
+        "X-Client-Platform":
+          typeof navigator !== "undefined" ? navigator.platform : "unknown",
+      }
+
+      // Add CSRF token to headers if available
+      if (csrfToken) {
+        headers["X-CSRF-Token"] = csrfToken
+      }
+
+      // Call the API directly
+      const loginEndpoint = getAuthEndpoint("login")
+      console.log(`Making API request to ${loginEndpoint}`)
       const response = await axios.post(
-        `${API_URL}/auth/login`,
+        loginEndpoint,
         {
           email,
           password,
           rememberMe,
         },
         {
-          // Add extra headers to help with debugging
-          headers: {
-            "X-Client-Version": "1.0.0",
-            "X-Client-Platform":
-              typeof navigator !== "undefined" ? navigator.platform : "unknown",
-          },
-          // Set timeout from environment or default to 15 seconds
+          headers,
           timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
+          withCredentials: true, // Essential for CORS with cookies
         }
       )
 
@@ -251,7 +274,7 @@ export const authClient = {
 
     try {
       // Call logout API directly
-      await axios.post(`${API_URL}/auth/logout`)
+      await axios.post(getAuthEndpoint("logout"))
     } catch (error) {
       console.error("Error during logout:", error)
     }
@@ -260,7 +283,7 @@ export const authClient = {
   async refreshToken(): Promise<string> {
     try {
       const response = await axios.post(
-        `${API_URL}/auth/refresh-token`,
+        getAuthEndpoint("refresh-token"),
         {},
         {
           headers: {
@@ -341,7 +364,7 @@ export const authClient = {
       )
 
       const response = await axios.post(
-        `${API_URL}/auth/exchange-code`,
+        getAuthEndpoint("exchange-code"),
         { code },
         {
           headers: {
@@ -394,7 +417,7 @@ export const authClient = {
   ): Promise<Session> {
     try {
       const response = await axios.post(
-        `${API_URL}/auth/register`,
+        getAuthEndpoint("register"),
         {
           email,
           password,

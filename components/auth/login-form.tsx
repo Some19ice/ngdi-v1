@@ -29,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
 import { AuthLoadingButton } from "@/components/ui/auth-loading"
 import { useAuthSession } from "@/hooks/use-auth-session"
+import { ensureCsrfToken } from "@/lib/utils/csrf-utils"
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -98,6 +99,9 @@ export function LoginForm() {
   // Handle form submission
   async function onSubmit(data: LoginFormValues) {
     try {
+      // Ensure CSRF token is available first
+      await ensureCsrfToken()
+
       // Store remember me preference
       if (data.rememberMe) {
         localStorage.setItem("rememberMe", "true")

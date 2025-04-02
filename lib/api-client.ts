@@ -9,6 +9,7 @@ import { UserProfile, UserUpdateRequest } from "@/types/user"
 import { LoginRequest, RegisterRequest, AuthResponse } from "@/types/auth"
 import { MetadataResponse, MetadataRequest } from "@/types/metadata"
 import { authClient, Session } from "./auth-client"
+import { getCookie } from "./utils/cookie-utils"
 
 interface ApiClientConfig {
   baseURL: string
@@ -42,6 +43,13 @@ class ApiClient {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
+
+        // Add CSRF token if available
+        const csrfToken = getCookie("csrf_token")
+        if (csrfToken) {
+          config.headers["X-CSRF-Token"] = csrfToken
+        }
+
         return config
       },
       (error) => {

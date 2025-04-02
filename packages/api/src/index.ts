@@ -26,24 +26,23 @@ const app = new Hono<{
 
 // Apply global middleware
 app.use("*", logger())
-app.use("*", cors())
 app.use(
   "*",
-  secureHeaders({
-    contentSecurityPolicy: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Adjust based on your needs
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: [
-        "'self'",
-        process.env.NEXT_PUBLIC_URL || "http://localhost:3000",
-      ],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'self'"],
-    },
+  cors({
+    origin: config.corsOrigins,
+    credentials: true, // Important for cookies
+    exposeHeaders: ["Content-Length", "X-CSRF-Token"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-CSRF-Token",
+      "X-Client-Version",
+      "X-Client-Platform",
+      "X-Request-ID",
+      "Cookie",
+    ],
+    maxAge: 86400, // 24 hours
   })
 )
 app.use("*", prettyJSON())

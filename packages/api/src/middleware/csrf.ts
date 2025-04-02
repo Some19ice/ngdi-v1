@@ -35,7 +35,13 @@ const defaultOptions: CSRFOptions = {
     sameSite: "Lax",
   },
   ignoreMethods: ["GET", "HEAD", "OPTIONS"], // Methods that don't need CSRF protection
-  ignorePaths: ["/health", "/api/auth/login", "/api/auth/register"], // Paths that don't need CSRF protection
+  ignorePaths: [
+    "/health",
+    "/api/auth/login",
+    "/auth/login",
+    "/api/auth/register",
+    "/auth/register",
+  ], // Paths that don't need CSRF protection
   tokenHeader: "X-CSRF-Token",
 }
 
@@ -64,8 +70,11 @@ export const csrf = (options: Partial<CSRFOptions> = {}): MiddlewareHandler => {
     // For debugging
     console.log(`CSRF Middleware - Method: ${method}, Path: ${path}`)
 
+    // Get origin from request or fallback to config
+    const origin = c.req.header("Origin") || config.corsOrigins[0]
+
     // For all requests, set CORS headers
-    c.res.headers.set("Access-Control-Allow-Origin", "*")
+    c.res.headers.set("Access-Control-Allow-Origin", origin)
     c.res.headers.set(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, OPTIONS"
