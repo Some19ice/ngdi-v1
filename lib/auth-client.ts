@@ -42,7 +42,7 @@ function getAuthEndpoint(path: string): string {
     return `http://localhost:3001/api/auth/${path}`
   }
 
-  // For production, use the rewritten API URL via vercel.json
+  // For production, use relative URL for API calls (handled by Vercel rewrites)
   return `/api/auth/${path}`
 }
 

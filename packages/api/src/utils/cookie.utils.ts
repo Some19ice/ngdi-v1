@@ -19,7 +19,8 @@ export const DEFAULT_COOKIE_OPTIONS: CookieOptions = {
 
 export function getCookieDomain(): string | undefined {
   if (process.env.NODE_ENV === "production") {
-    return process.env.COOKIE_DOMAIN || process.env.VERCEL_URL || ".vercel.app"
+    // Use exactly what's specified in the environment variable
+    return process.env.COOKIE_DOMAIN || undefined
   }
   return undefined
 }
