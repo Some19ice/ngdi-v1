@@ -126,7 +126,7 @@ module.exports = {
         source: "/api/:path*",
         destination:
           process.env.NODE_ENV === "production"
-            ? "https://ngdi-api.vercel.app/api/:path*"
+            ? "https://ngdi-v1.vercel.app/api/:path*"
             : "http://localhost:3001/api/:path*",
       },
     ]

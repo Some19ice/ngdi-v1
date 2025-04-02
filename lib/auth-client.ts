@@ -33,19 +33,17 @@ export interface AuthTokens {
 }
 
 // Get API URL from environment or use default
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.ngdi-v1.vercel.app"
 
 // Helper function to get the correct auth endpoint
 function getAuthEndpoint(path: string): string {
-  // For local development, always use the full URL to avoid CORS issues
-  if (process.env.NODE_ENV !== 'production') {
+  // For local development, use localhost directly
+  if (process.env.NODE_ENV !== "production") {
     return `http://localhost:3001/api/auth/${path}`
   }
-  // For production with relative URLs
-  if (API_URL.startsWith('/')) {
-    return `${API_URL}/auth/${path}`
-  }
-  // For production with absolute URLs
+
+  // For production, use the API_URL
   return `${API_URL}/api/auth/${path}`
 }
 
