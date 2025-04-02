@@ -32,7 +32,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/packages/api/dist/index.js"
+      "destination": "/packages/api/dist/api/index.js"
     }
   ]
 }

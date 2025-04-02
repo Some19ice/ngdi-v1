@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers"
 import { prettyJSON } from "hono/pretty-json"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { swaggerUI } from "@hono/swagger-ui"
+import { handle } from "hono/vercel"
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
@@ -77,8 +78,8 @@ app.get(
 // Add a health check endpoint
 app.get("/health", (c) => c.json({ status: "ok" }))
 
-// Start the server
-if (process.env.NODE_ENV !== "test") {
+// Start the server in non-production environments
+if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
   const port = config.port || 3001
   console.log(`API server is running on port ${port}`)
 
@@ -88,5 +89,8 @@ if (process.env.NODE_ENV !== "test") {
   })
 }
 
-// Export app
+// Export app for non-Vercel environments
 export default app
+
+// Export Vercel-compatible handler
+export const vercelHandler = handle(app)
