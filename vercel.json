@@ -10,22 +10,14 @@
   },
   "rewrites": [
     {
-      "source": "/api/:match*",
-      "destination": "https://ngdi-api.vercel.app/api/:match*"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     }
   ],
   "headers": [
     {
       "source": "/auth/:path*",
       "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
-    },
-    {
-      "source": "/api/:path*",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" }
-      ]
     }
   ]
 }

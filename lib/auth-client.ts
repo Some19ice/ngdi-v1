@@ -42,7 +42,8 @@ function getAuthEndpoint(path: string): string {
     return `http://localhost:3001/api/auth/${path}`
   }
 
-  // For production, use relative URL for API calls (handled by Vercel rewrites)
+  // For production, use a relative path for same-domain calls
+  // The browser will automatically prefix this with the current domain
   return `/api/auth/${path}`
 }
 
@@ -109,11 +110,14 @@ export const authClient = {
   async testApiConnection(): Promise<boolean> {
     try {
       console.log(
-        "Testing direct API connection to: https://ngdi-v1.vercel.app/api/auth/login"
+        "Testing direct API connection to: https://ngdi-v1.vercel.app/api/health"
       )
-      const response = await axios.get("https://ngdi-v1.vercel.app/health", {
-        timeout: 5000,
-      })
+      const response = await axios.get(
+        "https://ngdi-v1.vercel.app/api/health",
+        {
+          timeout: 5000,
+        }
+      )
       console.log(
         "Direct API connection test result:",
         response.status,
@@ -157,49 +161,27 @@ export const authClient = {
         headers["X-CSRF-Token"] = csrfToken
       }
 
-      // Call the API directly
-      const loginEndpoint = getAuthEndpoint("login")
+      // In production, always use the direct API URL
+      const loginEndpoint =
+        process.env.NODE_ENV === "production"
+          ? "https://ngdi-v1.vercel.app/api/auth/login"
+          : getAuthEndpoint("login")
+
       console.log(`Making API request to ${loginEndpoint}`)
 
-      let response
-      try {
-        // First attempt with rewritten route
-        response = await axios.post(
-          loginEndpoint,
-          {
-            email,
-            password,
-            rememberMe,
-          },
-          {
-            headers,
-            timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
-            withCredentials: true, // Essential for CORS with cookies
-          }
-        )
-      } catch (error: any) {
-        if (error.response && error.response.status === 404) {
-          console.log(
-            "Rewritten API route failed with 404, trying direct API URL"
-          )
-          // If rewritten route fails with 404, try direct API URL
-          response = await axios.post(
-            "https://ngdi-v1.vercel.app/api/auth/login",
-            {
-              email,
-              password,
-              rememberMe,
-            },
-            {
-              headers,
-              timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
-              withCredentials: true,
-            }
-          )
-        } else {
-          throw error
+      const response = await axios.post(
+        loginEndpoint,
+        {
+          email,
+          password,
+          rememberMe,
+        },
+        {
+          headers,
+          timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
+          withCredentials: true, // Essential for CORS with cookies
         }
-      }
+      )
 
       // Record performance metrics
       const networkTime = Date.now() - startTime

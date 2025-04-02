@@ -32,13 +32,16 @@ export function setCookieWithOptions(
   options: Partial<CookieOptions> = {}
 ): void {
   const finalOptions = { ...DEFAULT_COOKIE_OPTIONS, ...options }
-  const domain = getCookieDomain()
+
+  // For same-domain setup, we don't set the domain attribute
+  // The browser will automatically scope it to the exact origin
 
   let cookie = `${name}=${value}; Path=${finalOptions.path}`
   if (finalOptions.httpOnly) cookie += "; HttpOnly"
   if (finalOptions.secure) cookie += "; Secure"
   cookie += `; SameSite=${finalOptions.sameSite}; Max-Age=${finalOptions.maxAge}`
-  if (domain) cookie += `; Domain=${domain}`
+
+  // We deliberately omit the Domain attribute for same-domain cookies
 
   c.header("Set-Cookie", cookie)
 }
