@@ -1,23 +1,28 @@
-import { SuspenseSearchParams } from "@/components/wrappers/suspense-search-params"
-import { SignInContent } from "./signin-content"
-import { getCurrentUser } from "@/lib/auth"
-import { cookies } from "next/headers"
+import { AuthForm } from "@/components/auth/auth-form"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Sign In - NGDI Portal",
+  title: "Sign In | NGDI Portal",
   description: "Sign in to your NGDI Portal account",
 }
 
-export default async function SignInPage() {
-  // Check auth status but don't redirect on the server
-  // (we'll handle redirects client-side to avoid the redirect error)
-  const user = await getCurrentUser()
-  const initiallyAuthenticated = !!user
-
+export default function SignInPage() {
   return (
-    <SuspenseSearchParams>
-      <SignInContent initiallyAuthenticated={initiallyAuthenticated} />
-    </SuspenseSearchParams>
+    <div className="container flex h-screen w-screen flex-col items-center justify-center">
+      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+        <div className="flex flex-col space-y-2 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your credentials to access your account
+          </p>
+        </div>
+        <AuthForm 
+          mode="signin" 
+          redirectPath="/dashboard" 
+        />
+      </div>
+    </div>
   )
 }

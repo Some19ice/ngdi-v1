@@ -534,4 +534,42 @@ async function isTokenExpired(token: string): Promise<boolean> {
   } catch (error) {
     return true
   }
+}
+
+/**
+ * Retrieves a CSRF token from the server for secure form submissions
+ * @returns The CSRF token as a string
+ */
+export async function getCSRFToken(): Promise<string> {
+  try {
+    // First check if we already have a token in memory
+    const existingToken = getCsrfTokenFromCookie();
+    if (existingToken) {
+      return existingToken;
+    }
+    
+    // If not, fetch a new one from the API
+    const response = await axios.get(`${API_URL}/auth/csrf`);
+    return response.data.csrfToken;
+  } catch (error) {
+    console.error("Failed to get CSRF token:", error);
+    throw new Error("Failed to get security token. Please try again.");
+  }
+}
+
+/**
+ * Gets the CSRF token from cookie if available
+ */
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  
+  const cookies = document.cookie.split("; ");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.split("=");
+    if (name === "csrfToken") {
+      return decodeURIComponent(value);
+    }
+  }
+  
+  return null;
 } 

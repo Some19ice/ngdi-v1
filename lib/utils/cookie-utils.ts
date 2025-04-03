@@ -12,30 +12,30 @@ interface CookieOptions {
 }
 
 /**
- * Get cookie domain based on current hostname
+ * Get the cookie domain based on the environment
  */
-export function getCookieDomain(): string | undefined {
-  if (typeof window === "undefined") return undefined
-
-  // Use environment variable if available
-  if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) {
-    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN
+function getCookieDomain(): string | undefined {
+  // In production, use the domain from environment variable
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined
   }
+  return undefined
+}
 
-  // Handle localhost
-  const hostname = window.location.hostname
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return undefined
+/**
+ * Get a cookie value by name
+ */
+export function getCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined
+
+  const cookies = document.cookie.split("; ")
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.split("=")
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue)
+    }
   }
-
-  // For production domain, extract top-level domain
-  // e.g., ngdi-v1.vercel.app -> .vercel.app
-  const hostParts = hostname.split(".")
-  if (hostParts.length >= 2) {
-    return `.${hostParts.slice(-2).join(".")}`
-  }
-
-  return hostname
+  return undefined
 }
 
 /**
@@ -55,7 +55,7 @@ export function setCookie(
   const domain = options.domain ?? getCookieDomain()
   const maxAge = options.maxAge ?? 60 * 60 * 24 // 1 day default
   const path = options.path ?? "/"
-  const sameSite = options.sameSite ?? "lax"
+  const sameSite = options.sameSite ?? "strict"
 
   let cookieValue = `${name}=${encodeURIComponent(value)}; path=${path}; max-age=${maxAge}; samesite=${sameSite}`
 
@@ -74,28 +74,16 @@ export function setCookie(
     process.env.DEBUG_AUTH === "true"
   ) {
     console.log(
-      `[Cookie] Set ${name} cookie with domain=${domain || "none"}, secure=${secure}, path=${path}`
+      `[Cookie] Set ${name} cookie with domain=${domain || "none"}, secure=${secure}, path=${path}, sameSite=${sameSite}`
     )
   }
 }
 
 /**
- * Get a cookie by name
+ * Check if a cookie exists
  */
-export function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null
-
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`))
-  const value = match ? decodeURIComponent(match[2]) : null
-
-  if (
-    process.env.NODE_ENV === "development" ||
-    process.env.DEBUG_AUTH === "true"
-  ) {
-    console.log(`[Cookie] Getting ${name}: ${value ? "found" : "not found"}`)
-  }
-
-  return value
+export function hasCookie(name: string): boolean {
+  return getCookie(name) !== undefined
 }
 
 /**
@@ -108,9 +96,10 @@ export function deleteCookie(name: string): void {
   const secure =
     process.env.NEXT_PUBLIC_SECURE_COOKIES === "true" ||
     window.location.protocol === "https:"
+  const sameSite = "strict"
 
   // Set expiration to the past
-  let cookieValue = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`
+  let cookieValue = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=${sameSite}`
 
   if (secure) {
     cookieValue += "; secure"
@@ -127,7 +116,7 @@ export function deleteCookie(name: string): void {
     process.env.DEBUG_AUTH === "true"
   ) {
     console.log(
-      `[Cookie] Deleted ${name} cookie with domain=${domain || "none"}`
+      `[Cookie] Deleted ${name} cookie with domain=${domain || "none"}, secure=${secure}, sameSite=${sameSite}`
     )
   }
 }

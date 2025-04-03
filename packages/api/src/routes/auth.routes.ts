@@ -28,6 +28,8 @@ import {
 import * as jose from "jose"
 import { Variables } from "../types/hono.types"
 import { ErrorHandler } from "hono"
+import { loginSchema as userLoginSchema, signupSchema } from "../schemas/user.schema"
+import { bcrypt } from "../utils/bcrypt"
 
 // Create auth router
 const auth = new Hono<{ Variables: Variables }>()
@@ -80,31 +82,84 @@ function getCookieDomain() {
 // Login route
 auth.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
-    const data = await c.req.json()
-    const result = await AuthService.login(data)
-
-    // Set auth cookies
-    setCookieWithOptions(c, "auth_token", result.accessToken)
-    setCookieWithOptions(c, "refresh_token", result.refreshToken)
-
-    return c.json(result)
+    // Validate input
+    const data = await userLoginSchema.parseAsync(await c.req.json())
+    
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email: data.email },
+    })
+    
+    if (!user) {
+      throw new AuthError("USER_NOT_FOUND", "Account not found with this email")
+    }
+    
+    if (user.disabled) {
+      throw new AuthError("ACCOUNT_DISABLED", "Your account has been disabled")
+    }
+    
+    // Verify password
+    const validPassword = await bcrypt.compare(data.password, user.password)
+    if (!validPassword) {
+      throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password")
+    }
+    
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(user)
+    
+    // Set cookies with enhanced security
+    setCookieWithOptions(c, "accessToken", accessToken, {
+      sameSite: "strict",
+      maxAge: 15 * 60 // 15 minutes
+    })
+    
+    setCookieWithOptions(c, "refreshToken", refreshToken, {
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    })
+    
+    // Set authenticated flag for client-side checks
+    setCookieWithOptions(c, "authenticated", "true", {
+      httpOnly: false, // Allow JavaScript to read this cookie
+      sameSite: "strict", 
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    })
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    })
   } catch (error) {
     if (error instanceof AuthError) {
-      return c.json(
-        {
-          success: false,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-        },
-        error.status as 401 | 403 | 429
-      )
+      c.status(401)
+      return c.json({ 
+        success: false, 
+        error: error.code,
+        message: error.message
+      })
     }
-    throw new AuthError(
-      AuthErrorCode.INVALID_CREDENTIALS,
-      "Authentication failed",
-      401
-    )
+    
+    if (error instanceof zValidator.ZodError) {
+      c.status(400)
+      return c.json({ 
+        success: false, 
+        error: "VALIDATION_ERROR",
+        message: error.errors[0]?.message || "Invalid input data" 
+      })
+    }
+    
+    console.error("Login error:", error)
+    c.status(500)
+    return c.json({ 
+      success: false, 
+      error: "SERVER_ERROR",
+      message: "An error occurred during login. Please try again."
+    })
   }
 })
 
