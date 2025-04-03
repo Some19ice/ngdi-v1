@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
@@ -29,6 +30,12 @@
       ]
     }
   ],
+  "functions": {
+    "packages/api/dist/api/index.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",

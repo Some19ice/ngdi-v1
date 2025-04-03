@@ -5,7 +5,6 @@ import { secureHeaders } from "hono/secure-headers"
 import { prettyJSON } from "hono/pretty-json"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { swaggerUI } from "@hono/swagger-ui"
-import { handle } from "hono/vercel"
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
@@ -89,8 +88,5 @@ if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
   })
 }
 
-// Export app for non-Vercel environments
+// Export app for use in Vercel serverless functions and other environments
 export default app
-
-// Export Vercel-compatible handler
-export const vercelHandler = handle(app)

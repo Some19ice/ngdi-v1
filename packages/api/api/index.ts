@@ -1,4 +1,5 @@
-import { vercelHandler } from "../src"
+import { handle } from "hono/vercel"
+import app from "../src"
 
-// This file serves as an entry point for Vercel serverless functions
-export default vercelHandler
+// Export the handler function for Vercel serverless
+export default handle(app)

@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && mkdir -p dist/api && cp -r api/* dist/api/",
     "start": "node dist/index.js",
+    "start:prod": "NODE_ENV=production node dist/index.js",
     "lint": "eslint src --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
