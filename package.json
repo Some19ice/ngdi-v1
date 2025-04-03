@@ -15,6 +15,8 @@
     "build": "npm run build:web && npm run build:api",
     "build:web": "prisma generate && next build",
     "build:api": "npm run build -w packages/api",
+    "build:vercel": "prisma generate && next build",
+    "prebuild:api": "mkdir -p packages/api/dist/api",
     "start": "concurrently \"npm run start:web\" \"npm run start:api\"",
     "start:web": "next start",
     "start:api": "npm run start -w packages/api",
