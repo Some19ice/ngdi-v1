@@ -1,6 +1,15 @@
 "use client"
 
-import { useAuth as useAuthContext } from "@/lib/auth-context"
+/**
+ * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
+ * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
+ */
+
+import { useAuthSession } from "./use-auth-session"
 import { UserRole } from "@/lib/auth/constants"
 
 // Define the session type
@@ -28,7 +37,13 @@ export interface GetSessionsResult {
 }
 
 export function useAuth() {
-  const auth = useAuthContext()
+  console.warn(
+    "useAuth is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
+  
+  // Use the new hook directly
+  const auth = useAuthSession()
 
   // Define the can function outside to avoid self-reference issues
   const checkPermission = (permission: string): boolean => {
@@ -47,23 +62,22 @@ export function useAuth() {
     ...auth,
     // Expose properties from the auth context
     session: auth.session,
-    user: auth.session?.user || null,
-    isLoading: auth.status === "loading",
-    isAuthenticated: auth.status === "authenticated",
+    user: auth.user,
+    isLoading: auth.isLoading,
+    isAuthenticated: auth.isAuthenticated,
 
     // Role-based helpers
     get userRole() {
-      return auth.session?.user?.role || null
+      return auth.user?.role || null
     },
     get isAdmin() {
-      return auth.session?.user?.role === UserRole.ADMIN
+      return auth.isAdmin
     },
     get isNodeOfficer() {
-      const role = auth.session?.user?.role
-      return role === UserRole.NODE_OFFICER || role === UserRole.ADMIN
+      return auth.isNodeOfficer
     },
     get isUser() {
-      return !!auth.session?.user
+      return !!auth.user
     },
 
     // Re-expose methods with renamed aliases for compatibility
@@ -82,11 +96,11 @@ export function useAuth() {
     // Permission checking methods
     can: checkPermission,
     canAll: (permissions: string[]) => {
-      if (!auth.session?.user?.role) return false
+      if (!auth.user?.role) return false
       return permissions.every((permission) => checkPermission(permission))
     },
     canAny: (permissions: string[]) => {
-      if (!auth.session?.user?.role) return false
+      if (!auth.user?.role) return false
       return permissions.some((permission) => checkPermission(permission))
     },
   }

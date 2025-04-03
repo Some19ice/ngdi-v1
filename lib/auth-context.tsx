@@ -172,16 +172,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useAuth() {
+  console.warn(
+    "useAuth in auth-context.tsx is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   return useContext(AuthContext);
 }
 
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useSession() {
+  console.warn(
+    "useSession in auth-context.tsx is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   const { session, status } = useAuth();
   return { data: session, status };
 }
@@ -189,8 +205,16 @@ export function useSession() {
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useUser(): { user: User | null; isLoading: boolean } {
+  console.warn(
+    "useUser is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   const { session, status } = useAuth();
   return {
     user: session?.user || null,
@@ -201,8 +225,16 @@ export function useUser(): { user: User | null; isLoading: boolean } {
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useIsAuthenticated(): boolean {
+  console.warn(
+    "useIsAuthenticated is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   const { status } = useAuth();
   return status === "authenticated";
 }
@@ -210,8 +242,16 @@ export function useIsAuthenticated(): boolean {
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useIsAdmin(): boolean {
+  console.warn(
+    "useIsAdmin is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   const { session } = useAuth();
   const role = session?.user?.role
   return role?.toUpperCase() === "ADMIN"
@@ -220,8 +260,16 @@ export function useIsAdmin(): boolean {
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 export function useIsNodeOfficer(): boolean {
+  console.warn(
+    "useIsNodeOfficer is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
   const { session } = useAuth();
   const role = session?.user?.role;
   return (

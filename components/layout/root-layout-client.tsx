@@ -5,7 +5,7 @@ import { Banner } from "@/components/layout/banner"
 import Footer from "@/components/layout/footer"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useState, useEffect, useRef, Suspense } from "react"
-import { useSession, useAuth } from "@/lib/auth-context"
+import { useAuthSession } from "@/hooks/use-auth-session"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -33,8 +33,7 @@ export default function RootLayoutClient({
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { data: session, status } = useSession()
-  const { refreshSession } = useAuth()
+  const { session, refreshSession, status } = useAuthSession()
   const hasRefreshed = useRef(false)
 
   // Refresh session only once when the component mounts

@@ -1,6 +1,10 @@
 /**
  * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
  * This hook is maintained for backward compatibility.
+ * 
+ * MIGRATION NOTICE:
+ * This hook will be removed in a future version.
+ * Please update your imports to use useAuthSession from @/hooks/use-auth-session.
  */
 
 import { useAuthSession } from "./use-auth-session"
@@ -10,10 +14,17 @@ import { useAuthSession } from "./use-auth-session"
  * @deprecated Use useAuthSession instead for new code
  */
 export function useSession() {
+  console.warn(
+    "useSession is deprecated and will be removed in a future version. " +
+    "Please use useAuthSession from @/hooks/use-auth-session instead."
+  )
+  
   const auth = useAuthSession()
 
   // Return the same API shape for backward compatibility
   return {
+    data: auth.session, // This matches next-auth's useSession return shape
+    status: auth.status,
     session: auth.session,
     user: auth.user,
     isLoading: auth.isLoading,
