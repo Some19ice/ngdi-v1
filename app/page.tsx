@@ -39,7 +39,7 @@ export default async function HomePage() {
                 accurate spatial information.
               </p>
               <div className="flex flex-wrap gap-4">
-                {!authToken ? (
+                {/* {!authToken ? (
                   <>
                     <Link href="/auth/signin">
                       <Button
@@ -68,7 +68,16 @@ export default async function HomePage() {
                       Search Datasets
                     </Button>
                   </Link>
-                )}
+                )} */}
+
+                <Link href="/search">
+                  <Button
+                    size="lg"
+                    className="bg-white text-primary hover:bg-white/90"
+                  >
+                    Search Datasets
+                  </Button>
+                </Link>
               </div>
             </div>
             <div className="flex items-center justify-center">

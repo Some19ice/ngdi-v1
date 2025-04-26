@@ -220,6 +220,33 @@ export default function CommitteePage() {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* NGDI Technical Framework Section */}
+            <div className="mt-10 mb-8">
+              <h2 className="text-2xl font-bold mb-4">
+                NGDI Technical Framework
+              </h2>
+              <p className="mb-6 text-muted-foreground">
+                The Nigerian NGDI Technical Framework illustrates the
+                infrastructure's architecture and information flow between
+                various components including nodal agencies, users, and the
+                central metadata repository. This framework enables seamless
+                data sharing and collaboration among stakeholders.
+              </p>
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+                <figure>
+                  <img
+                    src="/images/NGDI-Framework.jpeg"
+                    alt="Nigerian NGDI Technical Framework"
+                    className="mx-auto rounded-lg max-w-full h-auto"
+                  />
+                  <figcaption className="mt-2 text-center text-sm text-muted-foreground">
+                    Figure 2: Nigerian NGDI Technical Framework - Architecture
+                    for geospatial data sharing and management
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
           </div>
         </div>
       </div>

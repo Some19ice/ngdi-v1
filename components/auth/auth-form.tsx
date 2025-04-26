@@ -30,10 +30,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
 import { AuthLoadingButton } from "@/components/ui/auth-loading"
 import { useAuthSession } from "@/hooks/use-auth-session"
-import { ensureCsrfToken } from "@/lib/utils/csrf-utils"
+import { ensureCsrfToken, getCsrfToken } from "@/lib/utils/csrf-utils"
 import { UserAuthErrorMessages } from "@/lib/auth/error-messages"
 import { getCookie, hasCookie, setCookie } from "@/lib/utils/cookie-utils"
-import { getCSRFToken } from "@/lib/auth-client"
+import { useCsrf } from "@/hooks/use-csrf"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -42,7 +42,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 const formSchema = z.object({
   email: z.string().email(UserAuthErrorMessages.INVALID_EMAIL),
   password: z.string().min(1, UserAuthErrorMessages.REQUIRED_FIELD),
-  rememberMe: z.boolean().default(false)
+  rememberMe: z.boolean().default(false),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -64,18 +64,19 @@ export function AuthForm({
 }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const { login, isLoggingIn, isAuthenticated } = useAuthSession()
+  const { csrfToken, loading: csrfLoading } = useCsrf()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Default titles and descriptions based on mode
   const formTitle = title || (mode === "signin" ? "Sign In" : "Create Account")
-  const formDescription = description || (
-    mode === "signin" 
-      ? "Enter your credentials to access your account" 
-      : "Fill out the form below to create your account"
-  )
+  const formDescription =
+    description ||
+    (mode === "signin"
+      ? "Enter your credentials to access your account"
+      : "Fill out the form below to create your account")
 
   // Redirect if authenticated
   useEffect(() => {
@@ -90,8 +91,8 @@ export function AuthForm({
     defaultValues: {
       email: "",
       password: "",
-      rememberMe: false
-    }
+      rememberMe: false,
+    },
   })
 
   // Load remembered email if available
@@ -107,7 +108,8 @@ export function AuthForm({
   useEffect(() => {
     const errorCode = searchParams?.get("error")
     if (errorCode) {
-      const errorMessage = UserAuthErrorMessages[errorCode] || UserAuthErrorMessages.DEFAULT
+      const errorMessage =
+        UserAuthErrorMessages[errorCode] || UserAuthErrorMessages.DEFAULT
       setError(errorMessage)
     }
   }, [searchParams])
@@ -115,23 +117,23 @@ export function AuthForm({
   const onSubmit = async (values: FormValues) => {
     try {
       setError(null)
-      
+
       // Ensure CSRF token is available first
       await ensureCsrfToken()
-      
+
       // Remember email if requested
       if (values.rememberMe) {
         localStorage.setItem("rememberedEmail", values.email)
       } else {
         localStorage.removeItem("rememberedEmail")
       }
-      
+
       // Call the login function from useAuthSession hook
-      await login({ 
-        email: values.email, 
-        password: values.password 
+      await login({
+        email: values.email,
+        password: values.password,
       })
-      
+
       // If login successful, redirect will happen via the useEffect
     } catch (err: any) {
       console.error("Login error:", err)
@@ -151,7 +153,7 @@ export function AuthForm({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -161,19 +163,19 @@ export function AuthForm({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="your@email.com" 
-                      type="email" 
-                      autoComplete="email" 
+                    <Input
+                      placeholder="your@email.com"
+                      type="email"
+                      autoComplete="email"
                       disabled={isLoggingIn}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="password"
@@ -199,9 +201,15 @@ export function AuthForm({
                         disabled={isLoggingIn}
                       >
                         {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <EyeOff
+                            className="h-4 w-4 text-muted-foreground"
+                            aria-hidden="true"
+                          />
                         ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <Eye
+                            className="h-4 w-4 text-muted-foreground"
+                            aria-hidden="true"
+                          />
                         )}
                         <span className="sr-only">
                           {showPassword ? "Hide password" : "Show password"}
@@ -213,7 +221,7 @@ export function AuthForm({
                 </FormItem>
               )}
             />
-            
+
             <div className="flex items-center justify-between">
               <FormField
                 control={form.control}
@@ -221,42 +229,58 @@ export function AuthForm({
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Checkbox 
+                      <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={isLoggingIn}
                       />
                     </FormControl>
-                    <FormLabel className="text-sm font-normal">Remember me</FormLabel>
+                    <FormLabel className="text-sm font-normal">
+                      Remember me
+                    </FormLabel>
                   </FormItem>
                 )}
               />
-              
+
               {mode === "signin" && (
-                <Link 
-                  href="/auth/forgot-password" 
+                <Link
+                  href="/auth/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot password?
                 </Link>
               )}
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isLoggingIn}
-            >
+
+            <Button type="submit" className="w-full" disabled={isLoggingIn}>
               {isLoggingIn ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Processing...
                 </span>
+              ) : mode === "signin" ? (
+                "Sign In"
               ) : (
-                mode === "signin" ? "Sign In" : "Create Account"
+                "Create Account"
               )}
             </Button>
           </form>
@@ -267,14 +291,20 @@ export function AuthForm({
           {mode === "signin" ? (
             <>
               Don't have an account?{" "}
-              <Link href="/auth/signup" className="text-primary hover:underline">
+              <Link
+                href="/auth/signup"
+                className="text-primary hover:underline"
+              >
                 Sign up
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href="/auth/signin" className="text-primary hover:underline">
+              <Link
+                href="/auth/signin"
+                className="text-primary hover:underline"
+              >
                 Sign in
               </Link>
             </>
@@ -283,4 +313,4 @@ export function AuthForm({
       </CardFooter>
     </Card>
   )
-} 
+}

@@ -1,9 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuthSession } from "@/hooks/use-auth-session"
 import { UserRole } from "@/lib/auth/constants"
-import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
@@ -12,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import {
   LineChart,
   Line,
@@ -28,6 +27,9 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Loader2 } from "lucide-react"
+import { adminGet } from "@/lib/api/admin-fetcher"
+import { mockAnalyticsData } from "@/lib/mock/admin-data"
+import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
 
 // Define interfaces for the analytics data
 interface AnalyticsData {
@@ -60,11 +62,12 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
-  const { user, isAdmin } = useAuthSession()
+  const user = MOCK_ADMIN_USER
   const [timePeriod, setTimePeriod] = useState("30")
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [useMockData, setUseMockData] = useState(false)
 
   // Fetch analytics data from the API
   useEffect(() => {
@@ -73,61 +76,41 @@ export default function AnalyticsPage() {
         setLoading(true)
         setError(null)
 
-        // Get auth token from cookies
-        const authToken = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("auth_token="))
-          ?.split("=")[1]
-
-        if (!authToken) {
-          throw new Error("Authentication required")
-        }
-
-        // Call the API server
+        // Call the API server using our admin fetcher utility
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
         const url = `${apiUrl}/api/admin/analytics?period=${timePeriod}`
 
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
+        const response = await adminGet(url).catch(() => {
+          console.log("Using mock analytics data instead")
+          setUseMockData(true)
+          // Return mock data in the expected format
+          return { success: true, data: mockAnalyticsData }
         })
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch analytics: ${response.statusText}`)
-        }
-
-        const result = await response.json()
-
         // Type-safe handling of the returned data
-        if (result.success && result.data) {
-          setAnalytics(result.data)
+        if (response?.success && response.data) {
+          setAnalytics(response.data)
+        } else if (useMockData) {
+          // Direct use of mock data if we're in mock mode
+          setAnalytics(mockAnalyticsData)
         } else {
-          console.error("Invalid data format returned:", result)
-          setError("Invalid response format. Please try again.")
+          console.error("Invalid data format returned:", response)
+          setError("Invalid response format. Using mock data instead.")
+          setAnalytics(mockAnalyticsData)
         }
       } catch (err) {
         console.error("Failed to fetch analytics:", err)
-        setError("Failed to load analytics. Please try again later.")
+        setError("Failed to load analytics. Using mock data instead.")
+        // Use mock data as fallback
+        setAnalytics(mockAnalyticsData)
       } finally {
         setLoading(false)
       }
     }
 
-    // Check authentication and authorization
-    if (!user) {
-      redirect("/auth/signin?callbackUrl=/admin/analytics")
-      return
-    }
-
-    if (user.role !== UserRole.ADMIN) {
-      redirect("/unauthorized")
-      return
-    }
-
+    // Remove authentication and authorization checks
     fetchAnalytics()
-  }, [user, timePeriod])
+  }, [timePeriod, useMockData])
 
   // If loading, show loading indicator
   if (loading) {
@@ -143,49 +126,69 @@ export default function AnalyticsPage() {
     )
   }
 
-  // If error, show error message
-  if (error) {
+  // If error but we have mock data, show the UI with a notification
+  const errorBanner = error ? (
+    <div className="bg-amber-50 p-4 rounded-md text-amber-800 mb-6">
+      <h3 className="text-lg font-semibold mb-2">Notice</h3>
+      <p>{error}</p>
+      <p className="text-sm mt-2">
+        Showing mock data for demonstration purposes.
+      </p>
+    </div>
+  ) : null
+
+  // If no data even after trying mock data, show an error
+  if (!analytics) {
     return (
       <div className="bg-red-50 p-6 rounded-md text-red-800 mt-4">
         <h3 className="text-lg font-semibold mb-2">Error Loading Analytics</h3>
-        <p>{error}</p>
-        <button
+        <p>Failed to load analytics. Please try again later.</p>
+        <Button
           className="mt-4 px-4 py-2 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
           onClick={() => window.location.reload()}
         >
           Retry
-        </button>
+        </Button>
       </div>
     )
   }
 
-  // If no data, use empty arrays to prevent charts from breaking
+  // Use the analytics data
   const {
     metadataByCategory = [],
     userActivity = [],
     organizationActivity = [],
     geographicDistribution = [],
     dataQualityMetrics = [],
-  } = analytics || {}
+  } = analytics
 
   return (
     <div className="space-y-6">
+      {errorBanner}
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Analytics Overview</h2>
-        <Select
-          value={timePeriod}
-          onValueChange={(value) => setTimePeriod(value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select time period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-            <SelectItem value="365">Last year</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center space-x-2">
+          {useMockData && (
+            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+              Using Mock Data
+            </div>
+          )}
+          <Select
+            value={timePeriod}
+            onValueChange={(value) => setTimePeriod(value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -372,4 +375,10 @@ export default function AnalyticsPage() {
       </div>
     </div>
   )
+}
+
+function getHealthColor(score: number): string {
+  if (score >= 90) return "text-green-600"
+  if (score >= 70) return "text-amber-600"
+  return "text-red-600"
 }

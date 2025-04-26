@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.metadata = void 0;
 const hono_1 = require("hono");
 const metadata_service_1 = require("../services/metadata.service");
-const auth_middleware_1 = require("../middleware/auth.middleware");
 const zod_validator_1 = require("@hono/zod-validator");
 const zod_1 = require("zod");
 const metadata_types_1 = require("../types/metadata.types");
+const auth_types_1 = require("../types/auth.types");
 const prisma_1 = require("../lib/prisma");
 const json_serializer_1 = require("../utils/json-serializer");
 const metadata = new hono_1.Hono();
@@ -61,7 +61,14 @@ const metadataSchema = zod_1.z.object({
 /**
  * Metadata routes
  */
-metadata.use("*", auth_middleware_1.authMiddleware);
+// Demo mode bypass auth middleware and set mock user
+metadata.use("*", async (c, next) => {
+    console.log("[DEMO MODE] Skipping authentication for metadata routes");
+    c.set("userId", "demo-user-id");
+    c.set("userEmail", "demo@example.com");
+    c.set("userRole", auth_types_1.UserRole.ADMIN);
+    return next();
+});
 /**
  * @openapi
  * /api/metadata:

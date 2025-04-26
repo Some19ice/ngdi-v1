@@ -13,6 +13,9 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { adminGet } from "@/lib/api/admin-fetcher"
+import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
+import { mockDashboardStats } from "@/lib/mock/admin-data"
 
 // Helper function to get cookie by name
 function getCookie(name: string): string | null {
@@ -47,15 +50,12 @@ export function AdminDashboardClient() {
     email: string
     role: string
   } | null>(null)
+  const [useMockData, setUseMockData] = useState(false)
 
   // Fetch user information
   useEffect(() => {
-    // For simple demo, we'll just use a placeholder
-    setUser({
-      id: "1",
-      email: "admin@example.com",
-      role: "ADMIN",
-    })
+    // Using our mock admin user
+    setUser(MOCK_ADMIN_USER)
   }, [])
 
   // Fetch stats for the dashboard
@@ -65,49 +65,34 @@ export function AdminDashboardClient() {
         setLoading(true)
         setError(null)
 
-        const authToken = getCookie("auth_token")
-        if (!authToken) {
-          throw new Error("No authentication token found")
-        }
-
         // Get the API base URL from env and construct the proper endpoint URL
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
         const statsUrl = `${apiUrl}/api/admin/dashboard-stats`
         console.log("Fetching dashboard stats from:", statsUrl)
 
-        const response = await fetch(statsUrl, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        })
+        try {
+          // Use the new adminGet function that automatically adds auth headers
+          const result = await adminGet(statsUrl)
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || "Failed to fetch stats")
-        }
-
-        const result = await response.json()
-
-        if (result && result.totalUsers !== undefined) {
-          setStats(result)
-        } else {
-          throw new Error("Invalid response format")
+          if (result && result.totalUsers !== undefined) {
+            setStats(result)
+          } else {
+            throw new Error("Invalid response format")
+          }
+        } catch (error) {
+          console.error("Error response from dashboard stats:", error)
+          // Use mock data as fallback
+          console.log("Using mock dashboard data instead")
+          setUseMockData(true)
+          setStats(mockDashboardStats)
+          setError("Showing mock data for demonstration")
         }
       } catch (error) {
         console.error("Error fetching stats:", error)
-        setError(
-          error instanceof Error ? error.message : "Failed to fetch stats"
-        )
-        // Set default values if there's an error
-        setStats({
-          totalUsers: 0,
-          totalMetadata: 0,
-          userRoleDistribution: [],
-          recentMetadataCount: 0,
-          userGrowthPoints: 0,
-          metadataByFrameworkCount: 0,
-          topOrganizationsCount: 0,
-        })
+        setError("Failed to fetch stats. Using mock data instead.")
+        // Set mock data if there's an error
+        setUseMockData(true)
+        setStats(mockDashboardStats)
       } finally {
         setLoading(false)
       }
@@ -130,11 +115,21 @@ export function AdminDashboardClient() {
     return <div className="text-center p-6">Loading dashboard data...</div>
   }
 
-  if (error) {
+  // Error notification banner
+  const errorBanner = error ? (
+    <div className="bg-amber-50 p-4 rounded-md text-amber-800 mb-6">
+      <p className="font-medium">{error}</p>
+      {useMockData && (
+        <p className="text-sm mt-1">Using demonstration data for preview.</p>
+      )}
+    </div>
+  ) : null
+
+  if (!stats) {
     return (
       <div className="bg-red-50 text-red-700 p-4 rounded-md">
         <p className="font-medium">Error loading dashboard</p>
-        <p className="text-sm mt-1">{error}</p>
+        <p className="text-sm mt-1">Could not load dashboard data</p>
         <Button
           variant="outline"
           className="mt-4"
@@ -146,8 +141,17 @@ export function AdminDashboardClient() {
     )
   }
 
+  // Function to get health color
+  function getHealthColor(score: number): string {
+    if (score >= 90) return "text-green-600"
+    if (score >= 70) return "text-amber-600"
+    return "text-red-600"
+  }
+
   return (
     <div className="space-y-8">
+      {errorBanner}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Admin welcome card */}
         <Card className="rounded-lg border p-6 shadow-sm">
@@ -158,6 +162,11 @@ export function AdminDashboardClient() {
           <p className="text-muted-foreground">
             Is Admin: {user?.role === "ADMIN" ? "Yes" : "No"}
           </p>
+          {useMockData && (
+            <div className="mt-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded inline-block">
+              Using Mock Data
+            </div>
+          )}
         </Card>
 
         {/* Quick actions card */}
@@ -264,10 +273,4 @@ export function AdminDashboardClient() {
       </div>
     </div>
   )
-}
-
-function getHealthColor(score: number): string {
-  if (score >= 90) return "text-green-600"
-  if (score >= 70) return "text-amber-600"
-  return "text-red-600"
 }

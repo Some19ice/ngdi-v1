@@ -1,181 +1,59 @@
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
-import { validateJwtToken } from "./auth-client"
 import { UserRole } from "@prisma/client"
 
 // Constants
 const AUTH_COOKIE_NAME = "auth_token"
 
+// Mock user for demo mode
+const DEMO_USER = {
+  id: "demo-user-id",
+  email: "demo@example.com",
+  name: "Demo Admin User",
+  role: UserRole.ADMIN,
+}
+
 /**
  * Server-side function to check if the user is authenticated
- * Returns the user data if authenticated, otherwise redirects to signin
+ * In demo mode, always returns the mock admin user
  */
 export async function requireAuth(redirectTo?: string) {
-  // Check for auth cookie in the request
-  const authToken = cookies().get(AUTH_COOKIE_NAME)?.value
-
-  if (!authToken) {
-    const redirectPath = redirectTo
-      ? `/auth/signin?from=${encodeURIComponent(redirectTo)}`
-      : "/auth/signin"
-    redirect(redirectPath)
-  }
-
-  try {
-    // Validate the token
-    const validationResult = await validateJwtToken(authToken)
-
-    if (!validationResult.isValid) {
-      console.error("Invalid auth token:", validationResult.error)
-      const redirectPath = redirectTo
-        ? `/auth/signin?from=${encodeURIComponent(redirectTo)}`
-        : "/auth/signin"
-      redirect(redirectPath)
-    }
-
-    // Extract user information from the token
-    return {
-      id: validationResult.userId || "unknown-id",
-      email: validationResult.email || "unknown@example.com",
-      name: "Authenticated User",
-      role: validationResult.role || UserRole.USER,
-    }
-  } catch (error) {
-    console.error("Error validating auth token:", error)
-    const redirectPath = redirectTo
-      ? `/auth/signin?from=${encodeURIComponent(redirectTo)}`
-      : "/auth/signin"
-    redirect(redirectPath)
-  }
+  console.log("[DEMO MODE] Bypassing authentication check")
+  return DEMO_USER
 }
 
 /**
  * Server-side function to check if the user has the required role
+ * In demo mode, always returns the mock admin user
  */
 export async function requireRole(allowedRoles: UserRole[]) {
-  try {
-    const user = await requireAuth()
-
-    console.log("Checking user role:", {
-      userRole: user.role,
-      allowedRoles,
-      hasRequiredRole: user.role ? allowedRoles.includes(user.role) : false,
-    })
-
-    // Always allow ADMIN users to access any protected route
-    if (user.role === UserRole.ADMIN) {
-      console.log("ADMIN user granted access")
-      return user
-    }
-
-    if (!user.role || !allowedRoles.includes(user.role)) {
-      console.log(
-        "User does not have required role, redirecting to unauthorized"
-      )
-      redirect("/unauthorized")
-    }
-
-    return user
-  } catch (error) {
-    console.error("Error in requireRole:", error)
-    redirect("/unauthorized")
-  }
+  console.log("[DEMO MODE] Bypassing role check")
+  return DEMO_USER
 }
 
 /**
  * Server-side function to redirect authenticated users away from auth pages
+ * In demo mode, does nothing to avoid redirects
  */
 export async function redirectIfAuthenticated(redirectTo: string = "/") {
-  try {
-    // Check for auth cookie in the request
-    const authToken = cookies().get(AUTH_COOKIE_NAME)?.value
-
-    console.log("redirectIfAuthenticated check:", {
-      hasAuthToken: !!authToken,
-      redirectTo,
-    })
-
-    if (authToken) {
-      // Validate the token first before redirecting
-      try {
-        const validationResult = await validateJwtToken(authToken)
-
-        if (validationResult.isValid) {
-          console.log(`User is authenticated, redirecting to: ${redirectTo}`)
-          redirect(redirectTo)
-        } else {
-          console.log("Auth token is invalid, allowing access to auth page")
-          // Invalid token, don't redirect
-        }
-      } catch (validationError) {
-        console.log(
-          "Token validation error, allowing access to auth page:",
-          validationError
-        )
-        // Error validating token, don't redirect
-      }
-    } else {
-      console.log("User is not authenticated, allowing access to auth page")
-    }
-  } catch (error) {
-    // Catch any errors to prevent breaking the page rendering
-    console.error("Error in redirectIfAuthenticated:", error)
-    // Allow access to the page if there's an error with the redirect logic
-  }
+  console.log("[DEMO MODE] Bypassing redirect check")
+  // No redirect in demo mode
 }
 
 /**
  * Server-side function to get the current user without redirecting
- * Returns the user data if authenticated, otherwise returns null
+ * In demo mode, always returns the mock admin user
  */
 export async function getCurrentUser() {
-  // Check for auth cookie in the request
-  const authToken = cookies().get(AUTH_COOKIE_NAME)?.value
-
-  if (!authToken) {
-    return null
-  }
-
-  try {
-    // Validate the token
-    const validationResult = await validateJwtToken(authToken)
-
-    if (!validationResult.isValid) {
-      return null
-    }
-
-    // Extract user information from the token
-    return {
-      id: validationResult.userId || "unknown-id",
-      email: validationResult.email || "unknown@example.com",
-      name: "Authenticated User",
-      role: validationResult.role || UserRole.USER,
-    }
-  } catch (error) {
-    console.error("Error validating auth token:", error)
-    return null
-  }
+  console.log("[DEMO MODE] Returning mock user")
+  return DEMO_USER
 }
 
 /**
  * Server-side function to check if the user is a Node Officer
- * Returns the user data if authenticated and has Node Officer role, otherwise redirects to unauthorized
+ * In demo mode, always returns the mock admin user
  */
 export async function requireNodeOfficer(redirectTo?: string) {
-  try {
-    const user = await requireAuth(redirectTo)
-
-    // Allow both ADMIN and NODE_OFFICER roles
-    if (user.role === UserRole.ADMIN || user.role === UserRole.NODE_OFFICER) {
-      return user
-    }
-
-    console.log(
-      "User is not a Node Officer, redirecting to unauthorized"
-    )
-    redirect("/unauthorized")
-  } catch (error) {
-    console.error("Error in requireNodeOfficer:", error)
-    redirect("/unauthorized")
-  }
+  console.log("[DEMO MODE] Bypassing Node Officer check")
+  return DEMO_USER
 }

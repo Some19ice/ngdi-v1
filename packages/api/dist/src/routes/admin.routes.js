@@ -4,7 +4,6 @@ exports.adminRouter = void 0;
 const hono_1 = require("hono");
 const zod_validator_1 = require("@hono/zod-validator");
 const admin_service_1 = require("../services/admin.service");
-const auth_middleware_1 = require("../middleware/auth.middleware");
 const auth_types_1 = require("../types/auth.types");
 const user_types_1 = require("../types/user.types");
 const metadata_types_1 = require("../types/metadata.types");
@@ -17,27 +16,21 @@ const cache_1 = require("../utils/cache");
  * Admin routes
  */
 exports.adminRouter = new hono_1.Hono()
-    // Apply authentication middleware to all routes
-    .use("*", auth_middleware_1.authMiddleware)
-    // Check if user is admin
+    // DEMO MODE: Apply mock admin auth to all routes
     .use("*", async (c, next) => {
-    try {
-        const user = c.get("user");
-        if (!user || user.role !== auth_types_1.UserRole.ADMIN) {
-            return c.json({
-                success: false,
-                message: "Unauthorized. Admin access required.",
-            }, 403);
-        }
-        await next();
-    }
-    catch (error) {
-        console.error("Admin authorization error:", error);
-        return c.json({
-            success: false,
-            message: "Error checking admin permissions",
-        }, 500);
-    }
+    console.log("[DEMO MODE] Skipping authentication for admin routes");
+    // Set mock admin user
+    const mockUser = {
+        id: "demo-user-id",
+        email: "demo@example.com",
+        role: auth_types_1.UserRole.ADMIN,
+    };
+    // Set all the user variables
+    c.set("userId", mockUser.id);
+    c.set("userEmail", mockUser.email);
+    c.set("userRole", mockUser.role);
+    c.set("user", mockUser);
+    await next();
 });
 /**
  * @openapi

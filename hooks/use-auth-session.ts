@@ -268,20 +268,39 @@ export function useAuthSession() {
       }
     },
     onError: (error: any) => {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Invalid email or password. Please try again."
+      // Check if the error is related to API server connection issues
+      const isApiServerError =
+        error.message?.includes("API server is not available") ||
+        error.message?.includes("Failed to fetch") ||
+        error.message?.includes("Network Error") ||
+        error.response?.status === 503 ||
+        error.response?.data?.apiStatus === "offline"
+
+      const errorMessage = isApiServerError
+        ? "The authentication server is not available. Please ensure the API server is running."
+        : error.response?.data?.message ||
+          error.message ||
+          "Invalid email or password. Please try again."
 
       // Show error toast
       toast({
-        title: "Login failed",
+        title: isApiServerError ? "Server Connection Error" : "Login failed",
         description: errorMessage,
         variant: "destructive",
       })
 
       // For sonner toast compatibility
       sonnerToast.error(errorMessage)
+
+      // If it's an API server error, provide more detailed console logging to help diagnosis
+      if (isApiServerError) {
+        console.error("API Server Connection Error:", {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          code: error.code,
+        })
+      }
     },
   })
 

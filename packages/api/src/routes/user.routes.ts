@@ -1,5 +1,9 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
-import { auth } from "../middleware/auth"
+import {
+  authMiddleware,
+  requireRole,
+  adminMiddleware,
+} from "../middleware/auth.middleware"
 import { userService } from "../services/user.service"
 import { UserRole } from "../types/auth.types"
 import {
@@ -24,12 +28,14 @@ type AppEnv = {
 // Create user router instance
 const userRouter = new OpenAPIHono<AppEnv>()
 
-// Apply auth middleware to all routes
-userRouter.use("*", ((c, next) =>
-  auth.authenticate(
-    c as unknown as Context,
-    next
-  )) as MiddlewareHandler<AppEnv>)
+// Apply auth middleware to all routes - demo mode
+userRouter.use("*", ((c, next) => {
+  console.log("[DEMO MODE] Skipping authentication for user routes")
+  c.set("userId", "demo-user-id")
+  c.set("userEmail", "demo@example.com")
+  c.set("userRole", UserRole.ADMIN)
+  return next()
+}) as MiddlewareHandler<AppEnv>)
 
 // Get user profile
 userRouter.openapi(
@@ -133,12 +139,13 @@ userRouter.openapi(
 // Create admin router instance
 const adminRouter = new OpenAPIHono<AppEnv>()
 
-// Apply admin auth middleware to all routes
+// Apply admin auth middleware to all routes - demo mode
 adminRouter.use("*", ((c, next) => {
-  const [authenticate, authorize] = auth.requireAdmin
-  return authenticate(c as unknown as Context, async () => {
-    await authorize(c as unknown as Context, next)
-  })
+  console.log("[DEMO MODE] Skipping authentication for admin routes")
+  c.set("userId", "demo-user-id")
+  c.set("userEmail", "demo@example.com")
+  c.set("userRole", UserRole.ADMIN)
+  return next()
 }) as MiddlewareHandler<AppEnv>)
 
 // Get all users

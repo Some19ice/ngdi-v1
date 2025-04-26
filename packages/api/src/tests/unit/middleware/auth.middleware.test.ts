@@ -1,17 +1,20 @@
 import { describe, expect, it, jest } from "@jest/globals"
 import { Context, Next } from "hono"
 import { UserRole } from "../../../types/auth.types"
-import { verifyToken, extractTokenFromHeader } from "../../../utils/auth.utils"
+import { tokenValidationService } from "../../../services/token-validation.service"
 import { createMockRequest } from "../../utils/test.utils"
 import {
   authMiddleware,
   requireRole,
 } from "../../../middleware/auth.middleware"
 
-// Mock auth utils
-jest.mock("../../../utils/auth.utils", () => ({
-  verifyToken: jest.fn(),
-  extractTokenFromHeader: jest.fn(),
+// Mock token validation service
+jest.mock("../../../services/token-validation.service", () => ({
+  tokenValidationService: {
+    getTokenFromRequest: jest.fn(),
+    validateAccessToken: jest.fn(),
+    validateUser: jest.fn(),
+  },
 }))
 
 describe("Auth Middleware", () => {
@@ -40,45 +43,99 @@ describe("Auth Middleware", () => {
 
     it("should pass with valid token", async () => {
       const mockToken = "valid.token.here"
-      const mockUser = { id: "1", role: UserRole.USER }
+      const mockValidationResult = {
+        isValid: true,
+        userId: "1",
+        email: "user@example.com",
+        role: UserRole.USER,
+      }
 
-      mockHeader.mockReturnValue(`Bearer ${mockToken}`)
-      ;(extractTokenFromHeader as jest.Mock).mockReturnValue(mockToken)
-      ;(verifyToken as jest.Mock).mockImplementation(() =>
-        Promise.resolve(mockUser)
+      // Mock getting token from request
+      tokenValidationService.getTokenFromRequest.mockReturnValue(mockToken)
+
+      // Mock token validation
+      tokenValidationService.validateAccessToken.mockResolvedValue(
+        mockValidationResult
       )
+
+      // Mock user validation
+      tokenValidationService.validateUser.mockResolvedValue(true)
 
       await authMiddleware(ctx, next)
 
-      expect(mockSet).toHaveBeenCalledWith("user", mockUser)
+      expect(mockSet).toHaveBeenCalledWith(
+        "userId",
+        mockValidationResult.userId
+      )
+      expect(mockSet).toHaveBeenCalledWith(
+        "userEmail",
+        mockValidationResult.email
+      )
+      expect(mockSet).toHaveBeenCalledWith(
+        "userRole",
+        mockValidationResult.role
+      )
+      expect(mockSet).toHaveBeenCalledWith("user", {
+        id: mockValidationResult.userId,
+        email: mockValidationResult.email,
+        role: mockValidationResult.role,
+      })
       expect(next).toHaveBeenCalled()
     })
 
     it("should return 401 without token", async () => {
-      mockHeader.mockReturnValue(undefined)
+      // Mock token extraction to throw an error
+      tokenValidationService.getTokenFromRequest.mockImplementation(() => {
+        throw new Error("No authentication token provided")
+      })
 
       await authMiddleware(ctx, next)
 
-      expect(mockJson).toHaveBeenCalledWith(
-        { error: "Unauthorized - No token provided" },
-        401
-      )
+      // The middleware should throw an AuthError which will be caught by the error handler
       expect(next).not.toHaveBeenCalled()
     })
 
     it("should return 401 with invalid token", async () => {
-      mockHeader.mockReturnValue("Bearer invalid.token")
-      ;(extractTokenFromHeader as jest.Mock).mockReturnValue("invalid.token")
-      ;(verifyToken as jest.Mock).mockImplementation(() =>
-        Promise.reject(new Error("Invalid token"))
-      )
+      const mockToken = "invalid.token"
+
+      // Mock getting token from request
+      tokenValidationService.getTokenFromRequest.mockReturnValue(mockToken)
+
+      // Mock token validation to return invalid result
+      tokenValidationService.validateAccessToken.mockResolvedValue({
+        isValid: false,
+        error: "Invalid token",
+      })
 
       await authMiddleware(ctx, next)
 
-      expect(mockJson).toHaveBeenCalledWith(
-        { error: "Unauthorized - Invalid token" },
-        401
+      // The middleware should throw an AuthError which will be caught by the error handler
+      expect(next).not.toHaveBeenCalled()
+    })
+
+    it("should return 401 when user is not valid", async () => {
+      const mockToken = "valid.token.here"
+      const mockValidationResult = {
+        isValid: true,
+        userId: "1",
+        email: "user@example.com",
+        role: UserRole.USER,
+      }
+
+      // Mock getting token from request
+      tokenValidationService.getTokenFromRequest.mockReturnValue(mockToken)
+
+      // Mock token validation
+      tokenValidationService.validateAccessToken.mockResolvedValue(
+        mockValidationResult
       )
+
+      // Mock user validation to return false
+      tokenValidationService.validateUser.mockResolvedValue(false)
+
+      await authMiddleware(ctx, next)
+
+      // The middleware should throw an AuthError which will be caught by the error handler
       expect(next).not.toHaveBeenCalled()
     })
   })

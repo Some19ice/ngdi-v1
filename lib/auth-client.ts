@@ -1,22 +1,10 @@
-import axios from "axios";
-import * as jose from "jose";
-import { normalizeRole, UserRole, isValidRole } from "./auth/constants"
-import { quickValidateToken, TokenValidationResult } from "../packages/api/src/utils/token-validation"
+import { UserRole } from "./auth/constants"
 import { UserProfile } from "../types/user"
 import { Session } from "../types/auth"
-import {
-  setCookie,
-  getCookie,
-  deleteCookie,
-  areCookiesEnabled,
-} from "./utils/cookie-utils"
+import { fetchWithCsrf, getCsrfToken } from "./csrf-client"
 
 // Re-export the Session type
 export type { Session }
-
-// Cookie constants
-export const AUTH_COOKIE_NAME = "auth_token"
-export const REFRESH_COOKIE_NAME = "refresh_token"
 
 // Types
 export interface User {
@@ -32,88 +20,34 @@ export interface AuthTokens {
   refreshToken: string
 }
 
-// Get API URL from environment or use default - empty string means relative URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL === "" ? "" : (process.env.NEXT_PUBLIC_API_URL || "")
-
-// Helper function to get the correct auth endpoint
-function getAuthEndpoint(path: string): string {
-  // For local development, use localhost directly
-  if (process.env.NODE_ENV !== "production") {
-    return `http://localhost:3001/api/auth/${path}`
-  }
-
-  // For production, use a relative path for same-domain calls
-  // The browser will automatically prefix this with the current domain
-  return `/api/auth/${path}`
+// Mock user data
+const MOCK_USER: UserProfile = {
+  id: "demo-user-id",
+  email: "demo@example.com",
+  name: "Demo Admin User",
+  role: UserRole.ADMIN,
+  organization: null,
+  emailVerified: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 }
 
-// Helper function to validate JWT token structure - with local caching
-let tokenCache: Record<string, TokenValidationResult & { timestamp: number }> =
-  {}
-
-export const validateToken = async (
-  token: string
-): Promise<TokenValidationResult> => {
-  // Return from cache if available (short validity to catch immediate expirations)
-  if (
-    tokenCache[token] &&
-    tokenCache[token].timestamp > Date.now() - 1000 * 60 * 5
-  ) {
-    // token is valid for 5 minutes in cache
-    return tokenCache[token]
-  }
-
-  try {
-    const result = await quickValidateToken(token)
-    // Cache result
-    tokenCache[token] = { ...result, timestamp: Date.now() }
-    return result
-  } catch (error) {
-    // If validation fails, return invalid result
-    const result = {
-      isValid: false,
-      error: "Invalid token format",
-      timestamp: Date.now(),
-    } as TokenValidationResult & { timestamp: number }
-    tokenCache[token] = result
-    return result
-  }
+// Mock session data
+const MOCK_SESSION: Session = {
+  user: MOCK_USER,
+  accessToken: "mock-access-token",
+  refreshToken: "mock-refresh-token",
+  expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
 }
 
-// Export validateJwtToken as an alias for validateToken for backward compatibility
-export const validateJwtToken = validateToken
-
-// Helper function to normalize user data from API
-function normalizeUserData(userData: any): UserProfile {
-  // Ensure role is uppercase for consistency
-  const rawRole = userData.role || UserRole.USER
-  // Normalize role - handle case differences, defaulting to USER
-  const normalizedRole = isValidRole(rawRole)
-    ? normalizeRole(rawRole)
-    : UserRole.USER
-
-  return {
-    id: userData.id,
-    name: userData.name || "",
-    email: userData.email,
-    role: normalizedRole as UserRole, // Force type as UserRole to avoid null
-    organization: userData.organization || null,
-    emailVerified: userData.emailVerified || null,
-    createdAt: userData.createdAt || new Date().toISOString(),
-    updatedAt: userData.updatedAt || new Date().toISOString(),
-  }
-}
-
-// Auth client
+// Real authentication client
 export const authClient = {
-  // Add a test function to check API connectivity
+  // Test API connection
   async testApiConnection(): Promise<boolean> {
     try {
-      console.log("Testing API connection to: /api/health")
-      const response = await axios.get("/api/health", {
-        timeout: 5000,
-      })
-      console.log("API connection test result:", response.status, response.data)
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/health`
+      )
       return response.status === 200
     } catch (error) {
       console.error("API connection test failed:", error)
@@ -121,455 +55,301 @@ export const authClient = {
     }
   },
 
+  // Login with real credentials
   async login(
     email: string,
     password: string,
     rememberMe: boolean = false
   ): Promise<Session> {
-    console.log(`Attempting login for ${email} with rememberMe=${rememberMe}`)
-
-    // First check if cookies are enabled
-    if (!areCookiesEnabled()) {
-      throw new Error(
-        "Cookies are required for authentication but are disabled in your browser."
-      )
-    }
-
     try {
-      // Measure network performance
-      const startTime = Date.now()
+      // Get CSRF token first
+      const csrfToken = await getCsrfToken()
 
-      // Get CSRF token if available
-      const csrfToken = getCookie("csrf_token")
-      const headers: Record<string, string> = {
-        "X-Client-Version": "1.0.0",
-        "X-Client-Platform":
-          typeof navigator !== "undefined" ? navigator.platform : "unknown",
-      }
-
-      // Add CSRF token to headers if available
-      if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken
-      }
-
-      // In production, always use the direct API URL
-      const loginEndpoint = getAuthEndpoint("login")
-
-      console.log(`Making API request to ${loginEndpoint}`)
-
-      const response = await axios.post(
-        loginEndpoint,
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/login`,
         {
-          email,
-          password,
-          rememberMe,
-        },
-        {
-          headers,
-          timeout: parseInt(process.env.API_REQUEST_TIMEOUT_MS || "15000"),
-          withCredentials: true, // Essential for CORS with cookies
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ email, password }),
+          credentials: "include", // Important for cookies
         }
       )
 
-      // Record performance metrics
-      const networkTime = Date.now() - startTime
-      console.log(`Network request completed in ${networkTime}ms`)
-
-      // Log response to help with debugging
-      console.log("Login response received:", {
-        hasAccessToken: !!response.data.accessToken,
-        hasRefreshToken: !!response.data.refreshToken,
-        hasUser: !!response.data.user,
-        status: response.status,
-        responseTime: networkTime,
-      })
-
-      // Extract data from response
-      const { accessToken, refreshToken, user } = response.data
-
-      // Create the session object
-      const session: Session = {
-        user: user ? normalizeUserData(user) : null,
-        accessToken,
-        refreshToken,
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Login failed")
       }
 
-      // Verify we have valid tokens before returning
-      if (!accessToken || !refreshToken) {
-        console.error("Login response missing tokens:", response.data)
-        throw new Error("Invalid login response: missing tokens")
+      const data = await response.json()
+
+      // Always store tokens in localStorage for client-side access
+      localStorage.setItem("accessToken", data.accessToken)
+      localStorage.setItem("refreshToken", data.refreshToken)
+      localStorage.setItem("authenticated", "true")
+
+      console.log("Login successful, tokens stored in localStorage")
+
+      return {
+        user: data.user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expires:
+          data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }
-
-      // Enhanced cookie verification with cross-domain support
-      const verifyCookies = () => {
-        // Check if cookies exist
-        const hasAuthCookie = getCookie(AUTH_COOKIE_NAME) !== null
-        const hasRefreshCookie = getCookie(REFRESH_COOKIE_NAME) !== null
-
-        console.log("Cookie verification:", {
-          hasAuthCookie,
-          hasRefreshCookie,
-          authTokenLength: accessToken?.length || 0,
-        })
-
-        if (!hasAuthCookie && accessToken) {
-          console.log("Auth cookie not set by server, setting manually")
-          // Set for 1 day (24 hours) or 7 days if remember me is true
-          const maxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24
-          setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge })
-        }
-
-        if (!hasRefreshCookie && refreshToken) {
-          console.log(
-            "Refresh cookie not set by server, setting manually (httpOnly not possible)"
-          )
-          // Set for 14 days
-          setCookie(REFRESH_COOKIE_NAME, refreshToken, {
-            maxAge: 60 * 60 * 24 * 14,
-          })
-        }
-      }
-
-      // Verify cookies immediately after login
-      verifyCookies()
-
-      // And after a delay to catch any race conditions with cookie setting
-      setTimeout(verifyCookies, 100)
-
-      // Try one more time after longer delay if needed
-      setTimeout(() => {
-        if (!getCookie(AUTH_COOKIE_NAME)) {
-          console.warn(
-            "Auth cookie still not set after delay, trying one more time"
-          )
-          verifyCookies()
-        }
-      }, 1000)
-
-      // Store last login timestamp
-      if (typeof window !== "undefined") {
-        ;(window as any).__lastSessionRefresh = Date.now()
-      }
-
-      return session
-    } catch (error: any) {
-      // Enhanced error reporting
-      const errorDetails = {
-        message: error.message || "Unknown error",
-        status: error.response?.status,
-        data: error.response?.data,
-        network: !!error.isAxiosError,
-        timeout: error.code === "ECONNABORTED",
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-      }
-
-      console.error("Login error:", errorDetails)
-
-      // Report error to monitoring system if enabled
-      if (
-        process.env.NEXT_PUBLIC_ENABLE_ERROR_REPORTING === "true" &&
-        typeof window !== "undefined"
-      ) {
-        window.dispatchEvent(
-          new CustomEvent("auth:error", {
-            detail: { type: "login_failed", ...errorDetails },
-          })
-        )
-      }
-
+    } catch (error) {
+      console.error("Login error:", error)
       throw error
     }
   },
 
+  // Logout with real implementation
   async logout(): Promise<void> {
-    // Clear cookies using the utility function
-    deleteCookie(AUTH_COOKIE_NAME)
-    deleteCookie(REFRESH_COOKIE_NAME)
-
     try {
-      // Call logout API directly
-      await axios.post(getAuthEndpoint("logout"))
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include", // Important for cookies
+        }
+      )
+
+      // Clear all auth-related items from local storage
+      localStorage.removeItem("accessToken")
+      localStorage.removeItem("refreshToken")
+      localStorage.removeItem("authenticated")
+
+      console.log("Logout successful, tokens cleared from localStorage")
     } catch (error) {
-      console.error("Error during logout:", error)
+      console.error("Logout error:", error)
+      throw error
     }
   },
 
+  // Refresh token with real implementation
   async refreshToken(): Promise<string> {
     try {
-      const response = await axios.post(
-        getAuthEndpoint("refresh-token"),
-        {},
+      const refreshToken = localStorage.getItem("refreshToken") || ""
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/refresh-token`,
         {
+          method: "POST",
           headers: {
-            "X-Request-ID": crypto.randomUUID(),
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({ refreshToken }),
+          credentials: "include", // Important for cookies
         }
       )
-      return response.data.accessToken
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh token")
+      }
+
+      const data = await response.json()
+
+      // Update stored tokens
+      localStorage.setItem("accessToken", data.data.accessToken)
+      localStorage.setItem("refreshToken", data.data.refreshToken)
+
+      return data.data.accessToken
     } catch (error) {
-      console.error("Token refresh failed:", error)
+      console.error("Token refresh error:", error)
       throw error
     }
   },
 
-  // Add isAuthenticated method
+  // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     try {
-      const token = getCookie(AUTH_COOKIE_NAME)
-      if (!token) {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/check`,
+        {
+          credentials: "include", // Important for cookies
+        }
+      )
+
+      if (!response.ok) {
         return false
       }
 
-      const validationResult = await validateToken(token)
-      return validationResult.isValid
+      const data = await response.json()
+      return data.authenticated
     } catch (error) {
-      console.error("Error checking authentication status:", error)
+      console.error("Authentication check error:", error)
       return false
     }
   },
 
-  // Add getSession method to retrieve the current session
+  // Get current session
   async getSession(): Promise<Session | null> {
     try {
-      const token = getCookie(AUTH_COOKIE_NAME)
-      if (!token) {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/me`,
+        {
+          credentials: "include", // Important for cookies
+        }
+      )
+
+      if (!response.ok) {
         return null
       }
 
-      const validationResult = await validateToken(token)
-      if (!validationResult.isValid) {
+      const data = await response.json()
+
+      if (!data.success || !data.data) {
         return null
       }
 
-      // Construct a session from the token information
       return {
-        user: {
-          id: validationResult.userId || "",
-          email: validationResult.email || "",
-          name: "", // Use empty string since name is not in validationResult
-          role: (validationResult.role as UserRole) || UserRole.USER,
-          organization: null,
-          emailVerified: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        accessToken: token,
-        refreshToken: getCookie(REFRESH_COOKIE_NAME) || "",
-        expires: validationResult.exp
-          ? new Date(validationResult.exp * 1000).toISOString()
-          : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        user: data.data,
+        accessToken: localStorage.getItem("accessToken") || "",
+        refreshToken: localStorage.getItem("refreshToken") || "",
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }
     } catch (error) {
-      console.error("Error getting session:", error)
+      console.error("Get session error:", error)
       return null
     }
   },
 
-  // Add getAccessToken method to retrieve the current access token
+  // Get access token
   getAccessToken(): string | null {
-    return getCookie(AUTH_COOKIE_NAME)
+    return localStorage.getItem("accessToken")
   },
 
-  // Add exchangeCodeForSession method for handling auth code exchange
+  // Exchange code for session (for OAuth flows)
   async exchangeCodeForSession(code: string): Promise<Session> {
     try {
-      console.log(
-        `Exchanging auth code for session: ${code.substring(0, 8)}...`
-      )
-
-      const response = await axios.post(
-        getAuthEndpoint("exchange-code"),
-        { code },
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/callback`,
         {
+          method: "POST",
           headers: {
-            "X-Client-Version": "1.0.0",
-            "X-Request-ID": crypto.randomUUID(),
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({ code }),
+          credentials: "include", // Important for cookies
         }
       )
 
-      const { accessToken, refreshToken, user } = response.data
-
-      // Create the session object
-      const session: Session = {
-        user: user ? normalizeUserData(user) : null,
-        accessToken,
-        refreshToken,
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(
+          errorData.message || "Failed to exchange code for session"
+        )
       }
 
-      // Set auth cookies
-      if (accessToken) {
-        setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge: 60 * 60 * 24 }) // 1 day
-      }
+      const data = await response.json()
 
-      if (refreshToken) {
-        setCookie(REFRESH_COOKIE_NAME, refreshToken, {
-          maxAge: 60 * 60 * 24 * 14,
-        }) // 14 days
-      }
+      // Store tokens in localStorage for client-side access
+      localStorage.setItem("accessToken", data.accessToken)
+      localStorage.setItem("refreshToken", data.refreshToken)
+      localStorage.setItem("authenticated", "true")
 
-      // Update session refresh timestamp
-      if (typeof window !== "undefined") {
-        ;(window as any).__lastSessionRefresh = Date.now()
-      }
+      console.log("Registration successful, tokens stored in localStorage")
 
-      return session
-    } catch (error: any) {
+      return {
+        user: data.user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expires:
+          data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }
+    } catch (error) {
       console.error("Code exchange error:", error)
-      throw new Error(
-        error.response?.data?.message || "Failed to exchange code for session"
-      )
+      throw error
     }
   },
 
-  // Add register method for user registration
+  // Register with real implementation
   async register(
     email: string,
     password: string,
     name?: string
   ): Promise<Session> {
     try {
-      const response = await axios.post(
-        getAuthEndpoint("register"),
+      // Get CSRF token first
+      const csrfToken = await getCsrfToken()
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/register`,
         {
-          email,
-          password,
-          name: name || "",
-        },
-        {
+          method: "POST",
           headers: {
-            "X-Request-ID": crypto.randomUUID(),
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
           },
+          body: JSON.stringify({ email, password, name }),
+          credentials: "include", // Important for cookies
         }
       )
 
-      const { accessToken, refreshToken, user } = response.data
-
-      // Create the session object
-      const session: Session = {
-        user: user ? normalizeUserData(user) : null,
-        accessToken,
-        refreshToken,
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Registration failed")
       }
 
-      // Set auth cookies
-      if (accessToken) {
-        setCookie(AUTH_COOKIE_NAME, accessToken, { maxAge: 60 * 60 * 24 }) // 1 day
-      }
+      const data = await response.json()
 
-      if (refreshToken) {
-        setCookie(REFRESH_COOKIE_NAME, refreshToken, {
-          maxAge: 60 * 60 * 24 * 14,
-        }) // 14 days
-      }
+      // Store tokens in localStorage for client-side access
+      localStorage.setItem("accessToken", data.accessToken)
+      localStorage.setItem("refreshToken", data.refreshToken)
+      localStorage.setItem("authenticated", "true")
 
-      // Update session refresh timestamp
-      if (typeof window !== "undefined") {
-        ;(window as any).__lastSessionRefresh = Date.now()
-      }
+      console.log("Registration successful, tokens stored in localStorage")
 
-      return session
-    } catch (error: any) {
-      console.error("Registration error:", error)
-      throw new Error(
-        error.response?.data?.message || "Failed to register user"
-      )
-    }
-  },
-
-  // Add refreshSession method to refresh the current session
-  async refreshSession(): Promise<void> {
-    try {
-      const token = await this.refreshToken()
-
-      if (token) {
-        // Update the auth cookie with the new token
-        setCookie(AUTH_COOKIE_NAME, token, { maxAge: 60 * 60 * 24 }) // 1 day
-
-        // Update session refresh timestamp
-        if (typeof window !== "undefined") {
-          ;(window as any).__lastSessionRefresh = Date.now()
-        }
+      return {
+        user: data.user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expires:
+          data.expires ||
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }
     } catch (error) {
-      console.error("Session refresh failed:", error)
+      console.error("Registration error:", error)
       throw error
     }
   },
 
-  // Implement any other auth client methods here
-  async validateToken(token: string): Promise<TokenValidationResult> {
-    return validateToken(token)
+  // Refresh session
+  async refreshSession(): Promise<void> {
+    try {
+      await this.refreshToken()
+    } catch (error) {
+      console.error("Session refresh error:", error)
+      throw error
+    }
+  },
+
+  // Validate token
+  async validateToken(token: string): Promise<any> {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/validate-token`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        }
+      )
+
+      if (!response.ok) {
+        return { isValid: false }
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("Token validation error:", error)
+      return { isValid: false }
+    }
   },
 }
-
-// Create an axios instance with auth headers
-export const authAxios = axios.create({
-  baseURL: API_URL,
-});
-
-// Add interceptor to handle token refresh
-authAxios.interceptors.request.use(async (config) => {
-  let token = getCookie(AUTH_COOKIE_NAME)
-
-  if (token && (await isTokenExpired(token))) {
-    token = await authClient.refreshToken()
-  }
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-
-  return config
-})
-
-async function isTokenExpired(token: string): Promise<boolean> {
-  try {
-    const decoded = jose.decodeJwt(token)
-    const currentTime = Date.now() / 1000
-    return (decoded.exp as number) < currentTime
-  } catch (error) {
-    return true
-  }
-}
-
-/**
- * Retrieves a CSRF token from the server for secure form submissions
- * @returns The CSRF token as a string
- */
-export async function getCSRFToken(): Promise<string> {
-  try {
-    // First check if we already have a token in memory
-    const existingToken = getCsrfTokenFromCookie();
-    if (existingToken) {
-      return existingToken;
-    }
-    
-    // If not, fetch a new one from the API
-    const response = await axios.get(`${API_URL}/auth/csrf`);
-    return response.data.csrfToken;
-  } catch (error) {
-    console.error("Failed to get CSRF token:", error);
-    throw new Error("Failed to get security token. Please try again.");
-  }
-}
-
-/**
- * Gets the CSRF token from cookie if available
- */
-function getCsrfTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  
-  const cookies = document.cookie.split("; ");
-  for (const cookie of cookies) {
-    const [name, value] = cookie.split("=");
-    if (name === "csrfToken") {
-      return decodeURIComponent(value);
-    }
-  }
-  
-  return null;
-} 

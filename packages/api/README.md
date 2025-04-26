@@ -1,4 +1,4 @@
-# NGDI Portal Backend API
+# @ngdi/api
 
 This is the backend API for the NGDI Portal, built with Hono.js.
 
@@ -74,7 +74,7 @@ src/
 ├── middleware/    # Middleware functions
 ├── routes/        # API routes
 │   ├── auth.ts    # Authentication routes
-│   ├── users.ts   # User management routes  
+│   ├── users.ts   # User management routes
 │   └── metadata.ts# Metadata routes
 ├── controllers/   # Route controllers
 ├── services/      # Business logic
@@ -224,4 +224,4 @@ The seeding script creates the following default users:
 3. **Node Officer**
    - Email: nodeofficer@ngdi.gov.ng
    - Password: officer123
-   - Role: NODE_OFFICER 
+   - Role: NODE_OFFICER

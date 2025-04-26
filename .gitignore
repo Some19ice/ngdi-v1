@@ -1,19 +1,23 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
+node_modules
+.pnp
 .pnp.js
 
 # testing
-/coverage
+coverage
+.coverage
+test-results
+playwright-report
 
 # next.js
-/.next/
-/out/
+.next
+out
 
 # production
-/build
+dist
+build
 
 # misc
 .DS_Store
@@ -43,11 +47,11 @@ next-env.d.ts
 # logs
 *.log
 
-# Nested node_modules
-/packages/*/node_modules
-/apps/*/node_modules
+# Turborepo
+.turbo
 
 # reports
 /docs/reports/
 
-
+# Prisma
+.prisma/client

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { redirect, useSearchParams, useRouter } from "next/navigation"
-import { useAuthSession } from "@/hooks/use-auth-session"
 import {
   MetadataStatus,
   ValidationStatus,
@@ -24,6 +23,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { adminGet } from "@/lib/api/admin-fetcher"
+import { mockMetadataData } from "@/lib/mock/admin-data"
+import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
 
 // Import subcomponents
 import { MetadataFilters } from "./components/MetadataFilters"
@@ -31,23 +33,14 @@ import { MetadataTable } from "./components/MetadataTable"
 import { MetadataPagination } from "./components/MetadataPagination"
 
 export default function MetadataPage() {
-  const { user, isAdmin, hasRole } = useAuthSession()
+  // Use mock admin user instead of auth session
+  const user = MOCK_ADMIN_USER
+  const isAdmin = user.role === UserRole.ADMIN
+  const hasRole = (role: string) => role === UserRole.ADMIN
+
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
-
-  // If not authenticated or not admin, redirect to login
-  useEffect(() => {
-    if (!user) {
-      router.push("/auth/signin?callbackUrl=/admin/metadata")
-      return
-    }
-
-    if (user.role !== UserRole.ADMIN) {
-      router.push("/unauthorized")
-      return
-    }
-  }, [user, router])
 
   // Get search parameters from URL (with null safety)
   const pageParam = searchParams?.get("page") ?? null
@@ -77,6 +70,7 @@ export default function MetadataPage() {
   )
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  const [useMockData, setUseMockData] = useState(false)
 
   // Function to update the URL with search parameters
   const updateSearchParams = (
@@ -103,56 +97,72 @@ export default function MetadataPage() {
       setIsLoading(true)
       setError(null)
 
-      // Get auth token from cookies
-      const authToken = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("auth_token="))
-        ?.split("=")[1]
+      try {
+        // Call the API server using admin fetcher
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
+        const url = `${apiUrl}/api/admin/metadata`
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: pageSize.toString(),
+          ...(searchQuery && { search: searchQuery }),
+          ...(selectedCategory !== "All Categories" && {
+            category: selectedCategory,
+          }),
+          ...(selectedStatus !== "All Statuses" && { status: selectedStatus }),
+          ...(selectedValidation !== "All Validations" && {
+            validationStatus: selectedValidation,
+          }),
+        })
 
-      if (!authToken) {
-        throw new Error("Authentication required")
-      }
+        const result = await adminGet(`${url}?${params.toString()}`)
 
-      // Call the API server
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
-      const url = `${apiUrl}/api/admin/metadata`
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: pageSize.toString(),
-        ...(searchQuery && { search: searchQuery }),
-        ...(selectedCategory !== "All Categories" && {
-          category: selectedCategory,
-        }),
-        ...(selectedStatus !== "All Statuses" && { status: selectedStatus }),
-        ...(selectedValidation !== "All Validations" && {
-          validationStatus: selectedValidation,
-        }),
-      })
+        // Type-safe handling of the returned data
+        if (result?.success && result.data) {
+          setMetadata(result.data.metadata)
+          setTotal(result.data.total || 0)
+          setTotalPages(result.data.totalPages || 1)
+        } else {
+          throw new Error("Invalid response format")
+        }
+      } catch (error) {
+        console.error("Using mock metadata data:", error)
+        setUseMockData(true)
 
-      const response = await fetch(`${url}?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
-      })
+        // Format the mock data to match AdminMetadataItem
+        const mockItems: AdminMetadataItem[] = mockMetadataData.metadata.map(
+          (item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            category: item.category,
+            status: item.status as MetadataStatus,
+            validationStatus:
+              Math.random() > 0.7
+                ? ValidationStatus.Validated
+                : Math.random() > 0.4
+                  ? ValidationStatus.Pending
+                  : ValidationStatus.Failed,
+            createdBy: item.createdBy,
+            organization: item.organization,
+            createdAt: item.createdAt.toString(),
+            updatedAt: item.createdAt.toString(),
+            viewCount: item.viewCount,
+            downloadCount: item.downloadCount,
+            // Additional required fields for AdminMetadataItem
+            downloads: item.downloadCount,
+            views: item.viewCount,
+            tags: [item.category, "sample", "mock-data"],
+            dateFrom: "2023-01-01",
+            // Optional fields
+            lastModified: item.createdAt.toString(),
+            modifiedBy: item.createdBy,
+          })
+        )
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch metadata: ${response.statusText}`)
-      }
-
-      const result = await response.json()
-
-      // Type-safe handling of the returned data
-      if (result.success && result.data) {
-        setMetadata(result.data.metadata)
-        setTotal(result.data.total || 0)
-        setTotalPages(result.data.totalPages || 1)
-      } else {
-        console.error("Invalid data format returned:", result)
-        setMetadata([])
-        setTotal(0)
-        setTotalPages(1)
-        setError("Invalid response format. Please try again.")
+        setMetadata(mockItems)
+        setTotal(mockMetadataData.total)
+        setTotalPages(mockMetadataData.totalPages)
+        setError("Using mock metadata data for demonstration")
       }
 
       // Update URL parameters
@@ -168,10 +178,43 @@ export default function MetadataPage() {
       })
     } catch (err) {
       console.error("Failed to fetch metadata:", err)
-      setError("Failed to load metadata. Please try again later.")
-      setMetadata([])
-      setTotal(0)
-      setTotalPages(1)
+      setError("Failed to load metadata. Using mock data instead.")
+
+      // Use mock data as fallback
+      setUseMockData(true)
+      const mockItems: AdminMetadataItem[] = mockMetadataData.metadata.map(
+        (item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          category: item.category,
+          status: item.status as MetadataStatus,
+          validationStatus:
+            Math.random() > 0.7
+              ? ValidationStatus.Validated
+              : Math.random() > 0.4
+                ? ValidationStatus.Pending
+                : ValidationStatus.Failed,
+          createdBy: item.createdBy,
+          organization: item.organization,
+          createdAt: item.createdAt.toString(),
+          updatedAt: item.createdAt.toString(),
+          viewCount: item.viewCount,
+          downloadCount: item.downloadCount,
+          // Additional required fields for AdminMetadataItem
+          downloads: item.downloadCount,
+          views: item.viewCount,
+          tags: [item.category, "sample", "mock-data"],
+          dateFrom: "2023-01-01",
+          // Optional fields
+          lastModified: item.createdAt.toString(),
+          modifiedBy: item.createdBy,
+        })
+      )
+
+      setMetadata(mockItems)
+      setTotal(mockMetadataData.total)
+      setTotalPages(mockMetadataData.totalPages)
     } finally {
       setIsLoading(false)
     }
@@ -189,16 +232,6 @@ export default function MetadataPage() {
     selectedStatus,
     selectedValidation,
   ])
-
-  // Render loading state if user not loaded yet
-  if (!user) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="mr-2 h-8 w-8 animate-spin" />
-        <p>Loading authentication...</p>
-      </div>
-    )
-  }
 
   // Handle page change
   const handlePageChange = (newPage: number) => {

@@ -38,15 +38,24 @@ export const config = {
       "your-default-secret-for-dev-only",
     expiresIn: process.env.JWT_EXPIRES_IN || "1h",
     refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
+    issuer: process.env.JWT_ISSUER || "ngdi-portal-api",
+    audience: process.env.JWT_AUDIENCE || "ngdi-portal-client",
   },
 
   // CORS configuration
   cors: {
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:3000"],
+      : ["http://localhost:3000", "http://127.0.0.1:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Request-ID",
+      "X-Client-Version",
+      "X-Client-Platform",
+    ],
+    credentials: true, // Allow cookies to be sent with requests
   },
 
   // Database configuration

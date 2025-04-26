@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ClientOnly } from "@/components/ui/client-only"
 import { OnboardingInitializer } from "@/components/onboarding/onboarding-initializer"
+import AuthTokenSync from "@/components/auth/auth-token-sync"
 
 // Sidebar loading fallback component
 const SidebarSkeleton = ({
@@ -70,6 +71,7 @@ export default function RootLayoutClient({
       {/* Wrap OnboardingInitializer with ClientOnly to prevent hydration errors */}
       <ClientOnly>
         <OnboardingInitializer />
+        <AuthTokenSync />
       </ClientOnly>
 
       <Banner />

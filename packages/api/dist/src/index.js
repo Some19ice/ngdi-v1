@@ -21,22 +21,35 @@ const node_server_1 = require("@hono/node-server");
 const config_1 = require("./config");
 // Create app instance
 const app = new hono_1.Hono();
+// Add health check endpoint BEFORE all other middleware and routes
+// This ensures it's available even if other middleware has issues
+app.get("/health", (c) => {
+    console.log("Health check endpoint called");
+    return c.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || "unknown",
+        environment: process.env.NODE_ENV || "development"
+    });
+});
+app.get("/api/health", (c) => {
+    console.log("Health check endpoint called via /api/health");
+    return c.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || "unknown",
+        environment: process.env.NODE_ENV || "development"
+    });
+});
+// Now proceed with normal middleware
 // Apply global middleware
 app.use("*", (0, logger_1.logger)());
 app.use("*", (0, cors_1.cors)({
-    origin: ["https://ngdi-v1.vercel.app", "http://localhost:3000"],
-    credentials: true, // Important for cookies
-    exposeHeaders: ["Content-Length", "X-CSRF-Token"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: [
-        "Content-Type",
-        "Authorization",
-        "X-CSRF-Token",
-        "X-Client-Version",
-        "X-Client-Platform",
-        "X-Request-ID",
-        "Cookie",
-    ],
+    origin: config_1.config.cors.origin,
+    allowMethods: config_1.config.cors.methods,
+    allowHeaders: config_1.config.cors.allowedHeaders,
+    exposeHeaders: ["Content-Length", "X-Request-ID"],
+    credentials: true, // Allow cookies to be sent with requests
     maxAge: 86400, // 24 hours
 }));
 app.use("*", (0, pretty_json_1.prettyJSON)());
@@ -59,12 +72,11 @@ app.route("/api", apiRouter);
 app.get("/docs/*", (0, swagger_ui_1.swaggerUI)({
     url: "/api/docs",
 }));
-// Add a health check endpoint
-app.get("/health", (c) => c.json({ status: "ok" }));
 // Start the server in non-production environments
 if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
     const port = config_1.config.port || 3001;
     console.log(`API server is running on port ${port}`);
+    console.log("API: Server startup complete - ready to accept connections");
     (0, node_server_1.serve)({
         fetch: app.fetch,
         port,

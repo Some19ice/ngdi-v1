@@ -2,16 +2,14 @@ import { describe, expect, it, jest } from "@jest/globals"
 import { AuthService } from "../../../services/auth.service"
 import { PrismaClient } from "@prisma/client"
 import { UserRole } from "../../../types/auth.types"
-import {
-  comparePassword,
-  generateToken,
-  hashPassword,
-} from "../../../utils/auth.utils"
+import { compare, hash } from "bcryptjs"
+import { generateToken } from "../../../utils/jwt"
 import { mockDate, restoreDate } from "../../utils/test.utils"
 
 // Mock dependencies
 jest.mock("@prisma/client")
-jest.mock("../../../utils/auth.utils")
+jest.mock("bcryptjs")
+jest.mock("../../../utils/jwt")
 jest.mock("../../../lib/prisma", () => ({
   prisma: {
     user: {
@@ -59,19 +57,12 @@ describe("AuthService", () => {
 
   beforeEach(() => {
     // Clear all mocks
-    jest
-      .clearAllMocks()
-      (
-        // Mock utility functions
-        hashPassword as jest.Mock
-      )
-      .mockImplementation(() => Promise.resolve("hashedPassword"))
-    ;(comparePassword as jest.Mock).mockImplementation(() =>
-      Promise.resolve(true)
-    )
-    ;(generateToken as jest.Mock).mockImplementation(() =>
-      Promise.resolve("mockToken")
-    )
+    jest.clearAllMocks()
+
+    // Mock utility functions
+    jest.mocked(hash).mockResolvedValue("hashedPassword")
+    jest.mocked(compare).mockResolvedValue(true)
+    jest.mocked(generateToken).mockResolvedValue("mockToken")
   })
 
   describe("login", () => {
@@ -87,10 +78,7 @@ describe("AuthService", () => {
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { email: "test@example.com" },
       })
-      expect(comparePassword).toHaveBeenCalledWith(
-        "password123",
-        "hashedPassword"
-      )
+      expect(compare).toHaveBeenCalledWith("password123", "hashedPassword")
     })
 
     it("should fail with invalid email", async () => {
@@ -109,9 +97,7 @@ describe("AuthService", () => {
 
     it("should fail with invalid password", async () => {
       ;(prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(mockUser)
-      ;(comparePassword as jest.Mock).mockImplementation(() =>
-        Promise.resolve(false)
-      )
+      jest.mocked(compare).mockResolvedValue(false)
 
       const result = await AuthService.login({
         email: "test@example.com",

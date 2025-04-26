@@ -1,14 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const zod_openapi_1 = require("@hono/zod-openapi");
-const auth_1 = require("../middleware/auth");
 const user_service_1 = require("../services/user.service");
+const auth_types_1 = require("../types/auth.types");
 const user_types_1 = require("../types/user.types");
 const http_exception_1 = require("hono/http-exception");
 // Create user router instance
 const userRouter = new zod_openapi_1.OpenAPIHono();
-// Apply auth middleware to all routes
-userRouter.use("*", ((c, next) => auth_1.auth.authenticate(c, next)));
+// Apply auth middleware to all routes - demo mode
+userRouter.use("*", ((c, next) => {
+    console.log("[DEMO MODE] Skipping authentication for user routes");
+    c.set("userId", "demo-user-id");
+    c.set("userEmail", "demo@example.com");
+    c.set("userRole", auth_types_1.UserRole.ADMIN);
+    return next();
+}));
 // Get user profile
 userRouter.openapi((0, zod_openapi_1.createRoute)({
     method: "get",
@@ -98,12 +104,13 @@ userRouter.openapi((0, zod_openapi_1.createRoute)({
 });
 // Create admin router instance
 const adminRouter = new zod_openapi_1.OpenAPIHono();
-// Apply admin auth middleware to all routes
+// Apply admin auth middleware to all routes - demo mode
 adminRouter.use("*", ((c, next) => {
-    const [authenticate, authorize] = auth_1.auth.requireAdmin;
-    return authenticate(c, async () => {
-        await authorize(c, next);
-    });
+    console.log("[DEMO MODE] Skipping authentication for admin routes");
+    c.set("userId", "demo-user-id");
+    c.set("userEmail", "demo@example.com");
+    c.set("userRole", auth_types_1.UserRole.ADMIN);
+    return next();
 }));
 // Get all users
 adminRouter.openapi((0, zod_openapi_1.createRoute)({

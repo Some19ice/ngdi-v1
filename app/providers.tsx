@@ -9,6 +9,14 @@ import { ProtectedRoutePrefetcher } from "@/components/protected-route-prefetche
 import { OnboardingProvider } from "@/components/providers/onboarding-provider"
 import { setupAxiosTokenRefresh, setupTokenRefreshTimer } from "@/lib/auth-refresh"
 import axios from "axios"
+import dynamic from "next/dynamic"
+
+// Import the debug component dynamically to avoid SSR issues
+const ApiStatusDebug = dynamic(
+  () =>
+    import("@/components/debug/api-status").then((mod) => mod.ApiStatusDebug),
+  { ssr: false }
+)
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a client
@@ -25,15 +33,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   )
-  
+
   // Set up token refresh on client-side only
   useEffect(() => {
     // Setup axios interceptor for token refresh
-    setupAxiosTokenRefresh(axios);
-    
+    setupAxiosTokenRefresh(axios)
+
     // Setup timer to refresh token before expiration
-    setupTokenRefreshTimer();
-  }, []);
+    setupTokenRefreshTimer()
+  }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -47,6 +55,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <OnboardingProvider>
             <ProtectedRoutePrefetcher />
             {children}
+            {process.env.NODE_ENV === "development" && <ApiStatusDebug />}
           </OnboardingProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === "development" && (

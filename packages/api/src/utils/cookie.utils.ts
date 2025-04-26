@@ -13,7 +13,7 @@ export const DEFAULT_COOKIE_OPTIONS: CookieOptions = {
   path: "/",
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  sameSite: "lax", // Changed from strict to lax for better compatibility
   maxAge: 60 * 60 * 24 * 7, // 7 days
 }
 
@@ -21,12 +21,12 @@ export function getCookieDomain(): string | undefined {
   if (process.env.NODE_ENV === "production") {
     // Use cookie domain from environment variable if available
     // This improves cross-subdomain support while maintaining security
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    
+    const cookieDomain = process.env.COOKIE_DOMAIN
+
     // Only use domain setting when explicitly configured
-    return cookieDomain || undefined;
+    return cookieDomain || undefined
   }
-  return undefined;
+  return undefined
 }
 
 export function setCookieWithOptions(
@@ -36,17 +36,23 @@ export function setCookieWithOptions(
   options: Partial<CookieOptions> = {}
 ): void {
   const finalOptions = { ...DEFAULT_COOKIE_OPTIONS, ...options }
-  const domain = getCookieDomain();
+  const domain = getCookieDomain()
 
   let cookie = `${name}=${value}; Path=${finalOptions.path}`
   if (finalOptions.httpOnly) cookie += "; HttpOnly"
   if (finalOptions.secure) cookie += "; Secure"
   cookie += `; SameSite=${finalOptions.sameSite}; Max-Age=${finalOptions.maxAge}`
-  
+
   // Only add domain if explicitly set
   if (domain) cookie += `; Domain=${domain}`
 
-  c.header("Set-Cookie", cookie)
+  // Log cookie setting for debugging
+  console.log(
+    `Setting cookie: ${name} (SameSite=${finalOptions.sameSite}, Secure=${finalOptions.secure}, HttpOnly=${finalOptions.httpOnly})`
+  )
+
+  // Use append instead of set to allow multiple cookies with different names
+  c.header("Set-Cookie", cookie, { append: true })
 }
 
 export function clearCookie(c: Context, name: string): void {
@@ -54,9 +60,13 @@ export function clearCookie(c: Context, name: string): void {
   let cookie = `${name}=; Path=/; Max-Age=0; HttpOnly`
   if (process.env.NODE_ENV === "production") cookie += "; Secure"
   cookie += `; SameSite=${DEFAULT_COOKIE_OPTIONS.sameSite}`
-  
-  const domain = getCookieDomain();
+
+  const domain = getCookieDomain()
   if (domain) cookie += `; Domain=${domain}`
-  
-  c.header("Set-Cookie", cookie)
+
+  // Log cookie clearing for debugging
+  console.log(`Clearing cookie: ${name}`)
+
+  // Use append instead of set to allow clearing multiple cookies
+  c.header("Set-Cookie", cookie, { append: true })
 }

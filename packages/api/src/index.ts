@@ -10,6 +10,11 @@ import userRouter from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
 import searchRouter from "./routes/search.routes"
 import adminRouter from "./routes/admin.routes"
+import permissionsRouter from "./routes/permissions"
+import rolesRouter from "./routes/roles"
+import userPermissionsRouter from "./routes/user-permissions"
+import permissionGroupsRouter from "./routes/permission-groups"
+import activityLogsRouter from "./routes/activity-logs"
 import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
 import { errorMiddleware } from "./middleware/error-handler"
@@ -24,24 +29,39 @@ const app = new Hono<{
   Bindings: Env
 }>()
 
+// Add health check endpoint BEFORE all other middleware and routes
+// This ensures it's available even if other middleware has issues
+app.get("/health", (c) => {
+  console.log("Health check endpoint called")
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || "unknown",
+    environment: process.env.NODE_ENV || "development",
+  })
+})
+
+app.get("/api/health", (c) => {
+  console.log("Health check endpoint called via /api/health")
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || "unknown",
+    environment: process.env.NODE_ENV || "development",
+  })
+})
+
+// Now proceed with normal middleware
 // Apply global middleware
 app.use("*", logger())
 app.use(
   "*",
   cors({
-    origin: ["https://ngdi-v1.vercel.app", "http://localhost:3000"],
-    credentials: true, // Important for cookies
-    exposeHeaders: ["Content-Length", "X-CSRF-Token"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-CSRF-Token",
-      "X-Client-Version",
-      "X-Client-Platform",
-      "X-Request-ID",
-      "Cookie",
-    ],
+    origin: config.cors.origin,
+    allowMethods: config.cors.methods,
+    allowHeaders: config.cors.allowedHeaders,
+    exposeHeaders: ["Content-Length", "X-Request-ID"],
+    credentials: true, // Allow cookies to be sent with requests
     maxAge: 86400, // 24 hours
   })
 )
@@ -62,6 +82,13 @@ apiRouter.route("/metadata", metadataRouter)
 apiRouter.route("/search", searchRouter)
 apiRouter.route("/admin", adminRouter)
 
+// Mount permission system routes
+apiRouter.route("/permissions", permissionsRouter)
+apiRouter.route("/roles", rolesRouter)
+apiRouter.route("/user-permissions", userPermissionsRouter)
+apiRouter.route("/permission-groups", permissionGroupsRouter)
+apiRouter.route("/activity-logs", activityLogsRouter)
+
 // Mount API router
 app.route("/", apiRouter)
 app.route("/api", apiRouter)
@@ -74,18 +101,23 @@ app.get(
   })
 )
 
-// Add a health check endpoint
-app.get("/health", (c) => c.json({ status: "ok" }))
-
 // Start the server in non-production environments
 if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
   const port = config.port || 3001
-  console.log(`API server is running on port ${port}`)
 
-  serve({
-    fetch: app.fetch,
-    port,
-  })
+  // Start the server even if there are database connection issues
+  try {
+    console.log(`API server is running on port ${port}`)
+
+    serve({
+      fetch: app.fetch,
+      port,
+    })
+
+    console.log("API: Server startup complete - ready to accept connections")
+  } catch (error) {
+    console.error("Failed to start server:", error)
+  }
 }
 
 // Export app for use in Vercel serverless functions and other environments

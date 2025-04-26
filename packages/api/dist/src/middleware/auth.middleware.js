@@ -1,74 +1,29 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = authMiddleware;
 exports.adminMiddleware = adminMiddleware;
 exports.requireRole = requireRole;
-const jsonwebtoken_1 = require("jsonwebtoken");
-const http_exception_1 = require("hono/http-exception");
 const client_1 = require("@prisma/client");
+const dotenv_1 = __importDefault(require("dotenv"));
+const http_exception_1 = require("hono/http-exception");
+// Load environment variables from .env file
+dotenv_1.default.config();
+console.log("API auth middleware loaded");
+/**
+ * Simplified auth middleware that provides mock admin user for demo purposes
+ */
 async function authMiddleware(c, next) {
-    try {
-        const authHeader = c.req.header("Authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            console.log("[API DEBUG] No Authorization header or not Bearer token");
-            throw new http_exception_1.HTTPException(401, { message: "Unauthorized" });
-        }
-        const token = authHeader.split(" ")[1];
-        console.log("[API DEBUG] Received auth token:", token ? `${token.substring(0, 10)}...` : "none");
-        console.log("[API DEBUG] Verifying token with JWT_SECRET:", process.env.JWT_SECRET ? "present" : "missing");
-        try {
-            const decoded = (0, jsonwebtoken_1.verify)(token, process.env.JWT_SECRET);
-            console.log("[API DEBUG] Decoded token:", {
-                userId: decoded.userId,
-                email: decoded.email,
-                role: decoded.role,
-            });
-            // If the role is already in the expected format (string), convert it to UserRole enum
-            let userRole;
-            if (typeof decoded.role === "string") {
-                // Normalize role value to handle case differences
-                const normalizedRole = decoded.role.toUpperCase();
-                // Convert string role to UserRole enum
-                if (normalizedRole === "ADMIN") {
-                    userRole = client_1.UserRole.ADMIN;
-                }
-                else if (normalizedRole === "NODE_OFFICER") {
-                    userRole = client_1.UserRole.NODE_OFFICER;
-                }
-                else {
-                    userRole = client_1.UserRole.USER;
-                }
-                console.log("[API DEBUG] Normalized role:", {
-                    original: decoded.role,
-                    normalized: normalizedRole,
-                    final: userRole,
-                });
-            }
-            else {
-                userRole = decoded.role;
-            }
-            // Set user in context
-            c.set("user", {
-                id: decoded.userId,
-                email: decoded.email,
-                role: userRole,
-            });
-            console.log("[API DEBUG] User set in context:", {
-                id: decoded.userId,
-                email: decoded.email,
-                role: userRole,
-            });
-            return await next();
-        }
-        catch (jwtError) {
-            console.error("[API DEBUG] JWT verification error:", jwtError);
-            throw new http_exception_1.HTTPException(401, { message: "Invalid token" });
-        }
-    }
-    catch (error) {
-        console.error("[API DEBUG] Auth middleware error:", error);
-        throw new http_exception_1.HTTPException(401, { message: "Invalid token" });
-    }
+    // Set a mock admin user in the context
+    c.set("user", {
+        id: "demo-user-id",
+        email: "demo@example.com",
+        role: client_1.UserRole.ADMIN,
+    });
+    console.log("[API DEBUG] Demo mode: Using mock admin user");
+    return await next();
 }
 async function adminMiddleware(c, next) {
     const user = c.get("user");

@@ -9,11 +9,8 @@ import {
   UserRole,
 } from "../../types/auth.types"
 import { authRateLimit } from "../../middleware"
-import {
-  hashPassword,
-  comparePassword,
-  generateToken,
-} from "../../utils/auth.utils"
+import { generateToken } from "../../utils/jwt"
+import { compare, hash } from "bcryptjs"
 import { prisma } from "../../lib/prisma"
 import { ApiError } from "../../middleware/error-handler"
 import { zodValidator, getValidatedData } from "../../middleware/validation"
@@ -50,7 +47,7 @@ auth.post("/login", async (c: Context) => {
       return c.json({ message: "Invalid credentials" }, 401)
     }
 
-    const isValidPassword = await comparePassword(password, user.password)
+    const isValidPassword = await compare(password, user.password)
     if (!isValidPassword) {
       return c.json({ message: "Invalid credentials" }, 401)
     }
@@ -116,7 +113,7 @@ auth.openapi(
       throw new ApiError("Email already exists", 400)
     }
 
-    const hashedPassword = await hashPassword(password)
+    const hashedPassword = await hash(password, 10)
 
     await prisma.user.create({
       data: {

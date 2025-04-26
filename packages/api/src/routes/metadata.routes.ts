@@ -71,7 +71,14 @@ const metadataSchema = z.object({
 /**
  * Metadata routes
  */
-metadata.use("*", authMiddleware)
+// Demo mode bypass auth middleware and set mock user
+metadata.use("*", async (c, next) => {
+  console.log("[DEMO MODE] Skipping authentication for metadata routes")
+  c.set("userId", "demo-user-id")
+  c.set("userEmail", "demo@example.com")
+  c.set("userRole", UserRole.ADMIN)
+  return next()
+})
 
 /**
  * @openapi

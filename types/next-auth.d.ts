@@ -9,6 +9,13 @@ declare module "next-auth" {
       name: string
       role: UserRole
       image?: string
+      /** The user's custom role name */
+      customRole?: string
+      /** The user's permissions */
+      permissions?: {
+        action: string
+        subject: string
+      }[]
     }
   }
 
@@ -18,6 +25,13 @@ declare module "next-auth" {
     name: string
     role: UserRole
     image?: string
+    /** The user's custom role name */
+    customRole?: string
+    /** The user's permissions */
+    permissions?: {
+      action: string
+      subject: string
+    }[]
   }
 }
 
@@ -28,5 +42,12 @@ declare module "next-auth/jwt" {
     name: string
     role: UserRole
     image?: string
+    /** The user's custom role name */
+    customRole?: string
+    /** The user's permissions */
+    permissions?: {
+      action: string
+      subject: string
+    }[]
   }
 }

@@ -9,7 +9,6 @@ import { UserProfile, UserUpdateRequest } from "@/types/user"
 import { LoginRequest, RegisterRequest, AuthResponse } from "@/types/auth"
 import { MetadataResponse, MetadataRequest } from "@/types/metadata"
 import { authClient, Session } from "./auth-client"
-import { getCookie } from "./utils/cookie-utils"
 
 interface ApiClientConfig {
   baseURL: string
@@ -36,18 +35,14 @@ class ApiClient {
       },
     })
 
-    // Request interceptor for adding auth token
+    // Request interceptor to add real auth headers
     this.axiosInstance.interceptors.request.use(
       async (config: InternalAxiosRequestConfig) => {
-        const token = authClient.getAccessToken()
+        // Get token from localStorage or cookies
+        const token = localStorage.getItem("accessToken")
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
-        }
-
-        // Add CSRF token if available
-        const csrfToken = getCookie("csrf_token")
-        if (csrfToken) {
-          config.headers["X-CSRF-Token"] = csrfToken
         }
 
         return config
@@ -63,59 +58,7 @@ class ApiClient {
         return response.data
       },
       async (error) => {
-        const originalRequest = error.config
-
-        // Log detailed error information
-        if (error.response) {
-          console.error("API Error Response:", {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            data: error.response.data,
-            url: originalRequest.url,
-            method: originalRequest.method,
-            requestData: JSON.parse(originalRequest.data || "{}"),
-          })
-
-          // Enhance error message with server details if available
-          if (error.response.data) {
-            if (error.response.data.message) {
-              error.message = `${error.message}: ${error.response.data.message}`
-            } else if (typeof error.response.data === "object") {
-              // Log the full error data object
-              const errorData = JSON.stringify(error.response.data)
-              error.message = `${error.message}: ${errorData}`
-            }
-          }
-        }
-
-        // If the error is due to an expired token and we haven't tried to refresh yet
-        if (
-          error.response?.status === 401 &&
-          !originalRequest._retry &&
-          (await authClient.isAuthenticated())
-        ) {
-          originalRequest._retry = true
-
-          try {
-            // Refresh the token
-            await authClient.refreshToken()
-
-            // Update the authorization header
-            const newToken = authClient.getAccessToken()
-            if (newToken) {
-              originalRequest.headers.Authorization = `Bearer ${newToken}`
-            }
-
-            // Retry the original request
-            return this.axiosInstance(originalRequest)
-          } catch (refreshError) {
-            // If refresh fails, redirect to login
-            console.error("Token refresh failed:", refreshError)
-            window.location.href = "/auth/signin"
-            return Promise.reject(refreshError)
-          }
-        }
-
+        console.error("API Error:", error.message)
         return Promise.reject(error)
       }
     )
@@ -123,11 +66,11 @@ class ApiClient {
 
   public static getInstance(): ApiClient {
     if (!ApiClient.instance) {
-      // Get proper API URL based on environment
+      // Get API URL directly
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
       console.log("API Client initialized with base URL:", apiUrl)
-      
+
       ApiClient.instance = new ApiClient({
         baseURL: apiUrl,
       })
@@ -151,10 +94,12 @@ class ApiClient {
     return this.axiosInstance.delete(url)
   }
 
+  // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     return authClient.isAuthenticated()
   }
 
+  // Get current session
   async getSession(): Promise<Session | null> {
     return authClient.getSession()
   }
@@ -163,9 +108,9 @@ class ApiClient {
 // Create API client instance
 const apiClient = ApiClient.getInstance()
 
-// Define API endpoints with proper type conversions
+// Define API endpoints with mock implementations
 export const api = {
-  // Auth endpoints
+  // Auth endpoints with mock implementations
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const session = await authClient.login(data.email, data.password)
     return {
@@ -192,7 +137,6 @@ export const api = {
 
   // User endpoints
   getCurrentUser: () => {
-    // Remove /api prefix since it's in the baseURL
     return apiClient.get<UserProfile>("/users/profile")
   },
   updateUser: (data: UserUpdateRequest) =>
@@ -214,7 +158,7 @@ export const api = {
   updateUserRole: (id: string, role: string) =>
     apiClient.put<UserProfile>(`/users/${id}/role`, { role }),
 
-  // Auth token helper
+  // Auth token helper - returns real token
   getAuthToken: () => authClient.getAccessToken(),
 } as const
 

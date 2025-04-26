@@ -1,5 +1,5 @@
 {
-  "name": "ngdi-portal",
+  "name": "ngdi-monorepo",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
@@ -9,31 +9,18 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
-    "dev:web": "next dev",
-    "dev:api": "npm run dev -w packages/api",
-    "build": "npm run build:web && npm run build:api",
-    "build:web": "prisma generate && next build",
-    "build:api": "npm run build -w packages/api",
-    "build:vercel": "prisma generate && next build",
-    "prebuild:api": "mkdir -p packages/api/dist/api",
-    "start": "concurrently \"npm run start:web\" \"npm run start:api\"",
-    "start:web": "next start",
-    "start:api": "npm run start -w packages/api",
-    "lint": "next lint",
-    "clean": "rm -rf .next node_modules/.cache",
-    "clean:vercel": "rm -rf .next node_modules/.cache .vercel/output",
-    "db:push": "prisma db push",
-    "db:init": "ts-node --project scripts/tsconfig.json scripts/init-db.ts",
-    "test": "npm run test:web && npm run test:api",
-    "test:web": "playwright test",
-    "test:api": "npm run test -w packages/api",
-    "test:ui": "playwright test --ui",
-    "test:debug": "playwright test --debug",
-    "test:auth": "playwright test tests/auth.test.ts",
-    "test:coverage": "playwright test --reporter=html",
-    "test:analyze": "ts-node scripts/analyze-test-results.ts",
-    "format": "prettier --write ."
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules/.cache",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:push": "npm run db:push -w packages/db",
+    "db:generate": "npm run db:generate -w packages/db",
+    "db:studio": "npm run db:studio -w packages/db",
+    "db:seed": "npm run db:seed -w packages/db",
+    "db:reset": "npm run db:reset -w packages/db",
+    "db:migrate": "npm run db:migrate -w packages/db"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
@@ -144,6 +131,8 @@
     "supabase": "^1.148.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
-    "typescript": "^5.3.3"
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.0"
   }
 }

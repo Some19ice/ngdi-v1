@@ -31,18 +31,7 @@ export const AUTH_PATHS = {
 /**
  * Protected routes that require authentication
  */
-export const PROTECTED_ROUTES = [
-  "/profile",
-  "/metadata",
-  "/admin",
-  "/admin/analytics",
-  "/admin/users",
-  "/admin/settings",
-  "/admin/metadata",
-  "/admin/organizations",
-  "/settings",
-  "/metadata/add",
-]
+export const PROTECTED_ROUTES = ["/profile", "/metadata", "/settings", "/metadata/add"]
 
 /**
  * Debug routes that should bypass middleware protection

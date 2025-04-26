@@ -1,7 +1,6 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { adminService } from "../services/admin.service"
-import { authMiddleware } from "../middleware/auth.middleware"
 import { UserRole } from "../types/auth.types"
 import { UserIdParamSchema } from "../types/user.types"
 import { MetadataIdParamSchema } from "../types/metadata.types"
@@ -9,7 +8,6 @@ import { Context } from "../types/hono.types"
 import { ApiError } from "../middleware/error-handler"
 import { prisma } from "../lib/prisma"
 import { logger } from "../lib/logger"
-import { adminMiddleware } from "../middleware/auth.middleware"
 import { UserRole as PrismaUserRole } from "@prisma/client"
 import { SafeJSON } from "../utils/json-serializer"
 import { memoryCache } from "../utils/cache"
@@ -33,34 +31,24 @@ export const adminRouter = new Hono<{
     user: User
   }
 }>()
-  // Apply authentication middleware to all routes
-  .use("*", authMiddleware)
-  // Check if user is admin
+  // DEMO MODE: Apply mock admin auth to all routes
   .use("*", async (c, next) => {
-    try {
-      const user = c.get("user")
+    console.log("[DEMO MODE] Skipping authentication for admin routes")
 
-      if (!user || user.role !== UserRole.ADMIN) {
-        return c.json(
-          {
-            success: false,
-            message: "Unauthorized. Admin access required.",
-          },
-          403
-        )
-      }
-
-      await next()
-    } catch (error) {
-      console.error("Admin authorization error:", error)
-      return c.json(
-        {
-          success: false,
-          message: "Error checking admin permissions",
-        },
-        500
-      )
+    // Set mock admin user
+    const mockUser = {
+      id: "demo-user-id",
+      email: "demo@example.com",
+      role: UserRole.ADMIN,
     }
+
+    // Set all the user variables
+    c.set("userId", mockUser.id)
+    c.set("userEmail", mockUser.email)
+    c.set("userRole", mockUser.role)
+    c.set("user", mockUser)
+
+    await next()
   })
 
 /**

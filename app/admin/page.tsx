@@ -4,16 +4,18 @@ import { AdminDashboardClient } from "./components/admin-dashboard-client"
 
 export const dynamic = "force-dynamic"
 
-// Handle server-side authentication and data fetching
+// Admin page with auth requirements removed
 export default async function AdminPage() {
-  // Server-side authentication check
-  const user = await requireAuth()
+  // Authentication check bypassed
+  console.log("Admin page - Authentication bypassed")
 
-  // Check if user is admin
-  if (user.role !== UserRole.ADMIN) {
-    throw new Error("Unauthorized: Admin access required")
+  // Create mock admin user
+  const user = {
+    id: "demo-user-id",
+    email: "demo@example.com",
+    role: UserRole.ADMIN,
   }
 
-  // Render the admin dashboard component instead of redirecting
+  // Render the admin dashboard component
   return <AdminDashboardClient />
 }

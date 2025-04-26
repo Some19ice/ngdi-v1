@@ -37,10 +37,15 @@ const defaultOptions: CSRFOptions = {
   ignoreMethods: ["GET", "HEAD", "OPTIONS"], // Methods that don't need CSRF protection
   ignorePaths: [
     "/health",
+    "/api/health",
     "/api/auth/login",
     "/auth/login",
     "/api/auth/register",
     "/auth/register",
+    "/api/auth/refresh-token",
+    "/auth/refresh-token",
+    "/api/auth/csrf-token", // Endpoint to get a CSRF token
+    "/auth/csrf-token",
   ], // Paths that don't need CSRF protection
   tokenHeader: "X-CSRF-Token",
 }

@@ -1,9 +1,17 @@
-import { Context, Next } from "hono"
-import { verify } from "jsonwebtoken"
-import { prisma } from "../lib/prisma"
-import { HTTPException } from "hono/http-exception"
+import { Next } from "hono"
+import { Context } from "../types/hono.types"
 import { UserRole } from "@prisma/client"
+import { AuthError, AuthErrorCode } from "../types/error.types"
+import { tokenValidationService } from "../services/token-validation.service"
+import {
+  securityLogService,
+  SecurityEventType,
+} from "../services/security-log.service"
+import { prisma } from "../lib/prisma"
 
+/**
+ * Interface for JWT payload
+ */
 interface JWTPayload {
   userId: string
   email: string
@@ -11,105 +19,220 @@ interface JWTPayload {
   [key: string]: any // Allow for additional fields
 }
 
+/**
+ * Real authentication middleware that validates JWT tokens
+ */
 export async function authMiddleware(c: Context, next: Next) {
   try {
-    const authHeader = c.req.header("Authorization")
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[API DEBUG] No Authorization header or not Bearer token")
-      throw new HTTPException(401, { message: "Unauthorized" })
+    // Get client information for logging
+    const clientInfo = {
+      ipAddress:
+        c.req.header("x-forwarded-for") ||
+        c.req.header("x-real-ip") ||
+        c.req.header("cf-connecting-ip") ||
+        "unknown",
+      userAgent: c.req.header("user-agent") || "unknown",
+      deviceId: c.req.header("x-device-id") || "unknown",
     }
 
-    const token = authHeader.split(" ")[1]
-
-    console.log(
-      "[API DEBUG] Received auth token:",
-      token ? `${token.substring(0, 10)}...` : "none"
-    )
-    console.log(
-      "[API DEBUG] Verifying token with JWT_SECRET:",
-      process.env.JWT_SECRET ? "present" : "missing"
-    )
-
+    // Get token from request (header or cookie)
+    let token: string
     try {
-      const decoded = verify(token, process.env.JWT_SECRET!) as JWTPayload
-      console.log("[API DEBUG] Decoded token:", {
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-      })
-
-      // If the role is already in the expected format (string), convert it to UserRole enum
-      let userRole: UserRole
-      if (typeof decoded.role === "string") {
-        // Normalize role value to handle case differences
-        const normalizedRole = decoded.role.toUpperCase()
-
-        // Convert string role to UserRole enum
-        if (normalizedRole === "ADMIN") {
-          userRole = UserRole.ADMIN
-        } else if (normalizedRole === "NODE_OFFICER") {
-          userRole = UserRole.NODE_OFFICER
-        } else {
-          userRole = UserRole.USER
-        }
-
-        console.log("[API DEBUG] Normalized role:", {
-          original: decoded.role,
-          normalized: normalizedRole,
-          final: userRole,
-        })
-      } else {
-        userRole = decoded.role
-      }
-
-      // Set user in context
-      c.set("user", {
-        id: decoded.userId,
-        email: decoded.email,
-        role: userRole,
-      })
-
-      console.log("[API DEBUG] User set in context:", {
-        id: decoded.userId,
-        email: decoded.email,
-        role: userRole,
-      })
-
-      return await next()
-    } catch (jwtError) {
-      console.error("[API DEBUG] JWT verification error:", jwtError)
-      throw new HTTPException(401, { message: "Invalid token" })
+      token = tokenValidationService.getTokenFromRequest(c)
+    } catch (error) {
+      // If no token is found, throw an authentication error
+      throw new AuthError(
+        AuthErrorCode.INVALID_TOKEN,
+        "No authentication token provided",
+        401
+      )
     }
+
+    // Validate the token
+    const validationResult = await tokenValidationService.validateAccessToken(
+      token,
+      {
+        checkBlacklist: true,
+        logFailures: true,
+        clientInfo,
+      }
+    )
+
+    if (!validationResult.isValid) {
+      // Token validation failed
+      throw new AuthError(
+        AuthErrorCode.INVALID_TOKEN,
+        validationResult.error || "Invalid token",
+        401
+      )
+    }
+
+    // Check if user exists and is active
+    const userIsValid = await tokenValidationService.validateUser(
+      validationResult.userId!
+    )
+    if (!userIsValid) {
+      throw new AuthError(
+        AuthErrorCode.USER_NOT_FOUND,
+        "User not found or account is locked",
+        401
+      )
+    }
+
+    // Get the complete user data from the database
+    const user = await prisma.user.findUnique({
+      where: { id: validationResult.userId! },
+      include: {
+        customRole: true,
+      },
+    })
+
+    if (!user) {
+      throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 401)
+    }
+
+    // Set user info in context
+    c.set("userId", user.id)
+    c.set("userEmail", user.email)
+    c.set("userRole", user.role)
+    c.set("user", user)
+
+    // Log successful token validation (optional, can be disabled for high-traffic APIs)
+    // await securityLogService.logEvent({
+    //   userId: validationResult.userId,
+    //   email: validationResult.email,
+    //   eventType: SecurityEventType.TOKEN_VALIDATION_SUCCESS,
+    //   ipAddress: clientInfo.ipAddress,
+    //   userAgent: clientInfo.userAgent,
+    //   deviceId: clientInfo.deviceId
+    // })
+
+    await next()
   } catch (error) {
-    console.error("[API DEBUG] Auth middleware error:", error)
-    throw new HTTPException(401, { message: "Invalid token" })
+    // Handle authentication errors
+    if (error instanceof AuthError) {
+      throw error
+    }
+
+    // Handle other errors
+    console.error("Authentication middleware error:", error)
+    throw new AuthError(
+      AuthErrorCode.SERVER_ERROR,
+      "Authentication failed",
+      500
+    )
   }
 }
 
+/**
+ * Middleware to require admin role
+ */
 export async function adminMiddleware(c: Context, next: Next) {
   const user = c.get("user")
-  console.log("[API DEBUG] Admin middleware check:", {
-    userRole: user.role,
-    isAdmin: user.role === UserRole.ADMIN,
-  })
 
-  if (user.role !== UserRole.ADMIN) {
-    throw new HTTPException(403, { message: "Forbidden" })
+  if (!user) {
+    throw new AuthError(
+      AuthErrorCode.UNAUTHORIZED,
+      "User not found in context",
+      401
+    )
   }
+
+  // Check if user has ADMIN role (legacy) or has a custom role with admin privileges
+  if (
+    user.role !== UserRole.ADMIN &&
+    (!user.customRole || user.customRole.name !== "Admin")
+  ) {
+    throw new AuthError(AuthErrorCode.FORBIDDEN, "Admin access required", 403)
+  }
+
   await next()
 }
 
-export function requireRole(role: UserRole) {
+/**
+ * Middleware to require a specific role
+ */
+export function requireRole(role: UserRole | string) {
   return async (c: Context, next: Next) => {
     const user = c.get("user")
+
     if (!user) {
-      return c.json({ error: "Unauthorized - User not found in context" }, 401)
+      throw new AuthError(
+        AuthErrorCode.UNAUTHORIZED,
+        "User not found in context",
+        401
+      )
     }
 
-    if (user.role !== role) {
-      return c.json({ error: "Forbidden - Insufficient permissions" }, 403)
+    // Check legacy role
+    if (user.role === role) {
+      await next()
+      return
     }
 
-    await next()
+    // Check custom role
+    if (user.customRole && user.customRole.name === role) {
+      await next()
+      return
+    }
+
+    // Admin users have access to everything
+    if (
+      user.role === UserRole.ADMIN ||
+      (user.customRole && user.customRole.name === "Admin")
+    ) {
+      await next()
+      return
+    }
+
+    throw new AuthError(
+      AuthErrorCode.FORBIDDEN,
+      "Insufficient permissions",
+      403
+    )
+  }
+}
+
+/**
+ * Middleware to require any of the specified roles
+ */
+export function requireAnyRole(roles: (UserRole | string)[]) {
+  return async (c: Context, next: Next) => {
+    const user = c.get("user")
+
+    if (!user) {
+      throw new AuthError(
+        AuthErrorCode.UNAUTHORIZED,
+        "User not found in context",
+        401
+      )
+    }
+
+    // Admin users have access to everything
+    if (
+      user.role === UserRole.ADMIN ||
+      (user.customRole && user.customRole.name === "Admin")
+    ) {
+      await next()
+      return
+    }
+
+    // Check legacy role
+    if (roles.includes(user.role as UserRole)) {
+      await next()
+      return
+    }
+
+    // Check custom role
+    if (user.customRole && roles.includes(user.customRole.name)) {
+      await next()
+      return
+    }
+
+    throw new AuthError(
+      AuthErrorCode.FORBIDDEN,
+      "Insufficient permissions",
+      403
+    )
   }
 }

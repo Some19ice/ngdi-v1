@@ -27,19 +27,19 @@ export const redisService = {
    * Check if Redis is available
    */
   isAvailable(): boolean {
-    return redis !== null;
+    return redis !== null
   },
 
   /**
    * Get a value from Redis
    */
   async get(key: string): Promise<string | null> {
-    if (!redis) return null;
+    if (!redis) return null
     try {
-      return await redis.get(key) as string | null;
+      return (await redis.get(key)) as string | null
     } catch (error) {
-      console.error(`Redis get error for key "${key}":`, error);
-      return null;
+      console.error(`Redis get error for key "${key}":`, error)
+      return null
     }
   },
 
@@ -47,15 +47,15 @@ export const redisService = {
    * Set a value in Redis with optional expiration
    */
   async set(key: string, value: string, expireSeconds?: number): Promise<void> {
-    if (!redis) return;
+    if (!redis) return
     try {
       if (expireSeconds) {
-        await redis.set(key, value, { ex: expireSeconds });
+        await redis.set(key, value, { ex: expireSeconds })
       } else {
-        await redis.set(key, value);
+        await redis.set(key, value)
       }
     } catch (error) {
-      console.error(`Redis set error for key "${key}":`, error);
+      console.error(`Redis set error for key "${key}":`, error)
     }
   },
 
@@ -63,11 +63,11 @@ export const redisService = {
    * Delete a key from Redis
    */
   async delete(key: string): Promise<void> {
-    if (!redis) return;
+    if (!redis) return
     try {
-      await redis.del(key);
+      await redis.del(key)
     } catch (error) {
-      console.error(`Redis delete error for key "${key}":`, error);
+      console.error(`Redis delete error for key "${key}":`, error)
     }
   },
 
@@ -75,16 +75,16 @@ export const redisService = {
    * Delete keys matching a pattern
    */
   async deleteByPattern(pattern: string): Promise<void> {
-    if (!redis) return;
+    if (!redis) return
     try {
       // Scan for keys matching pattern
-      const keys = await redis.keys(pattern);
+      const keys = await redis.keys(pattern)
       if (keys && keys.length > 0) {
         // Delete all matching keys
-        await redis.del(...keys);
+        await redis.del(...keys)
       }
     } catch (error) {
-      console.error(`Redis delete by pattern error for "${pattern}":`, error);
+      console.error(`Redis delete by pattern error for "${pattern}":`, error)
     }
   },
 
@@ -92,72 +92,116 @@ export const redisService = {
    * Check if a token is blacklisted
    */
   async isTokenBlacklisted(token: string): Promise<boolean> {
-    if (!redis) return false;
+    if (!redis) return false
     try {
-      const key = `blacklist:${token}`;
-      const blacklisted = await redis.get(key);
-      return !!blacklisted;
+      const key = `blacklist:${token}`
+      const blacklisted = await redis.get(key)
+      return !!blacklisted
     } catch (error) {
-      console.error('Redis token blacklist check error:', error);
-      return false;
+      console.error("Redis token blacklist check error:", error)
+      return false
     }
   },
 
   /**
    * Add a token to the blacklist with expiration
    */
-  async blacklistToken(token: string, expireSeconds: number): Promise<void> {
-    if (!redis) return;
+  async blacklistToken(
+    token: string,
+    expireSeconds: number = 86400
+  ): Promise<void> {
+    if (!redis) return
     try {
-      const key = `blacklist:${token}`;
-      await redis.set(key, '1', { ex: expireSeconds });
+      const key = `blacklist:${token}`
+      await redis.set(key, "1", { ex: expireSeconds })
     } catch (error) {
-      console.error('Redis token blacklist error:', error);
+      console.error("Redis token blacklist error:", error)
     }
   },
 
   /**
    * Increment a rate limit counter
    */
-  async incrementRateLimit(key: string, expireSeconds: number): Promise<number> {
-    if (!redis) return 0;
+  async incrementRateLimit(
+    key: string,
+    expireSeconds: number
+  ): Promise<number> {
+    if (!redis) return 0
     try {
       // Increment counter and set expiration if it's a new key
-      const count = await redis.incr(key);
+      const count = await redis.incr(key)
       if (count === 1) {
-        await redis.expire(key, expireSeconds);
+        await redis.expire(key, expireSeconds)
       }
-      return count;
+      return count
     } catch (error) {
-      console.error(`Redis rate limit error for key "${key}":`, error);
-      return 0;
+      console.error(`Redis rate limit error for key "${key}":`, error)
+      return 0
     }
   },
-  
+
   /**
    * Get rate limit counter
    */
   async getRateLimit(key: string): Promise<number> {
-    if (!redis) return 0;
+    if (!redis) return 0
     try {
-      const count = await redis.get(key);
-      return count ? Number(count) : 0;
+      const count = await redis.get(key)
+      return count ? Number(count) : 0
     } catch (error) {
-      console.error(`Redis get rate limit error for key "${key}":`, error);
-      return 0;
+      console.error(`Redis get rate limit error for key "${key}":`, error)
+      return 0
     }
   },
-  
+
   /**
    * Get time-to-live (TTL) for a key
    */
   async getTTL(key: string): Promise<number> {
-    if (!redis) return 0;
+    if (!redis) return 0
     try {
-      return await redis.ttl(key);
+      return await redis.ttl(key)
     } catch (error) {
-      console.error(`Redis TTL error for key "${key}":`, error);
-      return 0;
+      console.error(`Redis TTL error for key "${key}":`, error)
+      return 0
     }
-  }
-};
+  },
+
+  /**
+   * Get TTL for a rate limit key
+   */
+  async getRateLimitTTL(key: string): Promise<number> {
+    return this.getTTL(key)
+  },
+
+  /**
+   * Decrement a rate limit counter (for successful requests)
+   */
+  async decrementRateLimit(key: string): Promise<number> {
+    if (!redis) return 0
+    try {
+      const count = await redis.decr(key)
+      // If count goes below 0, reset to 0
+      if (count < 0) {
+        await redis.set(key, 0)
+        return 0
+      }
+      return count
+    } catch (error) {
+      console.error(`Redis decrement rate limit error for key "${key}":`, error)
+      return 0
+    }
+  },
+
+  /**
+   * Reset a rate limit counter
+   */
+  async resetRateLimit(key: string): Promise<void> {
+    if (!redis) return
+    try {
+      await redis.del(key)
+    } catch (error) {
+      console.error(`Redis reset rate limit error for key "${key}":`, error)
+    }
+  },
+}

@@ -117,6 +117,19 @@ export const loginSchema = z
       description:
         "User's password - must contain uppercase, lowercase, number, and special character",
     }),
+    // Additional fields for security tracking
+    ipAddress: z.string().optional().openapi({
+      example: "192.168.1.1",
+      description: "Client IP address for security tracking",
+    }),
+    userAgent: z.string().optional().openapi({
+      example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      description: "Client user agent for security tracking",
+    }),
+    deviceId: z.string().optional().openapi({
+      example: "device-123",
+      description: "Client device identifier for security tracking",
+    }),
   })
   .openapi("LoginRequest")
 
@@ -151,6 +164,19 @@ export const registerSchema = z
     phone: z.string().optional().openapi({
       example: "+1234567890",
       description: "User's phone number",
+    }),
+    // Additional fields for security tracking
+    ipAddress: z.string().optional().openapi({
+      example: "192.168.1.1",
+      description: "Client IP address for security tracking",
+    }),
+    userAgent: z.string().optional().openapi({
+      example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      description: "Client user agent for security tracking",
+    }),
+    deviceId: z.string().optional().openapi({
+      example: "device-123",
+      description: "Client device identifier for security tracking",
     }),
   })
   .openapi("RegisterRequest")

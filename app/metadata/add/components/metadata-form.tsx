@@ -83,12 +83,8 @@ const GeneralInfoForm = dynamic(() => import("./general-info-form"), {
   ssr: false,
 })
 
-const TechnicalDetailsForm = dynamic(() => import("./technical-details-form"), {
-  loading: () => (
-    <FormSectionLoader label="Loading Technical Details Form..." />
-  ),
-  ssr: false,
-})
+// Replace the dynamic import with direct import
+import TechnicalDetailsForm from "./technical-details-form"
 
 const DataQualityForm = dynamic(() => import("./data-quality-form"), {
   loading: () => <FormSectionLoader label="Loading Data Quality Form..." />,

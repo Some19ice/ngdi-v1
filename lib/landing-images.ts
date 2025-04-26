@@ -1,9 +1,24 @@
 export const landingImages = [
   {
-    src: "/images/landing/Minister.jpeg",
-    alt: "Alhaji Abubakar Atiku Bagudu, Minister Of Budget and Economic Planning of Nigeria",
+    src: "/images/landing/Minister-Budget-and-planning.jpeg",
+    alt: "Minister Of Budget And Planning",
+    caption: "Alhaji Abubakar Atiku Bagudu, Minister Of Budget And Planning",
+  },
+  {
+    src: "/images/landing/DG-Dr-Mattew-Adepoju.webp",
+    alt: "DG NASRDA",
+    caption: "Dr. Mattew Adepoju, Director General NASRDA",
+  },
+  {
+    src: "/images/landing/Minister-Uche-Nnaji.jpg",
+    alt: "Minister Of Science And Technology",
     caption:
-      "Alhaji Abubakar Atiku Bagudu, Minister Of Budget and Economic Planning of Nigeria",
+      "Chief Uche Geoffery Nnaji, Minister Of Innovation, Science And Technology",
+  },
+  {
+    src: "/images/landing/Dr.-Alaga-Taofik-Abayomi.jpg",
+    alt: "Dr. Alaga Taofik Abayomi",
+    caption: "Dr. Alaga Taofik Abayomi, Director MPSDM NASRDA",
   },
   {
     src: "/images/landing/Director1.jpeg",

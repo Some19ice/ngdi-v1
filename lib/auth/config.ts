@@ -11,10 +11,6 @@ export const protectedRoutes: ProtectedRoute[] = [
     roles: [UserRole.ADMIN, UserRole.NODE_OFFICER],
   },
   {
-    path: "/admin",
-    roles: [UserRole.ADMIN],
-  },
-  {
     path: "/profile",
     roles: [UserRole.USER, UserRole.NODE_OFFICER, UserRole.ADMIN],
   },
