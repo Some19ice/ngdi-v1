@@ -1,6 +1,0 @@
-export { NewsCard } from "./news-card"
-export { NewsEditor } from "./news-editor"
-export { NewsFilters } from "./news-filters"
-export { NewsList } from "./news-list"
-export { NewsListWrapper } from "./news-list-wrapper"
-export * from "./types"

@@ -10,6 +10,8 @@ coverage
 .coverage
 test-results
 playwright-report
+vitest-report
+.vitest-cache
 
 # next.js
 .next
@@ -43,6 +45,8 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+.bolt/
+.cursor/
 
 # logs
 *.log
@@ -55,3 +59,15 @@ next-env.d.ts
 
 # Prisma
 .prisma/client
+
+# Supabase
+.supabase/
+
+# Package locks
+package-lock.json.bak
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Cache
+.cache/
+**/.cache/
