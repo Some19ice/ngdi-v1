@@ -17,15 +17,17 @@ import { UserRole } from "../types/auth.types"
 import { emailService } from "../services/email.service"
 import { AuthService } from "../services/auth.service"
 import { HTTPException } from "hono/http-exception"
-import { authMiddleware } from "../middleware/auth"
+import { authMiddleware } from "../middleware/auth.middleware"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import { setCookieWithOptions, clearCookie } from "../utils/cookie.utils"
 import { rateLimit } from "../middleware/rate-limit.middleware"
 import { redisService } from "../services/redis.service"
+import csrf from "../middleware/csrf"
 import {
   securityLogService,
   SecurityEventType,
 } from "../services/security-log.service"
+
 import {
   loginSchema,
   registerSchema,
@@ -34,9 +36,14 @@ import {
   resetPasswordSchema,
   forgotPasswordSchema,
 } from "../types/auth.types"
+
 import * as jose from "jose"
 import { Variables } from "../types/hono.types"
 import { ErrorHandler } from "hono"
+import { config } from "../config"
+
+// Create CSRF protection middleware
+const csrfProtection = csrf()
 
 // Create auth router
 const auth = new Hono<{ Variables: Variables }>()
@@ -918,69 +925,6 @@ auth.get("/csrf-token", async (c) => {
   }
 })
 
-// CSRF token validation middleware
-const csrfProtection = async (c: any, next: any) => {
-  // Skip for GET, HEAD, OPTIONS requests
-  if (["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
-    return next()
-  }
-
-  try {
-    // Get the token from the request header
-    const csrfToken = c.req.header("X-CSRF-Token")
-
-    // Get the token from the cookie
-    const cookieHeader = c.req.raw.headers.get("cookie")
-    if (!cookieHeader) {
-      throw new AuthError(AuthErrorCode.INVALID_CSRF, "CSRF token missing", 403)
-    }
-
-    const cookies = cookieHeader.split(";")
-    const csrfCookie = cookies.find((cookie) =>
-      cookie.trim().startsWith("csrf_token=")
-    )
-
-    if (!csrfCookie) {
-      throw new AuthError(
-        AuthErrorCode.INVALID_CSRF,
-        "CSRF token cookie missing",
-        403
-      )
-    }
-
-    const cookieToken = csrfCookie.split("=")[1]
-
-    // Validate that the tokens match
-    if (!csrfToken || csrfToken !== cookieToken) {
-      // Log CSRF violation
-      await securityLogService.logCsrfViolation(
-        c.req.header("x-forwarded-for") ||
-          c.req.header("x-real-ip") ||
-          "unknown",
-        c.req.header("user-agent") || "unknown",
-        c.req.path
-      )
-
-      throw new AuthError(
-        AuthErrorCode.INVALID_CSRF,
-        "CSRF token validation failed",
-        403
-      )
-    }
-
-    // Continue to the next middleware/handler
-    await next()
-  } catch (error) {
-    console.error("CSRF validation error:", error)
-    if (error instanceof AuthError) {
-      throw error
-    }
-    throw new AuthError(
-      AuthErrorCode.INVALID_CSRF,
-      "CSRF protection error",
-      403
-    )
-  }
-}
+// CSRF token validation middleware is now imported from middleware/csrf.ts
 
 export default auth

@@ -5,13 +5,15 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'happy-dom',
+    environment: "happy-dom",
     globals: true,
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ["./tests/setup.ts"],
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      "@": resolve(__dirname, "./src"),
+      "@ngdi/test-utils": resolve(__dirname, "../test-utils/src"),
+      "@ngdi/types": resolve(__dirname, "../types/src"),
     },
   },
-});
+})

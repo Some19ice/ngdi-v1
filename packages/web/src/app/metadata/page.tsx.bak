@@ -1,0 +1,17 @@
+import { redirect } from "next/navigation"
+import { requireAuth } from "@/lib/auth"
+import { UserRole } from "@/lib/auth/constants"
+
+export default async function MetadataPage() {
+  // Server-side authentication check
+  const user = await requireAuth()
+
+  // Admins and node officers should go to metadata management
+  if (user.role === UserRole.ADMIN || user.role === UserRole.NODE_OFFICER) {
+    // Because (dashboard) is a route group, it doesn't affect the URL path
+    redirect("/metadata")
+  }
+
+  // For regular users, redirect to search page
+  redirect("/search")
+}

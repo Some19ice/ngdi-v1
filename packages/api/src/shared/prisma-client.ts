@@ -1,38 +1,15 @@
 /**
  * Prisma client export that maintains compatibility with existing code
- * while using the root Prisma schema.
+ * while using the shared Prisma client from the db package.
  *
  * This avoids schema duplication and ensures consistency across the application.
  */
 
-// PrismaClient is reused to avoid connection limit exhaustion
-import { PrismaClient } from "@prisma/client"
+// Import the shared Prisma client from the db package
+import { prisma } from "@ngdi/db"
 
-// Create singleton Prisma client with retry logic
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-
-// Configure Prisma client with connection retry logic
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  })
-}
-
-// Use existing instance or create a new one
-export const prisma = globalForPrisma.prisma || prismaClientSingleton()
-
-// Prevent multiple instances in development
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-}
+// Export the prisma client
+export { prisma }
 
 // Connect to the database with better error handling
 const connectWithRetry = async (retries = 5, delay = 2000) => {
