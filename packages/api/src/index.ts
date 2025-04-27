@@ -5,11 +5,13 @@ import { secureHeaders } from "hono/secure-headers"
 import { prettyJSON } from "hono/pretty-json"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { swaggerUI } from "@hono/swagger-ui"
+// Import router implementations
 import authRouter from "./routes/auth.routes"
-import userRouter from "./routes/user.routes"
+import { userRouter } from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
 import searchRouter from "./routes/search.routes"
 import adminRouter from "./routes/admin.routes"
+import dashboardStatsRouter from "./routes/admin/dashboard-stats"
 import permissionsRouter from "./routes/permissions"
 import rolesRouter from "./routes/roles"
 import userPermissionsRouter from "./routes/user-permissions"
@@ -57,10 +59,28 @@ app.use("*", logger())
 app.use(
   "*",
   cors({
-    origin: config.cors.origin,
+    origin: (origin) => {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return true
+
+      // Always allow localhost origins for development
+      if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+        return true
+      }
+
+      // Check configured origins
+      return (
+        config.cors.origin.includes(origin) || config.cors.origin.includes("*")
+      )
+    },
     allowMethods: config.cors.methods,
-    allowHeaders: config.cors.allowedHeaders,
-    exposeHeaders: ["Content-Length", "X-Request-ID"],
+    allowHeaders: [
+      ...config.cors.allowedHeaders,
+      "Accept",
+      "Content-Type",
+      "Authorization",
+    ],
+    exposeHeaders: ["Content-Length", "X-Request-ID", "X-CSRF-Token"],
     credentials: true, // Allow cookies to be sent with requests
     maxAge: 86400, // 24 hours
   })
@@ -81,6 +101,7 @@ apiRouter.route("/users", userRouter)
 apiRouter.route("/metadata", metadataRouter)
 apiRouter.route("/search", searchRouter)
 apiRouter.route("/admin", adminRouter)
+apiRouter.route("/admin/dashboard-stats", dashboardStatsRouter)
 
 // Mount permission system routes
 apiRouter.route("/permissions", permissionsRouter)
@@ -103,21 +124,80 @@ app.get(
 
 // Start the server in non-production environments
 if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
-  const port = config.port || 3001
+  const startServer = async (initialPort: number) => {
+    let port = initialPort
+    let maxAttempts = 10 // Increased max attempts
+    let attempts = 0
 
-  // Start the server even if there are database connection issues
-  try {
-    console.log(`API server is running on port ${port}`)
+    // Define a range of ports to try
+    const portRange = Array.from(
+      { length: maxAttempts },
+      (_, i) => initialPort + i
+    )
 
-    serve({
-      fetch: app.fetch,
-      port,
-    })
+    // First check if any ports are already in use
+    console.log(`Checking available ports starting from ${initialPort}...`)
 
-    console.log("API: Server startup complete - ready to accept connections")
-  } catch (error) {
-    console.error("Failed to start server:", error)
+    for (const currentPort of portRange) {
+      if (attempts >= maxAttempts) break
+
+      try {
+        console.log(`Attempting to start API server on port ${currentPort}`)
+
+        // Create server with error handling
+        const server = await serve({
+          fetch: app.fetch,
+          port: currentPort,
+          onError: (err) => {
+            console.error(`Server error on port ${currentPort}:`, err)
+          },
+        })
+
+        // If we get here, the server started successfully
+        console.log(`✅ API server is running on port ${currentPort}`)
+        console.log(
+          `API: Server startup complete - ready to accept connections`
+        )
+
+        // Export the port for other modules to use
+        process.env.API_PORT = String(currentPort)
+
+        // Return the server instance
+        return server
+      } catch (error: any) {
+        attempts++
+
+        // Check if the error is due to the port being in use
+        if (error.code === "EADDRINUSE") {
+          console.warn(
+            `Port ${currentPort} is already in use, trying next port...`
+          )
+          // Continue to next port in the loop
+        } else {
+          // For other errors, log and try the next port
+          console.error(`Failed to start server on port ${currentPort}:`, error)
+          // Continue to next port in the loop
+        }
+      }
+    }
+
+    // If we get here, all attempts failed
+    throw new Error(
+      `Failed to start server after trying ${attempts} ports starting from ${initialPort}`
+    )
   }
+
+  // Start the server with the configured port and handle errors properly
+  startServer(config.port || 3001)
+    .then((server) => {
+      // Add any post-startup tasks here
+      console.log(`API server is ready to handle requests`)
+    })
+    .catch((error) => {
+      console.error("Failed to start API server:", error)
+      // Exit with error code to indicate startup failure
+      process.exit(1)
+    })
 }
 
 // Export app for use in Vercel serverless functions and other environments

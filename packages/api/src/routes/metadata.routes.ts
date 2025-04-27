@@ -1,6 +1,11 @@
 import { Hono } from "hono"
 import { metadataService } from "../services/metadata.service"
-import { authMiddleware } from "../middleware/auth.middleware"
+import { 
+  authMiddleware, 
+  requirePermission, 
+  requireOwnership,
+  requireAnyPermission
+} from "../middleware"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
 import {
@@ -11,12 +16,25 @@ import { UserRole } from "../types/auth.types"
 import { Context } from "../types/hono.types"
 import { prisma } from "../lib/prisma"
 import { SafeJSON } from "../utils/json-serializer"
+import {
+  METADATA_CREATE,
+  METADATA_READ,
+  METADATA_UPDATE,
+  METADATA_DELETE,
+  METADATA_APPROVE,
+  METADATA_REJECT,
+  METADATA_PUBLISH,
+  METADATA_UNPUBLISH,
+  METADATA_SUBMIT_FOR_REVIEW,
+  METADATA_VALIDATE
+} from "../constants/permissions"
 
 const metadata = new Hono<{
   Variables: {
     userId: string
     userEmail: string
     userRole: UserRole
+    user: any
   }
 }>()
 
@@ -71,14 +89,8 @@ const metadataSchema = z.object({
 /**
  * Metadata routes
  */
-// Demo mode bypass auth middleware and set mock user
-metadata.use("*", async (c, next) => {
-  console.log("[DEMO MODE] Skipping authentication for metadata routes")
-  c.set("userId", "demo-user-id")
-  c.set("userEmail", "demo@example.com")
-  c.set("userRole", UserRole.ADMIN)
-  return next()
-})
+// Apply authentication middleware to all routes
+metadata.use("*", authMiddleware)
 
 /**
  * @openapi
@@ -108,18 +120,23 @@ metadata.use("*", async (c, next) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-metadata.post("/", zValidator("json", metadataSchema), async (c) => {
-  const userId = c.get("userId")
-  const data = await c.req.json()
-  const result = await metadataService.createMetadata(data, userId)
+metadata.post(
+  "/", 
+  requirePermission(METADATA_CREATE.action, METADATA_CREATE.subject),
+  zValidator("json", metadataSchema), 
+  async (c) => {
+    const userId = c.get("userId")
+    const data = await c.req.json()
+    const result = await metadataService.createMetadata(data, userId)
 
-  // Use SafeJSON to handle BigInt values
-  return new Response(SafeJSON.stringify(result), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-})
+    // Use SafeJSON to handle BigInt values
+    return new Response(SafeJSON.stringify(result), {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  }
+)
 
 /**
  * @openapi
@@ -150,30 +167,35 @@ metadata.post("/", zValidator("json", metadataSchema), async (c) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-metadata.get("/:id", zValidator("param", MetadataIdParamSchema), async (c) => {
-  const { id } = c.req.valid("param")
+metadata.get(
+  "/:id", 
+  requirePermission(METADATA_READ.action, METADATA_READ.subject),
+  zValidator("param", MetadataIdParamSchema), 
+  async (c) => {
+    const { id } = c.req.valid("param")
 
-  // Find the metadata by ID
-  const metadata = await prisma.metadata.findUnique({
-    where: { id },
-  })
+    // Find the metadata by ID
+    const metadata = await prisma.metadata.findUnique({
+      where: { id },
+    })
 
-  if (!metadata) {
-    return c.json({ error: "Metadata not found" }, 404)
-  }
-
-  // Use SafeJSON to handle BigInt values
-  return new Response(
-    SafeJSON.stringify({
-      metadata,
-    }),
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
     }
-  )
-})
+
+    // Use SafeJSON to handle BigInt values
+    return new Response(
+      SafeJSON.stringify({
+        metadata,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+  }
+)
 
 /**
  * @openapi
@@ -216,6 +238,14 @@ metadata.get("/:id", zValidator("param", MetadataIdParamSchema), async (c) => {
  */
 metadata.put(
   "/:id",
+  requirePermission(METADATA_UPDATE.action, METADATA_UPDATE.subject),
+  requireOwnership('metadata', async (c) => {
+    const { id } = c.req.param()
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    return metadata?.userId || ''
+  }),
   zValidator("param", MetadataIdParamSchema),
   zValidator("json", metadataSchema.partial()),
   async (c) => {
@@ -271,6 +301,14 @@ metadata.put(
  */
 metadata.delete(
   "/:id",
+  requirePermission(METADATA_DELETE.action, METADATA_DELETE.subject),
+  requireOwnership('metadata', async (c) => {
+    const { id } = c.req.param()
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    return metadata?.userId || ''
+  }),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
     const userId = c.get("userId")
@@ -340,42 +378,46 @@ metadata.delete(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-metadata.get("/search", async (c) => {
-  const {
-    page = "1",
-    limit = "10",
-    search,
-    category,
-    frameworkType,
-    dateFrom,
-    dateTo,
-  } = c.req.query()
+metadata.get(
+  "/search", 
+  requirePermission(METADATA_READ.action, METADATA_READ.subject),
+  async (c) => {
+    const {
+      page = "1",
+      limit = "10",
+      search,
+      category,
+      frameworkType,
+      dateFrom,
+      dateTo,
+    } = c.req.query()
 
-  const result = await metadataService.searchMetadata({
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10),
-    search,
-    category,
-    frameworkType,
-    dateFrom,
-    dateTo,
-    sortBy: "createdAt",
-    sortOrder: "desc",
-  })
+    const result = await metadataService.searchMetadata({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search,
+      category,
+      frameworkType,
+      dateFrom,
+      dateTo,
+      sortBy: "createdAt",
+      sortOrder: "desc",
+    })
 
-  // Use SafeJSON to handle BigInt values
-  return new Response(
-    SafeJSON.stringify({
-      success: true,
-      data: result,
-    }),
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  )
-})
+    // Use SafeJSON to handle BigInt values
+    return new Response(
+      SafeJSON.stringify({
+        success: true,
+        data: result,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+  }
+)
 
 /**
  * @openapi
@@ -420,26 +462,507 @@ metadata.get("/search", async (c) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-metadata.get("/user", async (c) => {
-  const userId = c.get("userId")
-  const { page = "1", limit = "10", search, category } = c.req.query()
+metadata.get(
+  "/user", 
+  requirePermission(METADATA_READ.action, METADATA_READ.subject),
+  async (c) => {
+    const userId = c.get("userId")
+    const { page = "1", limit = "10", search, category } = c.req.query()
 
-  const result = await metadataService.getUserMetadata(userId, {
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10),
-    search,
-    category,
-    sortBy: "createdAt",
-    sortOrder: "desc",
-  })
+    const result = await metadataService.getUserMetadata(userId, {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search,
+      category,
+      sortBy: "createdAt",
+      sortOrder: "desc",
+    })
 
-  // Use SafeJSON to handle BigInt values
-  return new Response(SafeJSON.stringify(result), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-})
+    // Use SafeJSON to handle BigInt values
+    return new Response(SafeJSON.stringify(result), {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/submit-for-review:
+ *   post:
+ *     summary: Submit metadata for review
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     responses:
+ *       200:
+ *         description: Metadata submitted for review successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/submit-for-review",
+  requirePermission(METADATA_SUBMIT_FOR_REVIEW.action, METADATA_SUBMIT_FOR_REVIEW.subject),
+  requireOwnership('metadata', async (c) => {
+    const { id } = c.req.param()
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    return metadata?.userId || ''
+  }),
+  zValidator("param", MetadataIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Update metadata status to PENDING_REVIEW
+    await prisma.metadata.update({
+      where: { id },
+      data: {
+        validationStatus: "PENDING_REVIEW"
+      }
+    })
+    
+    return c.json({ 
+      success: true,
+      message: "Metadata submitted for review successfully" 
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/approve:
+ *   post:
+ *     summary: Approve metadata
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     responses:
+ *       200:
+ *         description: Metadata approved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/approve",
+  requirePermission(METADATA_APPROVE.action, METADATA_APPROVE.subject),
+  zValidator("param", MetadataIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Update metadata status to APPROVED
+    await prisma.metadata.update({
+      where: { id },
+      data: {
+        validationStatus: "APPROVED"
+      }
+    })
+    
+    return c.json({ 
+      success: true,
+      message: "Metadata approved successfully" 
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/reject:
+ *   post:
+ *     summary: Reject metadata
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for rejection
+ *     responses:
+ *       200:
+ *         description: Metadata rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/reject",
+  requirePermission(METADATA_REJECT.action, METADATA_REJECT.subject),
+  zValidator("param", MetadataIdParamSchema),
+  zValidator("json", z.object({
+    reason: z.string().min(1, "Rejection reason is required")
+  })),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    const { reason } = await c.req.json()
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Update metadata status to REJECTED
+    await prisma.metadata.update({
+      where: { id },
+      data: {
+        validationStatus: "REJECTED",
+        rejectionReason: reason
+      }
+    })
+    
+    return c.json({ 
+      success: true,
+      message: "Metadata rejected successfully" 
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/publish:
+ *   post:
+ *     summary: Publish metadata
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     responses:
+ *       200:
+ *         description: Metadata published successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/publish",
+  requirePermission(METADATA_PUBLISH.action, METADATA_PUBLISH.subject),
+  zValidator("param", MetadataIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Check if metadata is approved
+    if (metadata.validationStatus !== "APPROVED") {
+      return c.json({ 
+        error: "Metadata must be approved before publishing" 
+      }, 400)
+    }
+    
+    // Update metadata status to PUBLISHED
+    await prisma.metadata.update({
+      where: { id },
+      data: {
+        validationStatus: "PUBLISHED",
+        publishedAt: new Date()
+      }
+    })
+    
+    return c.json({ 
+      success: true,
+      message: "Metadata published successfully" 
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/unpublish:
+ *   post:
+ *     summary: Unpublish metadata
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     responses:
+ *       200:
+ *         description: Metadata unpublished successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/unpublish",
+  requirePermission(METADATA_UNPUBLISH.action, METADATA_UNPUBLISH.subject),
+  zValidator("param", MetadataIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Check if metadata is published
+    if (metadata.validationStatus !== "PUBLISHED") {
+      return c.json({ 
+        error: "Metadata is not currently published" 
+      }, 400)
+    }
+    
+    // Update metadata status to APPROVED (unpublished but still approved)
+    await prisma.metadata.update({
+      where: { id },
+      data: {
+        validationStatus: "APPROVED",
+        publishedAt: null
+      }
+    })
+    
+    return c.json({ 
+      success: true,
+      message: "Metadata unpublished successfully" 
+    })
+  }
+)
+
+/**
+ * @openapi
+ * /api/metadata/{id}/validate:
+ *   post:
+ *     summary: Validate metadata
+ *     tags: [Metadata]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Metadata ID
+ *     responses:
+ *       200:
+ *         description: Metadata validation results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 validationResults:
+ *                   type: object
+ *                   properties:
+ *                     isValid:
+ *                       type: boolean
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           field:
+ *                             type: string
+ *                           message:
+ *                             type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+metadata.post(
+  "/:id/validate",
+  requirePermission(METADATA_VALIDATE.action, METADATA_VALIDATE.subject),
+  zValidator("param", MetadataIdParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param")
+    
+    // Check if metadata exists
+    const metadata = await prisma.metadata.findUnique({
+      where: { id }
+    })
+    
+    if (!metadata) {
+      return c.json({ error: "Metadata not found" }, 404)
+    }
+    
+    // Perform validation (this would be a more complex function in a real implementation)
+    const validationResults = {
+      isValid: true,
+      errors: []
+    }
+    
+    // Check required fields
+    const requiredFields = [
+      'title', 'author', 'organization', 'abstract', 'purpose',
+      'coordinateSystem', 'projection', 'scale'
+    ]
+    
+    for (const field of requiredFields) {
+      if (!metadata[field]) {
+        validationResults.isValid = false
+        validationResults.errors.push({
+          field,
+          message: `${field} is required`
+        })
+      }
+    }
+    
+    // Update metadata validation status based on results
+    if (validationResults.isValid) {
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "VALIDATED",
+          lastValidatedAt: new Date()
+        }
+      })
+    }
+    
+    return c.json({ 
+      success: true,
+      validationResults
+    })
+  }
+)
 
 // Export the router
 export { metadata }
