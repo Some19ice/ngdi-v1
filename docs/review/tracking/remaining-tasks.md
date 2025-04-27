@@ -55,6 +55,14 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [ ] Ensure all routes require proper authentication
   - [ ] Update tests to work without demo mode
 
+- [x] Resolve circular dependencies:
+  - [x] Identify circular dependencies between packages
+  - [x] Create a plan to resolve circular dependencies
+  - [x] Create a new `@ngdi/common` package for shared utilities
+  - [x] Move the `cn` utility function from UI package to common package
+  - [x] Update package dependencies to use the common package
+  - [ ] Test changes to ensure functionality is maintained
+
 - [ ] Standardize API client usage:
   - [x] Create standardized API client structure
   - [x] Implement proper error handling for API calls
@@ -157,7 +165,8 @@ This document outlines the remaining tasks to complete the implementation of rec
 
 1. ✅ Complete error handling standardization across all routes
 2. ✅ Unify database schema and migrate to Supabase
-3. Remove all mock data and demo mode implementations
-4. Implement authentication enhancements (CSRF, rate limiting)
-5. Improve testing infrastructure and coverage
-6. Enhance API documentation
+3. ✅ Remove all mock data and demo mode implementations
+4. ✅ Resolve circular dependencies between packages
+5. Implement authentication enhancements (CSRF, rate limiting)
+6. Improve testing infrastructure and coverage
+7. Enhance API documentation

@@ -1,0 +1,21 @@
+{
+  "name": "@ngdi/common",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src",
+    "clean": "rm -rf node_modules dist"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "tsup": "^7.0.0",
+    "eslint": "^8.49.0"
+  }
+}

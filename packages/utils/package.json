@@ -13,6 +13,7 @@
     "clean": "rm -rf node_modules dist"
   },
   "dependencies": {
+    "@ngdi/common": "0.1.0",
     "@ngdi/types": "0.1.0"
   },
   "devDependencies": {

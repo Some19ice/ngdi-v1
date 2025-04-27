@@ -23,6 +23,7 @@
     "@hono/swagger-ui": "^0.2.2",
     "@hono/zod-openapi": "^0.19.2",
     "@hono/zod-validator": "^0.1.11",
+    "@ngdi/common": "0.1.0",
     "@ngdi/db": "0.1.0",
     "@ngdi/types": "0.1.0",
     "@ngdi/utils": "0.1.0",
