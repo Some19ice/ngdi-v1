@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { metadataService } from "../services/metadata.service"
 import { authMiddleware } from "../middleware/auth.middleware"
+import { ErrorHandlingService } from "../services/error-handling.service"
 
 const searchRouter = new Hono()
 
@@ -34,14 +35,7 @@ searchRouter.get("/metadata", async (c) => {
       data: result,
     })
   } catch (error) {
-    console.error("Public search error:", error)
-    return c.json(
-      {
-        success: false,
-        error: "Failed to search metadata",
-      },
-      500
-    )
+    return ErrorHandlingService.handleError(error, c)
   }
 })
 

@@ -1,15 +1,11 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { z } from "zod"
 import { prisma } from "../../lib/prisma"
-import { 
-  authMiddleware, 
-  requirePermission 
-} from "../../middleware"
-import { 
-  PERMISSION_READ, 
-  PERMISSION_ASSIGN 
-} from "../../constants/permissions"
+import { authMiddleware, requirePermission } from "../../middleware"
+import { PERMISSION_READ, PERMISSION_ASSIGN } from "../../constants/permissions"
 import { getAllPermissionsForUser } from "../../utils/permissions"
+import { ErrorHandlingService } from "../../services/error-handling.service"
+import { ApiError, ErrorCode } from "../../middleware/error-handler"
 
 // Create user permissions router
 const userPermissionsRouter = new OpenAPIHono()
@@ -22,7 +18,7 @@ const userPermissionSchema = z.object({
   permissionId: z.string(),
   granted: z.boolean().default(true),
   conditions: z.any().optional(),
-  expiresAt: z.string().datetime().optional()
+  expiresAt: z.string().datetime().optional(),
 })
 
 // User permission response schema
@@ -39,8 +35,8 @@ const userPermissionResponseSchema = z.object({
     name: z.string(),
     action: z.string(),
     subject: z.string(),
-    description: z.string().nullable()
-  })
+    description: z.string().nullable(),
+  }),
 })
 
 // Get user permissions
@@ -53,8 +49,8 @@ userPermissionsRouter.openapi(
     description: "Get permissions for a user",
     request: {
       params: z.object({
-        userId: z.string()
-      })
+        userId: z.string(),
+      }),
     },
     responses: {
       200: {
@@ -63,78 +59,82 @@ userPermissionsRouter.openapi(
           "application/json": {
             schema: z.object({
               directPermissions: z.array(userPermissionResponseSchema),
-              allPermissions: z.array(z.object({
-                id: z.string(),
-                name: z.string(),
-                action: z.string(),
-                subject: z.string(),
-                description: z.string().nullable(),
-                source: z.enum(["role", "direct"])
-              }))
-            })
-          }
-        }
+              allPermissions: z.array(
+                z.object({
+                  id: z.string(),
+                  name: z.string(),
+                  action: z.string(),
+                  subject: z.string(),
+                  description: z.string().nullable(),
+                  source: z.enum(["role", "direct"]),
+                })
+              ),
+            }),
+          },
+        },
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "User not found"
-      }
-    }
+        description: "User not found",
+      },
+    },
   }),
   async (c) => {
-    // Check if user has permission to read permissions
-    await requirePermission(PERMISSION_READ.action, PERMISSION_READ.subject)(c, async () => {})
-
-    const { userId } = c.req.param()
-
     try {
+      // Check if user has permission to read permissions
+      await requirePermission(PERMISSION_READ.action, PERMISSION_READ.subject)(
+        c,
+        async () => {}
+      )
+
+      const { userId } = c.req.param()
+
       // Check if the user exists
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       })
 
       if (!user) {
-        return c.json({ error: "User not found" }, 404)
+        throw new ApiError("User not found", 404, ErrorCode.NOT_FOUND)
       }
 
       // Get direct permissions
       const directPermissions = await prisma.userPermission.findMany({
-        where: { 
+        where: {
           userId,
           granted: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         include: {
-          permission: true
-        }
+          permission: true,
+        },
       })
 
       // Get all permissions (including role permissions)
       const allPermissions = await getAllPermissionsForUser(userId)
-      
+
       // Transform all permissions to include source
-      const transformedAllPermissions = allPermissions.map(permission => {
-        const isDirect = directPermissions.some(dp => dp.permissionId === permission.id)
+      const transformedAllPermissions = allPermissions.map((permission) => {
+        const isDirect = directPermissions.some(
+          (dp) => dp.permissionId === permission.id
+        )
         return {
           ...permission,
-          source: isDirect ? "direct" : "role"
+          source: isDirect ? "direct" : "role",
         }
       })
 
       return c.json({
         directPermissions,
-        allPermissions: transformedAllPermissions
+        allPermissions: transformedAllPermissions,
       })
     } catch (error) {
-      return c.json({ error: "Failed to get user permissions" }, 500)
+      return ErrorHandlingService.handleError(error, c)
     }
   }
 )
@@ -149,63 +149,66 @@ userPermissionsRouter.openapi(
     description: "Grant a permission to a user",
     request: {
       params: z.object({
-        userId: z.string()
+        userId: z.string(),
       }),
       body: {
         content: {
           "application/json": {
-            schema: userPermissionSchema
-          }
-        }
-      }
+            schema: userPermissionSchema,
+          },
+        },
+      },
     },
     responses: {
       201: {
         description: "Permission granted",
         content: {
           "application/json": {
-            schema: userPermissionResponseSchema
-          }
-        }
+            schema: userPermissionResponseSchema,
+          },
+        },
       },
       400: {
-        description: "Invalid input"
+        description: "Invalid input",
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "User or permission not found"
-      }
-    }
+        description: "User or permission not found",
+      },
+    },
   }),
   async (c) => {
-    // Check if user has permission to assign permissions
-    await requirePermission(PERMISSION_ASSIGN.action, PERMISSION_ASSIGN.subject)(c, async () => {})
-
-    const { userId } = c.req.param()
-    const data = await c.req.json()
-
     try {
+      // Check if user has permission to assign permissions
+      await requirePermission(
+        PERMISSION_ASSIGN.action,
+        PERMISSION_ASSIGN.subject
+      )(c, async () => {})
+
+      const { userId } = c.req.param()
+      const data = await c.req.json()
+
       // Check if the user exists
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       })
 
       if (!user) {
-        return c.json({ error: "User not found" }, 404)
+        throw new ApiError("User not found", 404, ErrorCode.NOT_FOUND)
       }
 
       // Check if the permission exists
       const permission = await prisma.permission.findUnique({
-        where: { id: data.permissionId }
+        where: { id: data.permissionId },
       })
 
       if (!permission) {
-        return c.json({ error: "Permission not found" }, 404)
+        throw new ApiError("Permission not found", 404, ErrorCode.NOT_FOUND)
       }
 
       // Create or update the user permission
@@ -213,29 +216,29 @@ userPermissionsRouter.openapi(
         where: {
           userId_permissionId: {
             userId,
-            permissionId: data.permissionId
-          }
+            permissionId: data.permissionId,
+          },
         },
         update: {
           granted: data.granted,
           conditions: data.conditions,
-          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         },
         create: {
           userId,
           permissionId: data.permissionId,
           granted: data.granted,
           conditions: data.conditions,
-          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         },
         include: {
-          permission: true
-        }
+          permission: true,
+        },
       })
 
       return c.json(userPermission, 201)
     } catch (error) {
-      return c.json({ error: "Failed to grant permission to user" }, 500)
+      return ErrorHandlingService.handleError(error, c)
     }
   }
 )
@@ -251,8 +254,8 @@ userPermissionsRouter.openapi(
     request: {
       params: z.object({
         userId: z.string(),
-        permissionId: z.string()
-      })
+        permissionId: z.string(),
+      }),
     },
     responses: {
       200: {
@@ -260,41 +263,48 @@ userPermissionsRouter.openapi(
         content: {
           "application/json": {
             schema: z.object({
-              message: z.string()
-            })
-          }
-        }
+              message: z.string(),
+            }),
+          },
+        },
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "User permission not found"
-      }
-    }
+        description: "User permission not found",
+      },
+    },
   }),
   async (c) => {
-    // Check if user has permission to assign permissions
-    await requirePermission(PERMISSION_ASSIGN.action, PERMISSION_ASSIGN.subject)(c, async () => {})
-
-    const { userId, permissionId } = c.req.param()
-
     try {
+      // Check if user has permission to assign permissions
+      await requirePermission(
+        PERMISSION_ASSIGN.action,
+        PERMISSION_ASSIGN.subject
+      )(c, async () => {})
+
+      const { userId, permissionId } = c.req.param()
+
       // Check if the user permission exists
       const userPermission = await prisma.userPermission.findUnique({
         where: {
           userId_permissionId: {
             userId,
-            permissionId
-          }
-        }
+            permissionId,
+          },
+        },
       })
 
       if (!userPermission) {
-        return c.json({ error: "User permission not found" }, 404)
+        throw new ApiError(
+          "User permission not found",
+          404,
+          ErrorCode.NOT_FOUND
+        )
       }
 
       // Delete the user permission
@@ -302,14 +312,17 @@ userPermissionsRouter.openapi(
         where: {
           userId_permissionId: {
             userId,
-            permissionId
-          }
-        }
+            permissionId,
+          },
+        },
       })
 
-      return c.json({ message: "Permission revoked successfully" })
+      return c.json({
+        success: true,
+        message: "Permission revoked successfully",
+      })
     } catch (error) {
-      return c.json({ error: "Failed to revoke permission from user" }, 500)
+      return ErrorHandlingService.handleError(error, c)
     }
   }
 )
@@ -330,11 +343,11 @@ userPermissionsRouter.openapi(
               userId: z.string(),
               action: z.string(),
               subject: z.string(),
-              resource: z.any().optional()
-            })
-          }
-        }
-      }
+              resource: z.any().optional(),
+            }),
+          },
+        },
+      },
     },
     responses: {
       200: {
@@ -343,36 +356,39 @@ userPermissionsRouter.openapi(
           "application/json": {
             schema: z.object({
               granted: z.boolean(),
-              reason: z.string().optional()
-            })
-          }
-        }
+              reason: z.string().optional(),
+            }),
+          },
+        },
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "User not found"
-      }
-    }
+        description: "User not found",
+      },
+    },
   }),
   async (c) => {
-    // Check if user has permission to read permissions
-    await requirePermission(PERMISSION_READ.action, PERMISSION_READ.subject)(c, async () => {})
-
-    const { userId, action, subject, resource } = await c.req.json()
-
     try {
+      // Check if user has permission to read permissions
+      await requirePermission(PERMISSION_READ.action, PERMISSION_READ.subject)(
+        c,
+        async () => {}
+      )
+
+      const { userId, action, subject, resource } = await c.req.json()
+
       // Check if the user exists
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       })
 
       if (!user) {
-        return c.json({ error: "User not found" }, 404)
+        throw new ApiError("User not found", 404, ErrorCode.NOT_FOUND)
       }
 
       // Import the hasPermission function
@@ -383,7 +399,7 @@ userPermissionsRouter.openapi(
 
       return c.json(result)
     } catch (error) {
-      return c.json({ error: "Failed to check permission" }, 500)
+      return ErrorHandlingService.handleError(error, c)
     }
   }
 )

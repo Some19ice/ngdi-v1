@@ -1,10 +1,10 @@
 import { Hono } from "hono"
 import { metadataService } from "../services/metadata.service"
-import { 
-  authMiddleware, 
-  requirePermission, 
+import {
+  authMiddleware,
+  requirePermission,
   requireOwnership,
-  requireAnyPermission
+  requireAnyPermission,
 } from "../middleware"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
@@ -16,6 +16,8 @@ import { UserRole } from "../types/auth.types"
 import { Context } from "../types/hono.types"
 import { prisma } from "../lib/prisma"
 import { SafeJSON } from "../utils/json-serializer"
+import { ErrorHandlingService } from "../services/error-handling.service"
+import { ApiError, ErrorCode } from "../middleware/error-handler"
 import {
   METADATA_CREATE,
   METADATA_READ,
@@ -26,7 +28,7 @@ import {
   METADATA_PUBLISH,
   METADATA_UNPUBLISH,
   METADATA_SUBMIT_FOR_REVIEW,
-  METADATA_VALIDATE
+  METADATA_VALIDATE,
 } from "../constants/permissions"
 
 const metadata = new Hono<{
@@ -121,20 +123,24 @@ metadata.use("*", authMiddleware)
  *         $ref: '#/components/responses/InternalServerError'
  */
 metadata.post(
-  "/", 
+  "/",
   requirePermission(METADATA_CREATE.action, METADATA_CREATE.subject),
-  zValidator("json", metadataSchema), 
+  zValidator("json", metadataSchema),
   async (c) => {
-    const userId = c.get("userId")
-    const data = await c.req.json()
-    const result = await metadataService.createMetadata(data, userId)
+    try {
+      const userId = c.get("userId")
+      const data = await c.req.json()
+      const result = await metadataService.createMetadata(data, userId)
 
-    // Use SafeJSON to handle BigInt values
-    return new Response(SafeJSON.stringify(result), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+      // Use SafeJSON to handle BigInt values
+      return new Response(SafeJSON.stringify(result), {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -168,32 +174,36 @@ metadata.post(
  *         $ref: '#/components/responses/InternalServerError'
  */
 metadata.get(
-  "/:id", 
+  "/:id",
   requirePermission(METADATA_READ.action, METADATA_READ.subject),
-  zValidator("param", MetadataIdParamSchema), 
+  zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
+    try {
+      const { id } = c.req.valid("param")
 
-    // Find the metadata by ID
-    const metadata = await prisma.metadata.findUnique({
-      where: { id },
-    })
+      // Find the metadata by ID
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
 
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-
-    // Use SafeJSON to handle BigInt values
-    return new Response(
-      SafeJSON.stringify({
-        metadata,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    )
+
+      // Use SafeJSON to handle BigInt values
+      return new Response(
+        SafeJSON.stringify({
+          metadata,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -239,27 +249,31 @@ metadata.get(
 metadata.put(
   "/:id",
   requirePermission(METADATA_UPDATE.action, METADATA_UPDATE.subject),
-  requireOwnership('metadata', async (c) => {
+  requireOwnership("metadata", async (c) => {
     const { id } = c.req.param()
     const metadata = await prisma.metadata.findUnique({
-      where: { id }
+      where: { id },
     })
-    return metadata?.userId || ''
+    return metadata?.userId || ""
   }),
   zValidator("param", MetadataIdParamSchema),
   zValidator("json", metadataSchema.partial()),
   async (c) => {
-    const userId = c.get("userId")
-    const { id } = c.req.valid("param")
-    const data = await c.req.json()
-    const result = await metadataService.updateMetadata(id, data, userId)
+    try {
+      const userId = c.get("userId")
+      const { id } = c.req.valid("param")
+      const data = await c.req.json()
+      const result = await metadataService.updateMetadata(id, data, userId)
 
-    // Use SafeJSON to handle BigInt values
-    return new Response(SafeJSON.stringify(result), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+      // Use SafeJSON to handle BigInt values
+      return new Response(SafeJSON.stringify(result), {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -302,19 +316,26 @@ metadata.put(
 metadata.delete(
   "/:id",
   requirePermission(METADATA_DELETE.action, METADATA_DELETE.subject),
-  requireOwnership('metadata', async (c) => {
+  requireOwnership("metadata", async (c) => {
     const { id } = c.req.param()
     const metadata = await prisma.metadata.findUnique({
-      where: { id }
+      where: { id },
     })
-    return metadata?.userId || ''
+    return metadata?.userId || ""
   }),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const userId = c.get("userId")
-    const { id } = c.req.valid("param")
-    await metadataService.deleteMetadata(id, userId)
-    return c.json({ message: "Metadata deleted successfully" })
+    try {
+      const userId = c.get("userId")
+      const { id } = c.req.valid("param")
+      await metadataService.deleteMetadata(id, userId)
+      return c.json({
+        success: true,
+        message: "Metadata deleted successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -379,43 +400,47 @@ metadata.delete(
  *         $ref: '#/components/responses/InternalServerError'
  */
 metadata.get(
-  "/search", 
+  "/search",
   requirePermission(METADATA_READ.action, METADATA_READ.subject),
   async (c) => {
-    const {
-      page = "1",
-      limit = "10",
-      search,
-      category,
-      frameworkType,
-      dateFrom,
-      dateTo,
-    } = c.req.query()
+    try {
+      const {
+        page = "1",
+        limit = "10",
+        search,
+        category,
+        frameworkType,
+        dateFrom,
+        dateTo,
+      } = c.req.query()
 
-    const result = await metadataService.searchMetadata({
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      search,
-      category,
-      frameworkType,
-      dateFrom,
-      dateTo,
-      sortBy: "createdAt",
-      sortOrder: "desc",
-    })
+      const result = await metadataService.searchMetadata({
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search,
+        category,
+        frameworkType,
+        dateFrom,
+        dateTo,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      })
 
-    // Use SafeJSON to handle BigInt values
-    return new Response(
-      SafeJSON.stringify({
-        success: true,
-        data: result,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    )
+      // Use SafeJSON to handle BigInt values
+      return new Response(
+        SafeJSON.stringify({
+          success: true,
+          data: result,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -463,27 +488,31 @@ metadata.get(
  *         $ref: '#/components/responses/InternalServerError'
  */
 metadata.get(
-  "/user", 
+  "/user",
   requirePermission(METADATA_READ.action, METADATA_READ.subject),
   async (c) => {
-    const userId = c.get("userId")
-    const { page = "1", limit = "10", search, category } = c.req.query()
+    try {
+      const userId = c.get("userId")
+      const { page = "1", limit = "10", search, category } = c.req.query()
 
-    const result = await metadataService.getUserMetadata(userId, {
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      search,
-      category,
-      sortBy: "createdAt",
-      sortOrder: "desc",
-    })
+      const result = await metadataService.getUserMetadata(userId, {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search,
+        category,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      })
 
-    // Use SafeJSON to handle BigInt values
-    return new Response(SafeJSON.stringify(result), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+      // Use SafeJSON to handle BigInt values
+      return new Response(SafeJSON.stringify(result), {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -525,39 +554,46 @@ metadata.get(
  */
 metadata.post(
   "/:id/submit-for-review",
-  requirePermission(METADATA_SUBMIT_FOR_REVIEW.action, METADATA_SUBMIT_FOR_REVIEW.subject),
-  requireOwnership('metadata', async (c) => {
+  requirePermission(
+    METADATA_SUBMIT_FOR_REVIEW.action,
+    METADATA_SUBMIT_FOR_REVIEW.subject
+  ),
+  requireOwnership("metadata", async (c) => {
     const { id } = c.req.param()
     const metadata = await prisma.metadata.findUnique({
-      where: { id }
+      where: { id },
     })
-    return metadata?.userId || ''
+    return metadata?.userId || ""
   }),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Update metadata status to PENDING_REVIEW
-    await prisma.metadata.update({
-      where: { id },
-      data: {
-        validationStatus: "PENDING_REVIEW"
+    try {
+      const { id } = c.req.valid("param")
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    })
-    
-    return c.json({ 
-      success: true,
-      message: "Metadata submitted for review successfully" 
-    })
+
+      // Update metadata status to PENDING_REVIEW
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "PENDING_REVIEW",
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Metadata submitted for review successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -602,29 +638,33 @@ metadata.post(
   requirePermission(METADATA_APPROVE.action, METADATA_APPROVE.subject),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Update metadata status to APPROVED
-    await prisma.metadata.update({
-      where: { id },
-      data: {
-        validationStatus: "APPROVED"
+    try {
+      const { id } = c.req.valid("param")
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    })
-    
-    return c.json({ 
-      success: true,
-      message: "Metadata approved successfully" 
-    })
+
+      // Update metadata status to APPROVED
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "APPROVED",
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Metadata approved successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -678,35 +718,42 @@ metadata.post(
   "/:id/reject",
   requirePermission(METADATA_REJECT.action, METADATA_REJECT.subject),
   zValidator("param", MetadataIdParamSchema),
-  zValidator("json", z.object({
-    reason: z.string().min(1, "Rejection reason is required")
-  })),
+  zValidator(
+    "json",
+    z.object({
+      reason: z.string().min(1, "Rejection reason is required"),
+    })
+  ),
   async (c) => {
-    const { id } = c.req.valid("param")
-    const { reason } = await c.req.json()
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Update metadata status to REJECTED
-    await prisma.metadata.update({
-      where: { id },
-      data: {
-        validationStatus: "REJECTED",
-        rejectionReason: reason
+    try {
+      const { id } = c.req.valid("param")
+      const { reason } = await c.req.json()
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    })
-    
-    return c.json({ 
-      success: true,
-      message: "Metadata rejected successfully" 
-    })
+
+      // Update metadata status to REJECTED
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "REJECTED",
+          rejectionReason: reason,
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Metadata rejected successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -751,37 +798,43 @@ metadata.post(
   requirePermission(METADATA_PUBLISH.action, METADATA_PUBLISH.subject),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Check if metadata is approved
-    if (metadata.validationStatus !== "APPROVED") {
-      return c.json({ 
-        error: "Metadata must be approved before publishing" 
-      }, 400)
-    }
-    
-    // Update metadata status to PUBLISHED
-    await prisma.metadata.update({
-      where: { id },
-      data: {
-        validationStatus: "PUBLISHED",
-        publishedAt: new Date()
+    try {
+      const { id } = c.req.valid("param")
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    })
-    
-    return c.json({ 
-      success: true,
-      message: "Metadata published successfully" 
-    })
+
+      // Check if metadata is approved
+      if (metadata.validationStatus !== "APPROVED") {
+        throw new ApiError(
+          "Metadata must be approved before publishing",
+          400,
+          ErrorCode.VALIDATION_ERROR
+        )
+      }
+
+      // Update metadata status to PUBLISHED
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "PUBLISHED",
+          publishedAt: new Date(),
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Metadata published successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -826,37 +879,43 @@ metadata.post(
   requirePermission(METADATA_UNPUBLISH.action, METADATA_UNPUBLISH.subject),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Check if metadata is published
-    if (metadata.validationStatus !== "PUBLISHED") {
-      return c.json({ 
-        error: "Metadata is not currently published" 
-      }, 400)
-    }
-    
-    // Update metadata status to APPROVED (unpublished but still approved)
-    await prisma.metadata.update({
-      where: { id },
-      data: {
-        validationStatus: "APPROVED",
-        publishedAt: null
+    try {
+      const { id } = c.req.valid("param")
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
       }
-    })
-    
-    return c.json({ 
-      success: true,
-      message: "Metadata unpublished successfully" 
-    })
+
+      // Check if metadata is published
+      if (metadata.validationStatus !== "PUBLISHED") {
+        throw new ApiError(
+          "Metadata is not currently published",
+          400,
+          ErrorCode.VALIDATION_ERROR
+        )
+      }
+
+      // Update metadata status to APPROVED (unpublished but still approved)
+      await prisma.metadata.update({
+        where: { id },
+        data: {
+          validationStatus: "APPROVED",
+          publishedAt: null,
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Metadata unpublished successfully",
+      })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
+    }
   }
 )
 
@@ -913,54 +972,64 @@ metadata.post(
   requirePermission(METADATA_VALIDATE.action, METADATA_VALIDATE.subject),
   zValidator("param", MetadataIdParamSchema),
   async (c) => {
-    const { id } = c.req.valid("param")
-    
-    // Check if metadata exists
-    const metadata = await prisma.metadata.findUnique({
-      where: { id }
-    })
-    
-    if (!metadata) {
-      return c.json({ error: "Metadata not found" }, 404)
-    }
-    
-    // Perform validation (this would be a more complex function in a real implementation)
-    const validationResults = {
-      isValid: true,
-      errors: []
-    }
-    
-    // Check required fields
-    const requiredFields = [
-      'title', 'author', 'organization', 'abstract', 'purpose',
-      'coordinateSystem', 'projection', 'scale'
-    ]
-    
-    for (const field of requiredFields) {
-      if (!metadata[field]) {
-        validationResults.isValid = false
-        validationResults.errors.push({
-          field,
-          message: `${field} is required`
+    try {
+      const { id } = c.req.valid("param")
+
+      // Check if metadata exists
+      const metadata = await prisma.metadata.findUnique({
+        where: { id },
+      })
+
+      if (!metadata) {
+        throw new ApiError("Metadata not found", 404, ErrorCode.NOT_FOUND)
+      }
+
+      // Perform validation (this would be a more complex function in a real implementation)
+      const validationResults = {
+        isValid: true,
+        errors: [],
+      }
+
+      // Check required fields
+      const requiredFields = [
+        "title",
+        "author",
+        "organization",
+        "abstract",
+        "purpose",
+        "coordinateSystem",
+        "projection",
+        "scale",
+      ]
+
+      for (const field of requiredFields) {
+        if (!metadata[field]) {
+          validationResults.isValid = false
+          validationResults.errors.push({
+            field,
+            message: `${field} is required`,
+          })
+        }
+      }
+
+      // Update metadata validation status based on results
+      if (validationResults.isValid) {
+        await prisma.metadata.update({
+          where: { id },
+          data: {
+            validationStatus: "VALIDATED",
+            lastValidatedAt: new Date(),
+          },
         })
       }
-    }
-    
-    // Update metadata validation status based on results
-    if (validationResults.isValid) {
-      await prisma.metadata.update({
-        where: { id },
-        data: {
-          validationStatus: "VALIDATED",
-          lastValidatedAt: new Date()
-        }
+
+      return c.json({
+        success: true,
+        validationResults,
       })
+    } catch (error) {
+      return ErrorHandlingService.handleError(error, c)
     }
-    
-    return c.json({ 
-      success: true,
-      validationResults
-    })
   }
 )
 

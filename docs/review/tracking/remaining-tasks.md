@@ -4,14 +4,14 @@ This document outlines the remaining tasks to complete the implementation of rec
 
 ## API Tasks
 
-- [ ] Update remaining route handlers to use the centralized error handling service:
+- [x] Update remaining route handlers to use the centralized error handling service:
   - [x] `packages/api/src/routes/auth.routes.ts`
-  - [ ] `packages/api/src/routes/metadata.routes.ts`
-  - [ ] `packages/api/src/routes/search.routes.ts`
-  - [ ] `packages/api/src/routes/permission-groups/index.ts`
-  - [ ] `packages/api/src/routes/permissions/index.ts`
-  - [ ] `packages/api/src/routes/user-permissions/index.ts`
-  - [ ] `packages/api/src/routes/activity-logs/index.ts`
+  - [x] `packages/api/src/routes/metadata.routes.ts`
+  - [x] `packages/api/src/routes/search.routes.ts`
+  - [x] `packages/api/src/routes/permission-groups/index.ts`
+  - [x] `packages/api/src/routes/permissions/index.ts`
+  - [x] `packages/api/src/routes/user-permissions/index.ts`
+  - [x] `packages/api/src/routes/activity-logs/index.ts`
 
 - [ ] Unify database schema:
   - [ ] Review all database models for consistency
@@ -138,7 +138,7 @@ This document outlines the remaining tasks to complete the implementation of rec
 
 ## Priority Order
 
-1. Complete error handling standardization across all routes
+1. ✅ Complete error handling standardization across all routes
 2. Remove all mock data and demo mode implementations
 3. Implement authentication enhancements (CSRF, rate limiting)
 4. Unify database schema and migrate to Supabase
