@@ -21,10 +21,10 @@ This document tracks the progress of implementing recommendations from the compr
 
 | ID | Recommendation | Status | Implementation Details |
 |----|---------------|--------|------------------------|
-| WEB-01 | Remove mock data implementations | ✅ Partially Completed | Removed `packages/web/src/lib/mock/news-data.ts`. More mock data files need to be removed. |
+| WEB-01 | Remove mock data implementations | ✅ Partially Completed | Removed `packages/web/src/lib/mock/news-data.ts`. Replaced mock data with API client implementations in documentation search and gallery pages. More mock data implementations need to be removed. |
 | WEB-02 | Disable demo mode | 🔄 In Progress | - |
-| WEB-03 | Standardize API client usage | 🔄 In Progress | - |
-| WEB-04 | Improve error handling in components | 🔄 In Progress | - |
+| WEB-03 | Standardize API client usage | ✅ Partially Completed | Created standardized API client implementations for documentation and gallery features. |
+| WEB-04 | Improve error handling in components | ✅ Partially Completed | Added proper error handling and loading states to gallery page. |
 | WEB-05 | Enhance form validation | 🔄 In Progress | - |
 | WEB-06 | Optimize component rendering | 🔄 In Progress | - |
 | WEB-07 | Implement proper authentication flow | 🔄 In Progress | - |
@@ -40,7 +40,7 @@ This document tracks the progress of implementing recommendations from the compr
 | AUTH-02 | Add rate limiting | 🔄 In Progress | - |
 | AUTH-03 | Enhance token security | 🔄 In Progress | - |
 | AUTH-04 | Implement account lockout | 🔄 In Progress | - |
-| AUTH-05 | Add comprehensive logging | ✅ Partially Completed | Enhanced error logging as part of the error handling service. |
+| AUTH-05 | Add comprehensive logging | ✅ Completed | Enhanced error logging as part of the error handling service. Standardized logging across all auth routes with proper context and security information. |
 | AUTH-06 | Require email verification | 🔄 In Progress | - |
 | AUTH-07 | Enforce password policies | 🔄 In Progress | - |
 | AUTH-08 | Track user devices | 🔄 In Progress | - |
@@ -78,3 +78,5 @@ The following tasks are prioritized for the next implementation phase:
 
 1. `ceb9987` - Remove duplicate router files and mock data implementations
 2. `8ffb01d` - Standardize error handling across API routes
+3. `e2d3a23` - Standardize error handling and logging in auth routes
+4. `942eebe` - Replace mock data with API client implementations in documentation search and gallery pages

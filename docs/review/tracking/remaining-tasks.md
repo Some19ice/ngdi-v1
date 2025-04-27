@@ -5,7 +5,7 @@ This document outlines the remaining tasks to complete the implementation of rec
 ## API Tasks
 
 - [ ] Update remaining route handlers to use the centralized error handling service:
-  - [ ] `packages/api/src/routes/auth.routes.ts`
+  - [x] `packages/api/src/routes/auth.routes.ts`
   - [ ] `packages/api/src/routes/metadata.routes.ts`
   - [ ] `packages/api/src/routes/search.routes.ts`
   - [ ] `packages/api/src/routes/permission-groups/index.ts`
@@ -37,9 +37,11 @@ This document outlines the remaining tasks to complete the implementation of rec
 ## Web Tasks
 
 - [ ] Remove remaining mock data implementations:
-  - [ ] Identify and remove all mock data files
-  - [ ] Replace mock data with real API calls
-  - [ ] Update components to handle loading states
+  - [x] Identify and remove mock data files
+  - [x] Replace mock data with real API calls in documentation search
+  - [x] Replace mock data with real API calls in gallery page
+  - [x] Update components to handle loading states
+  - [ ] Remove remaining mock implementations in other components
 
 - [ ] Disable demo mode:
   - [ ] Remove demo mode flags and conditionals
@@ -47,14 +49,16 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [ ] Update tests to work without demo mode
 
 - [ ] Standardize API client usage:
-  - [ ] Ensure consistent API client usage across components
-  - [ ] Implement proper error handling for API calls
+  - [x] Create standardized API client structure
+  - [x] Implement proper error handling for API calls
+  - [ ] Ensure consistent API client usage across all components
   - [ ] Add retry logic for transient failures
 
 - [ ] Improve error handling in components:
+  - [x] Add error handling to gallery page
+  - [x] Implement user-friendly error messages
+  - [x] Add fallback UI for error states
   - [ ] Add error boundaries to key components
-  - [ ] Implement user-friendly error messages
-  - [ ] Add fallback UI for error states
 
 ## Authentication Tasks
 
@@ -67,6 +71,11 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [ ] Implement rate limiting for authentication endpoints
   - [ ] Add rate limiting for sensitive operations
   - [ ] Configure appropriate rate limits for different endpoints
+
+- [x] Add comprehensive logging:
+  - [x] Log all authentication events
+  - [x] Log security-related events
+  - [x] Ensure PII is properly handled in logs
 
 - [ ] Enhance token security:
   - [ ] Implement token rotation
