@@ -13,11 +13,11 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [x] `packages/api/src/routes/user-permissions/index.ts`
   - [x] `packages/api/src/routes/activity-logs/index.ts`
 
-- [ ] Unify database schema:
-  - [ ] Review all database models for consistency
-  - [ ] Consolidate duplicate schema definitions
-  - [ ] Ensure consistent naming conventions
-  - [ ] Document the schema structure
+- [x] Unify database schema:
+  - [x] Review all database models for consistency
+  - [x] Consolidate duplicate schema definitions
+  - [x] Ensure consistent naming conventions
+  - [x] Document the schema structure
 
 - [ ] Resolve circular dependencies:
   - [ ] Identify circular dependencies between modules
@@ -104,20 +104,30 @@ This document outlines the remaining tasks to complete the implementation of rec
 
 ## Database Tasks
 
-- [ ] Use Supabase instead of mock databases:
-  - [ ] Configure Supabase connection
-  - [ ] Migrate schemas to Supabase
-  - [ ] Update data access code to use Supabase
+- [x] Use Supabase instead of mock databases:
+  - [x] Configure Supabase connection
+  - [x] Migrate schemas to Supabase
+  - [x] Update data access code to use Supabase
 
-- [ ] Implement proper migrations:
-  - [ ] Set up migration framework
-  - [ ] Create baseline migration
-  - [ ] Document migration process
+- [x] Implement proper migrations:
+  - [x] Set up migration framework
+  - [x] Create baseline migration
+  - [x] Document migration process
 
-- [ ] Use seed files for initial data:
-  - [ ] Create seed files for reference data
-  - [ ] Implement seeding process
-  - [ ] Document seeding process
+- [x] Use seed files for initial data:
+  - [x] Create seed files for reference data
+  - [x] Implement seeding process
+  - [x] Document seeding process
+
+- [x] Optimize query performance:
+  - [x] Add indexes for common query patterns
+  - [x] Implement materialized views for frequently accessed data
+  - [x] Create optimized repository implementations
+
+- [x] Standardize naming conventions:
+  - [x] Establish consistent naming conventions
+  - [x] Update existing models to follow conventions
+  - [x] Create linting rules to enforce conventions
 
 ## Testing Tasks
 
@@ -139,8 +149,8 @@ This document outlines the remaining tasks to complete the implementation of rec
 ## Priority Order
 
 1. ✅ Complete error handling standardization across all routes
-2. Remove all mock data and demo mode implementations
-3. Implement authentication enhancements (CSRF, rate limiting)
-4. Unify database schema and migrate to Supabase
+2. ✅ Unify database schema and migrate to Supabase
+3. Remove all mock data and demo mode implementations
+4. Implement authentication enhancements (CSRF, rate limiting)
 5. Improve testing infrastructure and coverage
 6. Enhance API documentation
