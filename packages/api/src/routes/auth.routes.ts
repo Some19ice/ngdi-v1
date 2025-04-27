@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { prisma } from "../lib/prisma"
-import { errorHandler, ApiError, ErrorCode } from "../middleware/error-handler"
+import { ApiError, ErrorCode } from "../middleware/error-handler"
 import * as crypto from "crypto"
 import {
   generateToken,
@@ -27,6 +27,8 @@ import {
   securityLogService,
   SecurityEventType,
 } from "../services/security-log.service"
+import { errorHandler } from "../services/error-handling.service"
+import { logger } from "../lib/logger"
 
 import {
   loginSchema,
@@ -50,15 +52,7 @@ const auth = new Hono<{ Variables: Variables }>()
 
 // Create an error handler that conforms to Hono's expected type
 const honoErrorHandler: ErrorHandler<{ Variables: Variables }> = (err, c) => {
-  const result = errorHandler(err, c)
-
-  // If the result contains a status and body, convert it to a Response
-  if ("status" in result && "body" in result) {
-    return c.json(result.body, result.status as any)
-  }
-
-  // Otherwise, return the result directly (should already be a Response)
-  return result
+  return errorHandler(err, c)
 }
 
 // Apply error handler
@@ -114,7 +108,7 @@ auth.post(
   async (c) => {
     try {
       const data = await c.req.json()
-      console.log(`Login attempt for email: ${data.email}`)
+      logger.info(`Login attempt for email: ${data.email}`)
 
       // Add client information for security tracking
       data.ipAddress =
@@ -125,9 +119,11 @@ auth.post(
       data.userAgent = c.req.header("user-agent") || "unknown"
       data.deviceId = c.req.header("x-device-id") || "unknown"
 
-      console.log(
-        `Login attempt from IP: ${data.ipAddress}, Device: ${data.deviceId}`
-      )
+      logger.info(`Login attempt details`, {
+        email: data.email,
+        ipAddress: data.ipAddress,
+        deviceId: data.deviceId,
+      })
 
       const result = await AuthService.login(data)
 
@@ -173,14 +169,19 @@ auth.post(
       })
 
       // Log cookie setting
-      console.log("Set auth cookies for user:", result.user.email)
+      logger.info("Set auth cookies for user", { email: result.user.email })
 
       return c.json(result)
     } catch (error) {
-      console.error("Login error:", error)
+      logger.error("Login error", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+
       if (error instanceof AuthError) {
         throw error
       }
+
       throw new AuthError(
         AuthErrorCode.INVALID_CREDENTIALS,
         "Authentication failed",
@@ -198,7 +199,7 @@ auth.post(
   async (c) => {
     try {
       const data = await c.req.json()
-      console.log(`Registration attempt for email: ${data.email}`)
+      logger.info(`Registration attempt for email: ${data.email}`)
 
       // Add client information for security tracking
       data.ipAddress =
@@ -209,7 +210,11 @@ auth.post(
       data.userAgent = c.req.header("user-agent") || "unknown"
       data.deviceId = c.req.header("x-device-id") || "unknown"
 
-      console.log(`Registration attempt from IP: ${data.ipAddress}`)
+      logger.info(`Registration attempt details`, {
+        email: data.email,
+        ipAddress: data.ipAddress,
+        deviceId: data.deviceId,
+      })
 
       const result = await AuthService.register(data)
 
@@ -255,17 +260,23 @@ auth.post(
       })
 
       // Log cookie setting
-      console.log("Set auth cookies for new user:", result.user.email)
+      logger.info("Set auth cookies for new user", { email: result.user.email })
 
       return c.json(result)
     } catch (error) {
-      console.error("Registration error:", error)
+      logger.error("Registration error", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+
       if (error instanceof AuthError) {
         throw error
       }
+
       if (error instanceof HTTPException) {
         throw error
       }
+
       throw new AuthError(
         AuthErrorCode.REGISTRATION_FAILED,
         "Registration failed",
@@ -280,6 +291,10 @@ auth.get("/verify-email", zValidator("query", verifyEmailSchema), async (c) => {
   try {
     const { token } = c.req.valid("query")
 
+    logger.info("Email verification attempt", {
+      token: token.substring(0, 8) + "...",
+    })
+
     await AuthService.verifyEmail(token)
 
     return c.json({
@@ -287,10 +302,15 @@ auth.get("/verify-email", zValidator("query", verifyEmailSchema), async (c) => {
       message: "Email verified successfully",
     })
   } catch (error) {
-    console.error("Email verification error:", error)
+    logger.error("Email verification error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     if (error instanceof AuthError) {
       throw error
     }
+
     throw new AuthError(
       AuthErrorCode.VERIFICATION_FAILED,
       "Email verification failed",
@@ -432,7 +452,10 @@ auth.post("/refresh-token", async (c) => {
     })
 
     // Log cookie setting
-    console.log("Refreshed auth cookies")
+    logger.info("Refreshed auth cookies", {
+      userId: jwtPayload.userId,
+      tokenFamily,
+    })
 
     return c.json({
       success: true,
@@ -443,10 +466,15 @@ auth.post("/refresh-token", async (c) => {
       },
     })
   } catch (error) {
-    console.error("Token refresh error:", error)
+    logger.error("Token refresh error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     if (error instanceof AuthError) {
       throw error
     }
+
     throw new AuthError(
       AuthErrorCode.INVALID_TOKEN,
       "Failed to refresh token",
@@ -463,7 +491,7 @@ auth.post(
   async (c) => {
     try {
       const { email } = await c.req.json()
-      console.log(`Password reset requested for: ${email}`)
+      logger.info(`Password reset requested`, { email })
 
       await AuthService.forgotPassword(email)
 
@@ -472,8 +500,12 @@ auth.post(
         message: "Password reset email sent",
       })
     } catch (error) {
-      console.error("Forgot password error:", error)
-      // Don't expose whether the email exists or not
+      logger.error("Forgot password error", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+
+      // Don't expose whether the email exists or not for security
       return c.json({
         success: true,
         message: "If the email exists, a password reset link has been sent",
@@ -491,6 +523,10 @@ auth.post(
     try {
       const { token, password } = await c.req.json()
 
+      logger.info("Password reset attempt", {
+        token: token.substring(0, 8) + "...",
+      })
+
       await AuthService.resetPassword(token, password)
 
       return c.json({
@@ -498,10 +534,15 @@ auth.post(
         message: "Password reset successfully",
       })
     } catch (error) {
-      console.error("Reset password error:", error)
+      logger.error("Reset password error", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+
       if (error instanceof AuthError) {
         throw error
       }
+
       throw new AuthError(
         AuthErrorCode.RESET_PASSWORD_FAILED,
         "Failed to reset password",
@@ -588,7 +629,7 @@ auth.post("/logout", csrfProtection, async (c) => {
         }
 
         // Log the logout
-        console.log(`User ${payload.userId} logged out successfully`)
+        logger.info(`User logged out successfully`, { userId: payload.userId })
 
         // Log security event
         await securityLogService.logLogout(
@@ -600,7 +641,10 @@ auth.post("/logout", csrfProtection, async (c) => {
           c.req.header("user-agent") || "unknown"
         )
       } catch (error) {
-        console.error("Error during token revocation:", error)
+        logger.error("Error during token revocation", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        })
       }
     }
 
@@ -611,11 +655,15 @@ auth.post("/logout", csrfProtection, async (c) => {
     clearCookie(c, "refresh_token")
     clearCookie(c, "authenticated")
 
-    console.log("Cleared all auth cookies")
+    logger.info("Cleared all auth cookies")
 
     return c.json({ success: true, message: "Logged out successfully" })
   } catch (error) {
-    console.error("Logout error:", error)
+    logger.error("Logout error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     // Still clear all possible auth cookies even if there's an error
     clearCookie(c, "auth_token")
     clearCookie(c, "accessToken")
@@ -623,7 +671,7 @@ auth.post("/logout", csrfProtection, async (c) => {
     clearCookie(c, "refresh_token")
     clearCookie(c, "authenticated")
 
-    console.log("Cleared all auth cookies (error case)")
+    logger.info("Cleared all auth cookies (error case)")
 
     return c.json({ success: true, message: "Logged out successfully" })
   }
@@ -665,10 +713,15 @@ auth.get("/me", async (c) => {
       data: user,
     })
   } catch (error) {
-    console.error("Get current user error:", error)
+    logger.error("Get current user error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     if (error instanceof AuthError) {
       throw error
     }
+
     throw new AuthError(
       AuthErrorCode.INVALID_CREDENTIALS,
       "Authentication failed",
@@ -689,7 +742,7 @@ auth.get("/check", async (c) => {
     } else {
       // If not in header, try to get from cookies
       const cookieHeader = c.req.raw.headers.get("cookie")
-      console.log("Auth check - Cookie header:", cookieHeader)
+      logger.debug("Auth check - Cookie header", { cookieHeader })
 
       if (cookieHeader) {
         const cookies = cookieHeader.split(";")
@@ -704,7 +757,7 @@ auth.get("/check", async (c) => {
 
           if (authCookie) {
             token = authCookie.split("=")[1]
-            console.log(`Auth check - Found token in cookie: ${cookieName}`)
+            logger.debug(`Auth check - Found token in cookie`, { cookieName })
             break
           }
         }
@@ -781,7 +834,10 @@ auth.get("/check", async (c) => {
         200
       )
     } catch (tokenError) {
-      console.log("Token verification failed:", tokenError)
+      logger.warn("Token verification failed", {
+        error:
+          tokenError instanceof Error ? tokenError.message : String(tokenError),
+      })
 
       // Return clear unauthenticated state
       return c.json(
@@ -793,7 +849,10 @@ auth.get("/check", async (c) => {
       ) // Return 200 to avoid CORS issues
     }
   } catch (error) {
-    console.error("Auth check error:", error)
+    logger.error("Auth check error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
 
     // Return generic error but still 200 to avoid disrupting client
     return c.json(
@@ -822,7 +881,11 @@ auth.get("/csrf", async (c) => {
 
     return c.json({ success: true, csrfToken })
   } catch (error) {
-    console.error("CSRF token generation error:", error)
+    logger.error("CSRF token generation error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     throw new AuthError(
       AuthErrorCode.INVALID_CREDENTIALS,
       "Could not generate security token",
@@ -881,13 +944,22 @@ auth.post("/validate-token", async (c) => {
         })
       }
     } catch (tokenError) {
+      logger.warn("Token validation failed", {
+        error:
+          tokenError instanceof Error ? tokenError.message : String(tokenError),
+      })
+
       return c.json({
         isValid: false,
         message: "Invalid or expired token",
       })
     }
   } catch (error) {
-    console.error("Token validation error:", error)
+    logger.error("Token validation error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     return c.json({
       isValid: false,
       message: "Token validation failed",
@@ -916,7 +988,11 @@ auth.get("/csrf-token", async (c) => {
       csrfToken: token,
     })
   } catch (error) {
-    console.error("CSRF token generation error:", error)
+    logger.error("CSRF token generation error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
     throw new AuthError(
       AuthErrorCode.SERVER_ERROR,
       "Failed to generate CSRF token",
