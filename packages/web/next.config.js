@@ -5,7 +5,7 @@ const nextConfig = {
   images: {
     domains: ["localhost", "ngdi-portal.vercel.app"],
   },
-  // Disable static optimization for dynamic routes
+  // Use standalone output for better deployment compatibility
   output: "standalone",
   // Skip type checking during build for faster builds
   typescript: {
@@ -15,16 +15,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Disable static generation for all pages
-  staticPageGenerationTimeout: 1,
-  // Force dynamic rendering for all pages
+  // Allow reasonable time for static generation
+  staticPageGenerationTimeout: 120,
+  // Configure experimental features
   experimental: {
     // Enable server actions
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },
-    // Disable static optimization for all routes
-    fallbackNodePolyfills: false,
   },
   // Configure for serverless deployment
   webpack: (config, { isServer }) => {

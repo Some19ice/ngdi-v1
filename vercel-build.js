@@ -7,7 +7,8 @@ console.log("Starting custom Vercel build script...")
 
 // Set environment variables for the build
 process.env.NEXT_TELEMETRY_DISABLED = "1"
-process.env.NEXT_STATIC_GENERATION_BAILOUT = "true"
+// Allow static generation (remove bailout)
+// process.env.NEXT_STATIC_GENERATION_BAILOUT = "true"
 process.env.NODE_ENV = "production"
 
 // Clean up previous builds
@@ -53,7 +54,7 @@ try {
 
   // Create or update the config.ts file
   const configContent = `// Configuration for all auth pages
-// This ensures they are rendered dynamically and not statically generated
+// Auth pages need to be rendered dynamically
 
 // Force dynamic rendering for all auth pages
 export const dynamic = 'force-dynamic';
@@ -63,14 +64,6 @@ export const dynamicParams = true;
 
 // Disable caching for auth pages
 export const revalidate = 0;
-
-// Disable static generation for auth pages
-export const generateStaticParams = () => {
-  return [];
-};
-
-// Disable static optimization
-export const unstable_skipMiddlewareUrlNormalize = true;
 
 // Force runtime to be nodejs
 export const runtime = 'nodejs';

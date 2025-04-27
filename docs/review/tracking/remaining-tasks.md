@@ -47,8 +47,11 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [x] Remove mock data from settings form
   - [x] Update Redis implementation to only use MockRedis in test mode
 
-- [ ] Disable demo mode:
-  - [ ] Remove demo mode flags and conditionals
+- [x] Disable demo mode:
+  - [x] Remove forced dynamic rendering from Next.js configuration
+  - [x] Update config files to allow static generation for most pages
+  - [x] Keep dynamic rendering for auth and admin pages
+  - [x] Update Vercel build script to remove static generation bailout
   - [ ] Ensure all routes require proper authentication
   - [ ] Update tests to work without demo mode
 
