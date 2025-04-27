@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuthSession } from "@/hooks/use-auth-session"
 import { Permissions } from "@/lib/auth/types"
 import { UserRole } from "@/lib/auth/constants"
@@ -38,69 +38,46 @@ import {
   Calendar,
   Tag,
   Building2,
+  Loader2,
 } from "lucide-react"
-
-// Mock data - replace with actual API call
-const mockGalleryItems = [
-  {
-    id: "1",
-    title: "Satellite Imagery of Lagos Coastline",
-    imageUrl: "https://example.com/lagos-coastline.jpg", // Replace with actual image URL
-    thumbnail: "https://example.com/lagos-coastline-thumb.jpg", // Replace with actual thumbnail URL
-    category: "Satellite Imagery",
-    organization: "National Space Research and Development Agency",
-    location: "Lagos",
-    date: "2024-02-01",
-    tags: ["coastal", "satellite", "lagos"],
-    downloads: 156,
-    views: 1245,
-  },
-  {
-    id: "2",
-    title: "Abuja Master Plan Map",
-    imageUrl: "https://example.com/abuja-map.jpg",
-    thumbnail: "https://example.com/abuja-map-thumb.jpg",
-    category: "Maps",
-    organization: "Federal Capital Territory Administration",
-    location: "Abuja",
-    date: "2024-01-15",
-    tags: ["urban", "planning", "abuja"],
-    downloads: 234,
-    views: 890,
-  },
-  {
-    id: "3",
-    title: "Nigeria Vegetation Cover Analysis",
-    imageUrl: "https://example.com/vegetation.jpg",
-    thumbnail: "https://example.com/vegetation-thumb.jpg",
-    category: "Environmental",
-    organization: "Federal Ministry of Environment",
-    location: "Nigeria",
-    date: "2024-01-20",
-    tags: ["vegetation", "environment", "analysis"],
-    downloads: 89,
-    views: 567,
-  },
-]
-
-const categories = [
-  "All Categories",
-  "Satellite Imagery",
-  "Maps",
-  "Environmental",
-  "Infrastructure",
-  "Topographic",
-  "Thematic",
-]
+import {
+  getGalleryItems,
+  getGalleryCategories,
+  GalleryItem,
+} from "@/lib/api/gallery"
 
 export default function GalleryPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All Categories")
-  const [selectedImage, setSelectedImage] = useState<
-    (typeof mockGalleryItems)[0] | null
-  >(null)
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null)
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredItems = mockGalleryItems.filter((item) => {
+  useEffect(() => {
+    async function loadGalleryData() {
+      try {
+        setIsLoading(true)
+        const [items, cats] = await Promise.all([
+          getGalleryItems(),
+          getGalleryCategories(),
+        ])
+        setGalleryItems(items)
+        setCategories(cats)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to load gallery data:", err)
+        setError("Failed to load gallery data. Please try again later.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadGalleryData()
+  }, [])
+
+  const filteredItems = galleryItems.filter((item) => {
     const matchesSearch = item.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
@@ -145,56 +122,83 @@ export default function GalleryPage() {
         </Select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item) => (
-          <Card key={item.id} className="overflow-hidden">
-            <div
-              className="relative aspect-video cursor-pointer overflow-hidden"
-              onClick={() => setSelectedImage(item)}
-            >
-              {/* Replace the div below with an actual image component */}
-              <div className="absolute inset-0 bg-muted animate-pulse" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4">
-                <h3 className="text-lg font-semibold text-white truncate">
-                  {item.title}
-                </h3>
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading gallery items...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-destructive/10 rounded-lg p-8 text-center">
+          <h2 className="text-xl font-medium mb-2 text-destructive">Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="bg-muted/50 rounded-lg p-8 text-center">
+          <h2 className="text-xl font-medium mb-2">No results found</h2>
+          <p className="text-muted-foreground">
+            We couldn&apos;t find any gallery items matching your search. Try
+            using different keywords or categories.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="overflow-hidden">
+              <div
+                className="relative aspect-video cursor-pointer overflow-hidden"
+                onClick={() => setSelectedImage(item)}
+              >
+                {/* Replace the div below with an actual image component */}
+                <div className="absolute inset-0 bg-muted animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h3 className="text-lg font-semibold text-white truncate">
+                    {item.title}
+                  </h3>
+                </div>
               </div>
-            </div>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                {item.organization}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {item.location}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {item.date}
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {item.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    <Tag className="mr-1 h-3 w-3" />
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-0 flex justify-between">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{item.downloads} downloads</span>
-                <span>{item.views} views</span>
-              </div>
-              <Button variant="ghost" size="icon">
-                <Download className="h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="h-4 w-4" />
+                  {item.organization}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  {item.location}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {item.date}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {item.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      <Tag className="mr-1 h-3 w-3" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+              <CardFooter className="p-4 pt-0 flex justify-between">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>{item.downloads} downloads</span>
+                  <span>{item.views} views</span>
+                </div>
+                <Button variant="ghost" size="icon">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Dialog
         open={!!selectedImage}

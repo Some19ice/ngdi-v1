@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { DocumentationLayout } from "@/components/documentation/layout"
 import { DocCard } from "@/components/documentation/doc-card"
+import { searchDocumentation } from "@/lib/api/documentation"
 
 interface SearchPageProps {
   searchParams: {
@@ -13,52 +14,30 @@ export const metadata: Metadata = {
   description: "Search through NGDI documentation and resources",
 }
 
-// Mock search functionality
-const mockSearchResults = (query: string) => {
-  const allDocs = [
-    {
-      title: "About NGDI",
-      description:
-        "Learn about the National Geospatial Data Infrastructure project, its mission, and impact.",
-      href: "/documentation/about-ngdi",
-    },
-    {
-      title: "NGDI User Guide",
-      description:
-        "Everything you need to know to use the NGDI platform effectively.",
-      href: "/documentation/user-guide",
-    },
-    {
-      title: "Administrative Boundaries Data",
-      description:
-        "Access comprehensive mapping of Nigeria's administrative divisions.",
-      href: "/documentation/data-resources#featured-datasets",
-    },
-    {
-      title: "Finding Data on NGDI",
-      description:
-        "Learn how to search for and access geospatial data through the NGDI platform.",
-      href: "/documentation/user-guide#finding-data",
-    },
-    {
-      title: "NGDI Data Quality Standards",
-      description:
-        "Information about how we ensure consistency and reliability in our data.",
-      href: "/documentation/data-resources#data-quality",
-    },
-  ]
-
-  // Simple search - in a real app would connect to a search provider
-  return allDocs.filter(
-    (doc) =>
-      doc.title.toLowerCase().includes(query.toLowerCase()) ||
-      doc.description.toLowerCase().includes(query.toLowerCase())
-  )
+interface DocumentationSearchResult {
+  title: string
+  description: string
+  href: string
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
+async function getSearchResults(
+  query: string
+): Promise<DocumentationSearchResult[]> {
+  if (!query) return []
+
+  try {
+    // Use the API client to search documentation
+    const results = await searchDocumentation(query)
+    return results
+  } catch (error) {
+    console.error("Error searching documentation:", error)
+    return []
+  }
+}
+
+export default async function SearchPage({ searchParams }: SearchPageProps) {
   const query = searchParams.q || ""
-  const results = query ? mockSearchResults(query) : []
+  const results = await getSearchResults(query)
 
   return (
     <DocumentationLayout>
