@@ -31,16 +31,8 @@ import { Button } from "@/components/ui/button"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-
-// Mock auth session for demo purposes
-const mockAuthSession = {
-  user: {
-    id: "demo-user-id",
-    email: "demo@example.com",
-    role: "ADMIN"
-  },
-  isAdmin: true
-}
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { createUser } from "@/lib/api/user-api"
 
 const createUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -57,8 +49,8 @@ export default function CreateUserForm() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Use mock auth session for demo purposes
-  const { user, isAdmin } = mockAuthSession
+  // Use real auth session
+  const { user, isAdmin, isLoading } = useAuthSession()
 
   const form = useForm<CreateUserValues>({
     resolver: zodResolver(createUserSchema),
@@ -71,6 +63,17 @@ export default function CreateUserForm() {
     },
   })
 
+  // Use useEffect to ensure this code only runs in the browser
+  const [isBrowser, setIsBrowser] = useState(false)
+  useEffect(() => {
+    setIsBrowser(true)
+  }, [])
+
+  // If loading, return null
+  if (isLoading) {
+    return null
+  }
+
   // If not authenticated or not admin, redirect
   if (!user) {
     router.push("/auth/signin?callbackUrl=/admin/users/create")
@@ -82,21 +85,12 @@ export default function CreateUserForm() {
     return null
   }
 
-  // Use useEffect to ensure this code only runs in the browser
-  const [isBrowser, setIsBrowser] = useState(false)
-  useEffect(() => {
-    setIsBrowser(true)
-  }, [])
-
   const onSubmit = async (data: CreateUserValues) => {
     try {
       setIsSubmitting(true)
 
-      // Mock API call for demo purposes
-      console.log("Creating user:", data)
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Call the real API
+      await createUser(data)
 
       toast({
         title: "User created",

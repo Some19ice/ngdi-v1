@@ -21,7 +21,7 @@ This document tracks the progress of implementing recommendations from the compr
 
 | ID | Recommendation | Status | Implementation Details |
 |----|---------------|--------|------------------------|
-| WEB-01 | Remove mock data implementations | ✅ Partially Completed | Removed `packages/web/src/lib/mock/news-data.ts`. Replaced mock data with API client implementations in documentation search and gallery pages. More mock data implementations need to be removed. |
+| WEB-01 | Remove mock data implementations | ✅ Partially Completed | Removed `packages/web/src/lib/mock/news-data.ts`. Replaced mock data with API client implementations in documentation search and gallery pages. Removed mock data from profile page, user activity page, admin user creation form, and settings form. Updated Redis implementation to only use MockRedis in test mode. |
 | WEB-02 | Disable demo mode | 🔄 In Progress | - |
 | WEB-03 | Standardize API client usage | ✅ Partially Completed | Created standardized API client implementations for documentation and gallery features. |
 | WEB-04 | Improve error handling in components | ✅ Partially Completed | Added proper error handling and loading states to gallery page. |

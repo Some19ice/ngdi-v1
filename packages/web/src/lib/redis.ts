@@ -213,10 +213,10 @@ function validateRedisConfig() {
   const url = process.env.UPSTASH_REDIS_URL
   const token = process.env.UPSTASH_REDIS_TOKEN
 
-  debugLog('Validating Redis config', { 
-    hasUrl: !!url, 
+  debugLog("Validating Redis config", {
+    hasUrl: !!url,
     hasToken: !!token,
-    nodeEnv: process.env.NODE_ENV 
+    nodeEnv: process.env.NODE_ENV,
   })
 
   if (!url || !token) {
@@ -231,19 +231,38 @@ function validateRedisConfig() {
 // Initialize Redis client based on environment
 const getRedisClient = () => {
   const isTestMode = process.env.NODE_ENV === "test"
-  debugLog('Getting Redis client', { isTestMode })
-  
+  debugLog("Getting Redis client", {
+    isTestMode,
+    nodeEnv: process.env.NODE_ENV,
+  })
+
+  // Only use MockRedis in test mode
   if (isTestMode) {
-    debugLog('Using MockRedis for test mode')
+    debugLog("Using MockRedis for test mode")
     return new MockRedis() as unknown as Redis
   }
 
-  debugLog('Using real Redis client')
-  const { url, token } = validateRedisConfig()
-  return new Redis({
-    url,
-    token,
-  })
+  try {
+    debugLog("Using real Redis client")
+    const { url, token } = validateRedisConfig()
+    return new Redis({
+      url,
+      token,
+    })
+  } catch (error) {
+    console.error("Failed to initialize Redis client:", error)
+
+    // In development, fall back to MockRedis if Redis config is missing
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "Falling back to MockRedis in development. This should NOT be used in production."
+      )
+      return new MockRedis() as unknown as Redis
+    }
+
+    // In production, rethrow the error
+    throw error
+  }
 }
 
 let redisClient: Redis | null = null

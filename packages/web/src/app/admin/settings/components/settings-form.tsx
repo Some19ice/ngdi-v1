@@ -80,13 +80,7 @@ export interface SettingsFormProps {
 }
 
 export function SettingsForm({ initialSettings }: SettingsFormProps) {
-  const user = {
-    id: "demo-user-id",
-    email: "admin@example.com",
-    role: "ADMIN",
-  }
-  const isAdmin = true
-  
+  const { user, isAdmin, isLoading } = useAuthSession()
   const [isSaving, setIsSaving] = useState(false)
 
   const form = useForm<SystemSettings>({
@@ -113,6 +107,37 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
     }
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+          <h2 className="text-lg font-semibold">Loading...</h2>
+          <p className="text-muted-foreground">
+            Please wait while we load the settings.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold">Authentication Required</h2>
+          <p className="text-muted-foreground">
+            Please sign in to access system settings.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if user is admin
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-full">

@@ -45,6 +45,12 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import type { Session } from "@/lib/auth-client"
+import {
+  getSessions as apiGetSessions,
+  signOutFromDevice as apiSignOutFromDevice,
+  signOutFromAllDevices as apiSignOutFromAllDevices,
+  getAccountChanges,
+} from "@/lib/api/security-api"
 
 // Keep the original UserSession type
 interface UserSession {
@@ -64,11 +70,12 @@ interface UserSession {
   is_current: boolean
 }
 
-// Define the getSessions result type
-interface GetSessionsResult {
-  sessions: UserSession[]
-  error: Error | null
-}
+// Import types from security-api
+import type {
+  UserSession,
+  AccountChange,
+  GetSessionsResult,
+} from "@/lib/api/security-api"
 
 export default function ActivityPage() {
   const { user, isLoading, logout, navigate } = useAuthSession()
@@ -88,47 +95,9 @@ export default function ActivityPage() {
   const [showSignOutAllConfirm, setShowSignOutAllConfirm] = useState(false)
   const [isSigningOutAll, setIsSigningOutAll] = useState(false)
 
-  // UseAuthBackend is a hook to encapsulate the original auth backend functionality
+  // UseAuthBackend is a hook to encapsulate the auth backend functionality
   function useAuthBackend() {
     const { logout } = useAuthSession()
-
-    // Original getSessions function
-    const getSessions = async (): Promise<GetSessionsResult> => {
-      try {
-        // Mock implementation since we don't have the original implementation
-        return {
-          sessions: [],
-          error: null,
-        }
-      } catch (error) {
-        return {
-          sessions: [],
-          error: error instanceof Error ? error : new Error(String(error)),
-        }
-      }
-    }
-
-    // Original signOutFromDevice function
-    const signOutFromDevice = async (sessionId: string): Promise<boolean> => {
-      try {
-        // Mock implementation
-        return true
-      } catch (error) {
-        console.error("Error signing out device:", error)
-        return false
-      }
-    }
-
-    // Original signOutFromAllDevices function
-    const signOutFromAllDevices = async (): Promise<boolean> => {
-      try {
-        // Mock implementation
-        return true
-      } catch (error) {
-        console.error("Error signing out all devices:", error)
-        return false
-      }
-    }
 
     // Map the original signOut function to the new logout function
     const signOut = async (): Promise<void> => {
@@ -136,9 +105,9 @@ export default function ActivityPage() {
     }
 
     return {
-      getSessions,
-      signOutFromDevice,
-      signOutFromAllDevices,
+      getSessions: apiGetSessions,
+      signOutFromDevice: apiSignOutFromDevice,
+      signOutFromAllDevices: apiSignOutFromAllDevices,
       signOut,
     }
   }
@@ -158,67 +127,8 @@ export default function ActivityPage() {
           return
         }
 
-        // Generate some mock sessions for demonstration if we only have 1 session
-        if (fetchedSessions.length <= 1) {
-          const mockSessions: UserSession[] = [
-            {
-              id: "session-2",
-              created_at: new Date(
-                Date.now() - 2 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              updated_at: new Date(
-                Date.now() - 1 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              last_sign_in_at: new Date(
-                Date.now() - 1 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              user_id: user.id,
-              ip_address: "192.168.1.2",
-              user_agent:
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X)",
-              location: "San Francisco, CA",
-              device_info: {
-                browser: "Safari",
-                os: "iOS",
-                device: "Mobile",
-              },
-              is_current: false,
-            },
-            {
-              id: "session-3",
-              created_at: new Date(
-                Date.now() - 5 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              updated_at: new Date(
-                Date.now() - 3 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              last_sign_in_at: new Date(
-                Date.now() - 3 * 24 * 60 * 60 * 1000
-              ).toISOString(),
-              user_id: user.id,
-              ip_address: "192.168.1.3",
-              user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-              location: "New York, NY",
-              device_info: {
-                browser: "Chrome",
-                os: "Windows",
-                device: "Desktop",
-              },
-              is_current: false,
-            },
-          ]
-
-          // Only use the mocks if we don't have enough real sessions
-          if (fetchedSessions.length === 0) {
-            setSessions(mockSessions)
-          } else if (fetchedSessions.length === 1) {
-            setSessions([...fetchedSessions, ...mockSessions.slice(1)])
-          } else {
-            setSessions(fetchedSessions)
-          }
-        } else {
-          setSessions(fetchedSessions)
-        }
+        // Set the sessions from the API
+        setSessions(fetchedSessions)
       } catch (err) {
         console.error("Error fetching sessions:", err)
         toast.error("Failed to load login history")
@@ -230,33 +140,30 @@ export default function ActivityPage() {
     fetchSessions()
   }, [user, getSessions])
 
-  // Mock data for account changes
-  const [accountChanges] = useState([
-    {
-      id: 1,
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      type: "password_changed",
-      description: "Password changed",
-    },
-    {
-      id: 2,
-      date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-      type: "email_changed",
-      description: "Email address updated",
-    },
-    {
-      id: 3,
-      date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      type: "profile_updated",
-      description: "Profile information updated",
-    },
-    {
-      id: 4,
-      date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-      type: "2fa_enabled",
-      description: "Two-factor authentication enabled",
-    },
-  ])
+  // State for account changes
+  const [accountChanges, setAccountChanges] = useState<AccountChange[]>([])
+
+  // Fetch account changes when component mounts
+  useEffect(() => {
+    async function fetchAccountChanges() {
+      if (!user) return
+
+      try {
+        const { changes, error } = await getAccountChanges()
+
+        if (error) {
+          console.error("Error fetching account changes:", error)
+          return
+        }
+
+        setAccountChanges(changes)
+      } catch (err) {
+        console.error("Error fetching account changes:", err)
+      }
+    }
+
+    fetchAccountChanges()
+  }, [user])
 
   const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat("en-US", {

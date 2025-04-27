@@ -4,7 +4,6 @@ import { notFound } from "next/navigation"
 // Import dynamic configuration
 import { dynamic } from "./page-config"
 import { format } from "date-fns"
-import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/auth"
 import { ProfileCard } from "@/components/profile"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -27,69 +26,25 @@ import {
   User,
 } from "lucide-react"
 import { ProfileStatisticsSection } from "@/components/profile/profile-statistics"
+import { fetchUserProfile, getFallbackUserProfile } from "@/lib/api/profile-api"
 
 export const metadata: Metadata = {
   title: "My Profile | NGDI Portal",
   description: "View and manage your NGDI profile settings and information",
 }
 
-// Mock data function for development since we don't have access to the actual DB schema
-async function fetchProfileData(userId: string) {
+// Fetch profile data from the API
+async function getProfileData(userId: string) {
   try {
-    // Fetch basic user data
-    const userData = await prisma.user.findUnique({
-      where: { id: userId },
-    })
+    // Try to fetch from API first
+    const profileData = await fetchUserProfile(userId)
 
-    if (!userData) {
-      return null
+    if (profileData) {
+      return profileData
     }
 
-    // For development - return mock data that matches our UI
-    return {
-      user: {
-        ...userData,
-        lastLoginAt: new Date(),
-        metadata: {
-          location: "Abuja, Nigeria",
-        },
-        activities: [
-          {
-            id: "1",
-            description: "Downloaded NGDI Standards and Guidelines document",
-            createdAt: new Date(Date.now() - 86400000),
-          },
-          {
-            id: "2",
-            description: "Updated profile information",
-            createdAt: new Date(Date.now() - 172800000),
-          },
-          {
-            id: "3",
-            description:
-              "Contributed to metadata for Lagos urban planning dataset",
-            createdAt: new Date(Date.now() - 345600000),
-          },
-        ],
-        downloadStats: [
-          {
-            id: "1",
-            documentName: "NGDI Standards and Guidelines (2024)",
-            timestamp: new Date(Date.now() - 86400000),
-          },
-          {
-            id: "2",
-            documentName: "Metadata Management Protocol",
-            timestamp: new Date(Date.now() - 604800000),
-          },
-        ],
-      },
-      stats: {
-        downloads: 12,
-        uploads: 3,
-        contributions: 5,
-      },
-    }
+    // If API fails, use fallback with basic user data
+    return null
   } catch (error) {
     console.error("Error fetching profile data:", error)
     return null
@@ -101,10 +56,45 @@ export default async function ProfilePage() {
   const user = await requireAuth("/profile")
 
   // Fetch enhanced profile data
-  const profileData = await fetchProfileData(user.id)
+  const profileData = await getProfileData(user.id)
 
   if (!profileData) {
-    notFound()
+    // If API fails, use fallback with basic user data
+    const userData = await getFallbackUserProfile(user)
+
+    if (!userData) {
+      notFound()
+    }
+
+    // Format the user data to match Profile interface
+    const typedUser = {
+      ...user,
+      role: user.role as UserRole,
+    }
+
+    const formattedProfile = formatSupabaseUserToProfile(typedUser)
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">My Profile</h1>
+          <Badge variant="outline" className="px-3 py-1">
+            {formattedProfile.role}
+          </Badge>
+        </div>
+
+        <div className="p-6 bg-muted/50 rounded-lg border border-muted">
+          <h2 className="text-xl font-semibold mb-4">
+            Profile Data Unavailable
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            We're unable to fetch your complete profile data at the moment.
+            Please try again later or contact support if the issue persists.
+          </p>
+          <ProfileCard profile={formattedProfile} isEditable />
+        </div>
+      </div>
+    )
   }
 
   // Format the user data to match Profile interface
