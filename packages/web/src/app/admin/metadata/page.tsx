@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { adminGet } from "@/lib/api/admin-fetcher"
-import { mockMetadataData } from "@/lib/mock/admin-data"
-import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { AUTH_PATHS } from "@/lib/auth/paths"
 
 // Import subcomponents
 import { MetadataFilters } from "./components/MetadataFilters"
@@ -36,10 +36,10 @@ import { MetadataPagination } from "./components/MetadataPagination"
 import { SearchParamsWrapper } from "./components/SearchParamsWrapper"
 
 export default function MetadataPage() {
-  // Use mock admin user instead of auth session
-  const user = MOCK_ADMIN_USER
-  const isAdmin = user.role === UserRole.ADMIN
-  const hasRole = (role: string) => role === UserRole.ADMIN
+  // Use real authentication
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthSession()
+  const isAdmin = user?.role === UserRole.ADMIN
+  const hasRole = (role: string) => user?.role === role
 
   const { toast } = useToast()
   const router = useRouter()
@@ -105,7 +105,7 @@ export default function MetadataPage() {
       try {
         // Call the API server using admin fetcher
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
-        const url = `${apiUrl}/api/admin/metadata`
+        const url = `${apiUrl}/admin/metadata`
         const params = new URLSearchParams({
           page: page.toString(),
           limit: pageSize.toString(),
@@ -130,44 +130,8 @@ export default function MetadataPage() {
           throw new Error("Invalid response format")
         }
       } catch (error) {
-        console.error("Using mock metadata data:", error)
-        setUseMockData(true)
-
-        // Format the mock data to match AdminMetadataItem
-        const mockItems: AdminMetadataItem[] = mockMetadataData.metadata.map(
-          (item) => ({
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            category: item.category,
-            status: item.status as MetadataStatus,
-            validationStatus:
-              Math.random() > 0.7
-                ? ValidationStatus.Validated
-                : Math.random() > 0.4
-                  ? ValidationStatus.Pending
-                  : ValidationStatus.Failed,
-            createdBy: item.createdBy,
-            organization: item.organization,
-            createdAt: item.createdAt.toString(),
-            updatedAt: item.createdAt.toString(),
-            viewCount: item.viewCount,
-            downloadCount: item.downloadCount,
-            // Additional required fields for AdminMetadataItem
-            downloads: item.downloadCount,
-            views: item.viewCount,
-            tags: [item.category, "sample", "mock-data"],
-            dateFrom: "2023-01-01",
-            // Optional fields
-            lastModified: item.createdAt.toString(),
-            modifiedBy: item.createdBy,
-          })
-        )
-
-        setMetadata(mockItems)
-        setTotal(mockMetadataData.total)
-        setTotalPages(mockMetadataData.totalPages)
-        setError("Using mock metadata data for demonstration")
+        console.error("Error fetching metadata:", error)
+        setError("Failed to fetch metadata. Please try again later.")
       }
 
       // Update URL parameters
@@ -183,43 +147,9 @@ export default function MetadataPage() {
       })
     } catch (err) {
       console.error("Failed to fetch metadata:", err)
-      setError("Failed to load metadata. Using mock data instead.")
-
-      // Use mock data as fallback
-      setUseMockData(true)
-      const mockItems: AdminMetadataItem[] = mockMetadataData.metadata.map(
-        (item) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          category: item.category,
-          status: item.status as MetadataStatus,
-          validationStatus:
-            Math.random() > 0.7
-              ? ValidationStatus.Validated
-              : Math.random() > 0.4
-                ? ValidationStatus.Pending
-                : ValidationStatus.Failed,
-          createdBy: item.createdBy,
-          organization: item.organization,
-          createdAt: item.createdAt.toString(),
-          updatedAt: item.createdAt.toString(),
-          viewCount: item.viewCount,
-          downloadCount: item.downloadCount,
-          // Additional required fields for AdminMetadataItem
-          downloads: item.downloadCount,
-          views: item.viewCount,
-          tags: [item.category, "sample", "mock-data"],
-          dateFrom: "2023-01-01",
-          // Optional fields
-          lastModified: item.createdAt.toString(),
-          modifiedBy: item.createdBy,
-        })
+      setError(
+        "Failed to load metadata. Please check your connection and try again."
       )
-
-      setMetadata(mockItems)
-      setTotal(mockMetadataData.total)
-      setTotalPages(mockMetadataData.totalPages)
     } finally {
       setIsLoading(false)
     }
@@ -399,6 +329,26 @@ export default function MetadataPage() {
         variant: "destructive",
       })
     }
+  }
+
+  // If loading, show loading state
+  if (authLoading) {
+    return (
+      <div className="flex justify-center py-8">Loading authentication...</div>
+    )
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated || !user) {
+    // Use client-side redirect since this is a client component
+    window.location.href = AUTH_PATHS.SIGNIN
+    return null
+  }
+
+  // If not admin, redirect to home
+  if (user.role !== UserRole.ADMIN) {
+    window.location.href = "/"
+    return null
   }
 
   return (

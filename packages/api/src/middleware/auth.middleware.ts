@@ -82,9 +82,6 @@ export async function authMiddleware(c: Context, next: Next) {
     // Get the complete user data from the database
     const user = await prisma.user.findUnique({
       where: { id: validationResult.userId! },
-      include: {
-        customRole: true,
-      },
     })
 
     if (!user) {
@@ -138,11 +135,8 @@ export async function adminMiddleware(c: Context, next: Next) {
     )
   }
 
-  // Check if user has ADMIN role (legacy) or has a custom role with admin privileges
-  if (
-    user.role !== UserRole.ADMIN &&
-    (!user.customRole || user.customRole.name !== "Admin")
-  ) {
+  // Check if user has ADMIN role
+  if (user.role !== UserRole.ADMIN) {
     throw new AuthError(AuthErrorCode.FORBIDDEN, "Admin access required", 403)
   }
 
@@ -164,23 +158,14 @@ export function requireRole(role: UserRole | string) {
       )
     }
 
-    // Check legacy role
+    // Check role
     if (user.role === role) {
       await next()
       return
     }
 
-    // Check custom role
-    if (user.customRole && user.customRole.name === role) {
-      await next()
-      return
-    }
-
     // Admin users have access to everything
-    if (
-      user.role === UserRole.ADMIN ||
-      (user.customRole && user.customRole.name === "Admin")
-    ) {
+    if (user.role === UserRole.ADMIN) {
       await next()
       return
     }
@@ -209,22 +194,13 @@ export function requireAnyRole(roles: (UserRole | string)[]) {
     }
 
     // Admin users have access to everything
-    if (
-      user.role === UserRole.ADMIN ||
-      (user.customRole && user.customRole.name === "Admin")
-    ) {
+    if (user.role === UserRole.ADMIN) {
       await next()
       return
     }
 
-    // Check legacy role
+    // Check role
     if (roles.includes(user.role as UserRole)) {
-      await next()
-      return
-    }
-
-    // Check custom role
-    if (user.customRole && roles.includes(user.customRole.name)) {
       await next()
       return
     }

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useAuthSession } from "@/hooks/use-auth-session"
 import { NewsList } from "./news-list"
 import { type NewsItem, type NewsFilters } from "./types"
-import { mockNewsData } from "@/lib/mock/news-data"
+// Import API client
+import { api } from "@/lib/api-client"
 
 export function NewsListWrapper() {
   const { user } = useAuthSession()
@@ -12,9 +13,41 @@ export function NewsListWrapper() {
   const [items, setItems] = useState<NewsItem[]>([])
 
   useEffect(() => {
-    // Simulate loading data from API
-    setItems(mockNewsData)
-  }, [])
+    // Fetch news data from API
+    async function fetchNews() {
+      try {
+        // Get API URL from environment
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+
+        // Fetch news from API
+        const response = await fetch(`${apiUrl}/news`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && Array.isArray(data.data)) {
+            setItems(data.data)
+          } else {
+            console.error("Invalid news data format")
+            setItems([])
+          }
+        } else {
+          console.error("Failed to fetch news:", response.statusText)
+          setItems([])
+        }
+      } catch (error) {
+        console.error("Error fetching news:", error)
+        setItems([])
+      }
+    }
+
+    fetchNews()
+  }, [filters])
 
   // Filter news items based on current filters
   const filteredItems = items.filter((item) => {

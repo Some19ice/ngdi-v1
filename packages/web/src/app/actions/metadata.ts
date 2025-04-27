@@ -9,7 +9,8 @@ import { validateJwtToken } from "@/lib/auth-client"
 
 // Function to get the current user ID from the auth token
 async function getCurrentUserId(): Promise<string | null> {
-  const authToken = cookies().get("auth_token")?.value
+  const cookieStore = await cookies()
+  const authToken = cookieStore.get("auth_token")?.value
 
   if (!authToken) {
     console.error("Auth token is missing - user will be unauthorized")
@@ -826,7 +827,7 @@ export async function getAdminMetadata({
     sortBy,
     sortOrder,
   })
-  
+
   try {
     // Get the base metadata using direct Prisma query instead of searchMetadata
     // to avoid potential issues with the result structure
@@ -949,14 +950,14 @@ export async function getAdminMetadata({
     }
   } catch (error) {
     console.error("Error fetching admin metadata:", error)
-    
+
     // Return empty data on error
     return {
       metadata: [],
       total: 0,
       currentPage: page,
       limit,
-      totalPages: 0
+      totalPages: 0,
     }
   }
 }

@@ -12,7 +12,8 @@ import Image from "next/image"
 
 // Function to get the current user ID from the auth token
 async function getCurrentUserId(): Promise<string | null> {
-  const authToken = cookies().get("auth_token")?.value
+  const cookieStore = await cookies()
+  const authToken = cookieStore.get("auth_token")?.value
 
   if (!authToken) {
     return null

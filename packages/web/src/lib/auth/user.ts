@@ -10,7 +10,7 @@ const AUTH_COOKIE_NAME = "auth_token"
  * @param cookieStore - Cookie store from next/headers
  * @returns The user object if authenticated, null otherwise
  */
-export async function getLoggedInUser(cookieStore = cookies()) {
+export async function getLoggedInUser(cookieStore = await cookies()) {
   // Check for auth cookie in the request
   const authToken = cookieStore.get(AUTH_COOKIE_NAME)?.value
 

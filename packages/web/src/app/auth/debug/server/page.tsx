@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic"
 
 export default async function ServerAuthDebugPage() {
   // Get the auth token from cookies
-  const authToken = cookies().get("auth_token")?.value
+  const cookieStore = await cookies()
+  const authToken = cookieStore.get("auth_token")?.value
 
   // Get request headers
   const headersList = getHeaders()

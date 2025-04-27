@@ -72,8 +72,8 @@ import {
   Globe,
 } from "lucide-react"
 import { adminGet } from "@/lib/api/admin-fetcher"
-import { mockOrganizationsData } from "@/lib/mock/admin-data"
-import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { AUTH_PATHS } from "@/lib/auth/paths"
 
 // Define organization interface
 interface Organization {
@@ -121,9 +121,10 @@ const organizationFormSchema = z.object({
 type OrganizationFormValues = z.infer<typeof organizationFormSchema>
 
 export default function OrganizationsPage() {
-  const user = MOCK_ADMIN_USER
-  const isAdmin = user.role === UserRole.ADMIN
-  const hasRole = (role: string) => role === UserRole.ADMIN
+  // Use real authentication
+  const { user, isAuthenticated, isLoading } = useAuthSession()
+  const isAdmin = user?.role === UserRole.ADMIN
+  const hasRole = (role: string) => user?.role === role
 
   const [searchQuery, setSearchQuery] = useState("")
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -152,62 +153,17 @@ export default function OrganizationsPage() {
             throw new Error("Invalid response format")
           }
         } catch (error) {
-          console.error("Using mock organizations data instead:", error)
-          setUseMockData(true)
-
-          // Convert mock data to the expected format
-          const formattedOrgs = mockOrganizationsData.organizations.map(
-            (org) => ({
-              id: org.id,
-              name: org.name,
-              type: org.type,
-              location: `${org.state}, ${org.country}`,
-              nodeOfficers: Math.floor(Math.random() * 5) + 1,
-              totalUsers: org.memberCount,
-              metadataCount: org.datasetCount,
-              status: Math.random() > 0.2 ? "Active" : "Inactive",
-              lastActive: new Date(org.createdAt).toLocaleDateString(),
-              contact: {
-                email: org.contactEmail,
-                phone:
-                  "+234" + Math.floor(Math.random() * 9000000000 + 1000000000),
-                website: org.website,
-                address: `${org.state}, Nigeria`,
-              },
-            })
-          )
-
-          setOrganizations(formattedOrgs)
-          setError("Using mock organization data for demonstration")
+          console.error("Error fetching organizations:", error)
+          setError("Failed to fetch organizations. Please try again later.")
+          setOrganizations([])
         }
       } catch (err) {
         console.error("Failed to fetch organizations:", err)
-        setError("Failed to load organizations. Using mock data instead.")
-        setUseMockData(true)
-
-        // Use mock data as fallback
-        const formattedOrgs = mockOrganizationsData.organizations.map(
-          (org) => ({
-            id: org.id,
-            name: org.name,
-            type: org.type,
-            location: `${org.state}, ${org.country}`,
-            nodeOfficers: Math.floor(Math.random() * 5) + 1,
-            totalUsers: org.memberCount,
-            metadataCount: org.datasetCount,
-            status: Math.random() > 0.2 ? "Active" : "Inactive",
-            lastActive: new Date(org.createdAt).toLocaleDateString(),
-            contact: {
-              email: org.contactEmail,
-              phone:
-                "+234" + Math.floor(Math.random() * 9000000000 + 1000000000),
-              website: org.website,
-              address: `${org.state}, Nigeria`,
-            },
-          })
+        setError(
+          "Failed to load organizations. Please check your connection and try again."
         )
 
-        setOrganizations(formattedOrgs)
+        setOrganizations([])
       } finally {
         setLoading(false)
       }
@@ -242,11 +198,24 @@ export default function OrganizationsPage() {
     console.log(data)
   }
 
-  // If not authenticated or not admin, redirect (handled in useEffect)
-  if (!user) {
+  // If loading, show loading state
+  if (isLoading) {
     return (
       <div className="flex justify-center py-8">Loading authentication...</div>
     )
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated || !user) {
+    // Use client-side redirect since this is a client component
+    window.location.href = AUTH_PATHS.SIGNIN
+    return null
+  }
+
+  // If not admin, redirect to home
+  if (user.role !== UserRole.ADMIN) {
+    window.location.href = "/"
+    return null
   }
 
   return (

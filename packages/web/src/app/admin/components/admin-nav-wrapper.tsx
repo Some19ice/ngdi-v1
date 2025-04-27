@@ -1,15 +1,11 @@
 "use client"
 
 import { AdminNav } from "./admin-nav"
+import { useAdminUser } from "./admin-auth-provider"
 
-interface AdminNavWrapperProps {
-  user: {
-    id: string | null
-    email: string | null
-    role: string | null
-  }
-}
+export function AdminNavWrapper() {
+  // Get the user from the AdminAuthProvider
+  const user = useAdminUser()
 
-export function AdminNavWrapper({ user }: AdminNavWrapperProps) {
   return <AdminNav user={user} />
 }

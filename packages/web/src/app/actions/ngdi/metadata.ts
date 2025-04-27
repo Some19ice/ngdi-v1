@@ -9,7 +9,8 @@ import { v4 as uuidv4 } from "uuid"
 // Function to get the current user ID from the auth token
 // This is a placeholder - implement based on your auth system
 async function getCurrentUserId(): Promise<string | null> {
-  const authToken = cookies().get("auth_token")?.value
+  const cookieStore = await cookies()
+  const authToken = cookieStore.get("auth_token")?.value
 
   // In a production environment, you would decode and validate the token
   // For development/testing purposes, we'll use a known test user ID

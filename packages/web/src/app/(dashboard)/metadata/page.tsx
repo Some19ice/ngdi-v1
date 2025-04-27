@@ -46,7 +46,7 @@ export default async function MetadataPage() {
   }
 
   // Get auth token to pass to client for subsequent requests
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const authToken = cookieStore.get("auth_token")?.value || ""
 
   console.log("Auth token status:", {

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ClientOnly } from "@/components/ui/client-only"
+import { ApiStatusDebug } from "@/components/debug/api-status"
 
 import AuthTokenSync from "@/components/auth/auth-token-sync"
 
@@ -121,6 +122,13 @@ export default function RootLayoutClient({
       </div>
 
       <Footer />
+
+      {/* API Status Debug Component - only shown in development */}
+      {process.env.NODE_ENV !== "production" && (
+        <ClientOnly>
+          <ApiStatusDebug />
+        </ClientOnly>
+      )}
     </div>
   )
 }

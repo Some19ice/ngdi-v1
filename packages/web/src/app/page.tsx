@@ -11,7 +11,7 @@ export const runtime = "nodejs"
 
 export default async function HomePage() {
   // Check if user is authenticated
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const authToken = cookieStore.get("auth_token")
 
   // No redirect - allow authenticated users to see the landing page

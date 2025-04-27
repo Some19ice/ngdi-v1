@@ -62,7 +62,30 @@ export function AdminNav({ user }: AdminNavProps) {
         setLoading(true)
         setError(null)
 
-        const authToken = getCookie("auth_token")
+        // Get token from localStorage or cookies
+        let authToken = localStorage.getItem("accessToken")
+
+        // If no token in localStorage, try to get from cookies
+        if (!authToken) {
+          authToken = getCookie("auth_token")
+        }
+
+        // If still no token, use a fallback for development
+        if (!authToken && process.env.NODE_ENV === "development") {
+          console.warn("No auth token found, using fallback empty stats")
+          setStats({
+            totalUsers: 0,
+            totalMetadata: 0,
+            userRoleDistribution: [],
+            recentMetadataCount: 0,
+            userGrowthPoints: 0,
+            metadataByFrameworkCount: 0,
+            topOrganizationsCount: 0,
+          })
+          setLoading(false)
+          return
+        }
+
         if (!authToken) {
           throw new Error("No authentication token found")
         }
@@ -71,16 +94,21 @@ export function AdminNav({ user }: AdminNavProps) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
 
         // Construct the correct API URL
-        const statsUrl = `${apiUrl}/api/admin/dashboard-stats`
+        const statsUrl = `${apiUrl}/admin/dashboard-stats`
         console.log("Fetching admin stats from:", statsUrl)
 
         const response = await fetch(statsUrl, {
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
+          cache: "no-store",
         })
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Authentication error. Please log in again.")
+          }
+
           const errorData = await response.json().catch(() => ({}))
           throw new Error(errorData.message || "Failed to fetch stats")
         }
@@ -88,16 +116,33 @@ export function AdminNav({ user }: AdminNavProps) {
         const result = await response.json()
         console.log("API Response:", result) // Debug log to see the response
 
-        // The API doesn't wrap the response in a success/data object
-        // It directly returns the stats object
-        if (result && result.totalUsers !== undefined) {
-          setStats(result)
-          // Calculate total pending approvals from user role distribution
-          const pendingApprovals = result.userRoleDistribution.reduce(
-            (acc: number, curr: UserRoleDistribution) => acc + curr._count.id,
-            0
-          )
-          setNotificationCount(pendingApprovals)
+        // Set stats from the response
+        if (result && typeof result === "object") {
+          // If the API returns a data wrapper
+          const statsData = result.data || result
+
+          setStats({
+            totalUsers: statsData.totalUsers || 0,
+            totalMetadata: statsData.totalMetadata || 0,
+            userRoleDistribution: statsData.userRoleDistribution || [],
+            recentMetadataCount: statsData.recentMetadataCount || 0,
+            userGrowthPoints: statsData.userGrowthPoints || 0,
+            metadataByFrameworkCount: statsData.metadataByFrameworkCount || 0,
+            topOrganizationsCount: statsData.topOrganizationsCount || 0,
+          })
+
+          // Calculate notification count if available
+          if (
+            statsData.userRoleDistribution &&
+            Array.isArray(statsData.userRoleDistribution)
+          ) {
+            const pendingApprovals = statsData.userRoleDistribution.reduce(
+              (acc: number, curr: UserRoleDistribution) =>
+                acc + (curr._count?.id || 0),
+              0
+            )
+            setNotificationCount(pendingApprovals)
+          }
         } else {
           throw new Error("Invalid response format")
         }
@@ -122,8 +167,11 @@ export function AdminNav({ user }: AdminNavProps) {
       }
     }
 
-    fetchStats()
-  }, []) // Only run once on mount
+    // Only fetch stats if we have a user
+    if (user && user.id) {
+      fetchStats()
+    }
+  }, [user]) // Run when user changes
 
   // Create tabs with dynamic badges from stats
   const tabs = [

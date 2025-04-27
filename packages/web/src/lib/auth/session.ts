@@ -21,7 +21,7 @@ export interface CurrentUser {
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     // Get the token from cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get("auth_token")?.value
 
     if (!token) {

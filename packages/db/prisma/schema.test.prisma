@@ -1,3 +1,6 @@
+// This is a test schema that uses the same models as the main schema
+// but with a fixed database URL for testing purposes.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,6 +9,9 @@ datasource db {
   provider = "postgresql"
   url      = "postgresql://postgres:postgres@localhost:5432/ngdi_test?schema=public"
 }
+
+// Import all models from the main schema
+// The models are identical to the main schema, but with a different database URL
 
 /// Authentication account information for OAuth providers
 model Account {
@@ -66,20 +72,37 @@ model User {
   image         String?
   /// Hashed password for local authentication
   password      String
-  /// User's role in the system
+  /// User's role in the system (legacy field)
   role          UserRole   @default(USER)
+  /// Reference to the user's custom role
+  roleId        String?
   /// User's organization name
   organization  String?
   /// User's department within the organization
   department    String?
   /// User's contact phone number
   phone         String?
+  /// Whether the account is locked
+  locked        Boolean    @default(false)
+  /// Timestamp when the account will be unlocked
+  lockedUntil   DateTime?
+  /// Number of failed login attempts
+  failedAttempts Int       @default(0)
+  /// Last failed login attempt timestamp
+  lastFailedAttempt DateTime?
 
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
+  drafts        Draft[]
+  securityLogs  SecurityLog[]
+  userPermissions UserPermission[]
+  activityLogs  ActivityLog[]
+  customRole    Role?          @relation(fields: [roleId], references: [id])
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+
+  @@index([roleId])
 }
 
 /// User roles for access control
@@ -92,42 +115,83 @@ enum UserRole {
   NODE_OFFICER
 }
 
-/// Geospatial metadata information
+/// Geospatial metadata information following NGDI standards
 model Metadata {
   /// Unique identifier for the metadata entry
   id                      String   @id @default(uuid())
-  /// Title of the dataset
+
+  // Legacy fields from original Metadata model
+  /// Title of the dataset (legacy field - use dataName instead)
   title                   String
-  /// Author of the dataset
-  author                  String
-  /// Organization name
-  organization            String
-  /// Start date of the dataset
-  dateFrom               String
-  /// End date of the dataset
-  dateTo                 String
-  /// Abstract/description of the dataset
-  abstract               String
-  /// Purpose of the dataset
-  purpose                String
-  /// URL to the thumbnail image
-  thumbnailUrl           String
-  /// Name of the image file
-  imageName              String
-  /// Type of framework used
-  frameworkType          String
-  /// Categories of the dataset
+  /// Author of the dataset (legacy field)
+  author                  String?
+  /// Organization name (legacy field)
+  organization            String?
+  /// Start date of the dataset (legacy field)
+  dateFrom               String?
+  /// End date of the dataset (legacy field)
+  dateTo                 String?
+  /// Framework type (legacy field - use dataType instead)
+  frameworkType          String?
+  /// Categories of the dataset (legacy field)
   categories             String[] @default([])
+  /// Number of features (legacy field)
+  numFeatures           Int?
+  /// Software requirements (legacy field - use technicalPrerequisites instead)
+  softwareReqs          String?
+  /// Update cycle (legacy field - use updateFrequency instead)
+  updateCycle           String?
+  /// Last update date (legacy field)
+  lastUpdate            DateTime?
+  /// Next update date (legacy field)
+  nextUpdate            DateTime?
+
+  // Form 1: General Information
+  // Data Information
+  /// Type of data (Raster, Vector, Table)
+  dataType                String?
+  /// Name of the dataset
+  dataName                String
+  /// Percentage of cloud cover for imagery
+  cloudCoverPercentage    String?
+  /// Date when the dataset was produced
+  productionDate          String
+
+  // Fundamental Datasets (stored as JSON)
+  /// Information about fundamental dataset types
+  fundamentalDatasets     Json?
+
+  // Description
+  /// Abstract/description of the dataset
+  abstract               String? @db.Text
+  /// Purpose of the dataset
+  purpose                String? @db.Text
+  /// URL to the thumbnail image
+  thumbnailUrl           String?
+  /// Name of the image file
+  imageName              String?
+
+  // Spatial Domain
+  /// Unit system for coordinates (DD or DMS)
+  coordinateUnit          String?
+  /// Southernmost latitude value
+  minLatitude             Float?
+  /// Westernmost longitude value
+  minLongitude            Float?
+  /// Northernmost latitude value
+  maxLatitude             Float?
+  /// Easternmost longitude value
+  maxLongitude            Float?
   /// Coordinate system used
-  coordinateSystem       String
+  coordinateSystem       String?
   /// Projection used
-  projection             String
+  projection             String?
   /// Scale of the dataset
-  scale                  Int
+  scale                  Int?
   /// Resolution of the dataset
   resolution             String?
   /// Accuracy level
-  accuracyLevel          String
+  accuracyLevel          String?
   /// Completeness percentage
   completeness           Int?
   /// Consistency check status
@@ -135,39 +199,145 @@ model Metadata {
   /// Validation status
   validationStatus       String?
   /// File format
-  fileFormat             String
+  fileFormat             String?
   /// File size in bytes
-  fileSize              Int?
-  /// Number of features
-  numFeatures           Int?
-  /// Software requirements
-  softwareReqs          String?
-  /// Update cycle
-  updateCycle           String?
-  /// Last update date
-  lastUpdate            DateTime?
-  /// Next update date
-  nextUpdate            DateTime?
+  fileSize              BigInt?
+
+  // Location
+  /// Country covered by the dataset
+  country                 String?
+  /// Geopolitical zone within Nigeria
+  geopoliticalZone        String?
+  /// State or province
+  state                   String?
+  /// Local Government Area
+  lga                     String?
+  /// Town or city
+  townCity                String?
+
+  // Data Status
+  /// Completion status (Complete or Incomplete)
+  assessment              String?
+  /// Frequency of updates (Monthly, Quarterly, etc.)
+  updateFrequency         String?
+
+  // Resource Constraint
+  /// Limitations on access to the dataset
+  accessConstraints       String?  @db.Text
+  /// Limitations on use of the dataset
+  useConstraints          String?  @db.Text
+  /// Other constraints or legal prerequisites
+  otherConstraints        String?  @db.Text
+  /// Access restrictions
+  accessRestrictions     String[] @default([])
+  /// License type
+  licenseType           String?
+  /// Usage terms
+  usageTerms             String?
+  /// Attribution requirements
+  attributionRequirements String?
   /// Distribution format
-  distributionFormat     String
+  distributionFormat     String?
   /// Access method
-  accessMethod           String
+  accessMethod           String?
   /// Download URL
   downloadUrl           String?
   /// API endpoint
   apiEndpoint           String?
-  /// License type
-  licenseType           String
-  /// Usage terms
-  usageTerms             String
-  /// Attribution requirements
-  attributionRequirements String
-  /// Access restrictions
-  accessRestrictions     String[] @default([])
+
+  // Metadata Reference
+  /// Date when the metadata was created
+  metadataCreationDate    String?
+  /// Date when the metadata was last reviewed
+  metadataReviewDate      String?
+  /// Name of the contact person for metadata
+  metadataContactName     String?
+  /// Address of the contact person
+  metadataContactAddress  String?  @db.Text
+  /// Email of the contact person
+  metadataContactEmail    String?
+  /// Phone number of the contact person
+  metadataContactPhone    String?
+
+  // Form 2: Data Quality Information
+  // General Section
+  /// Report on logical consistency
+  logicalConsistencyReport String?  @db.Text
+  /// Report on completeness
+  completenessReport      String?  @db.Text
+
+  // Attribute Accuracy
+  /// Report on attribute accuracy
+  attributeAccuracyReport String?  @db.Text
+
+  // Positional Accuracy (stored as JSON)
+  /// Information about horizontal and vertical accuracy
+  positionalAccuracy      Json?
+
+  // Source Information (stored as JSON)
+  /// Information about the source of the dataset
+  sourceInformation       Json?
+
+  // Data Processing Information
+  /// Description of processing steps
+  processingDescription   String?  @db.Text
+  /// Version of software used for processing
+  softwareVersion         String?
+  /// Date when the data was processed
+  processedDate           String?
+
+  // Processor Contact Information
+  /// Name of the processor
+  processorName           String?
+  /// Email of the processor
+  processorEmail          String?
+  /// Address of the processor
+  processorAddress        String?  @db.Text
+
+  // Form 3: Data Distribution Information
+  // Distributor Information
+  /// Name of the distributor
+  distributorName         String?
+  /// Address of the distributor
+  distributorAddress      String?  @db.Text
+  /// Email of the distributor
+  distributorEmail        String?
+  /// Phone number of the distributor
+  distributorPhone        String?
+  /// Website of the distributor
+  distributorWebLink      String?
+  /// Social media handle of the distributor
+  distributorSocialMedia  String?
+  /// Indicates if distributor is also the custodian
+  isCustodian             Boolean? @default(true)
+  /// Name of the custodian if different from distributor
+  custodianName           String?
+  /// Contact information for the custodian if different from distributor
+  custodianContact        String?
+
+  // Distribution Details
+  /// Statement of liability
+  distributionLiability   String?  @db.Text
+  /// Process for custom orders
+  customOrderProcess      String?  @db.Text
+  /// Technical prerequisites for using the dataset
+  technicalPrerequisites  String?  @db.Text
+
+  // Standard Order Process
+  /// Fees for obtaining the dataset
+  fees                    String?
+  /// Typical time between order and delivery
+  turnaroundTime          String?
+  /// Instructions for ordering the dataset
+  orderingInstructions    String?  @db.Text
+  /// Maximum time for response about dataset availability
+  maximumResponseTime     String?
+
+  // Contact details from original Metadata model
   /// Contact person
-  contactPerson          String
+  contactPerson          String?
   /// Contact email
-  email                  String
+  email                  String?
   /// Department
   department            String?
 
@@ -193,4 +363,274 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-} 
+}
+
+/// System settings for the application
+model Settings {
+  /// Unique identifier for the settings record
+  id                      String   @id
+  /// Site name
+  siteName                String
+  /// Site description
+  siteDescription         String
+  /// Support email address
+  supportEmail            String
+  /// Maximum upload size in MB
+  maxUploadSize           Int
+  /// Default language
+  defaultLanguage         String
+  /// Maintenance mode flag
+  maintenanceMode         Boolean  @default(false)
+  /// Registration enabled flag
+  enableRegistration      Boolean  @default(true)
+  /// Email verification required flag
+  requireEmailVerification Boolean  @default(true)
+  /// Metadata validation required flag
+  metadataValidation      Boolean  @default(true)
+  /// Auto backup enabled flag
+  autoBackup              Boolean  @default(true)
+  /// Backup frequency (daily, weekly, monthly)
+  backupFrequency         String
+  /// Storage provider (local, s3, etc.)
+  storageProvider         String
+  /// API rate limit per minute
+  apiRateLimit            Int
+  /// Last update timestamp
+  updatedAt               DateTime @updatedAt
+}
+
+/// Model for storing form drafts
+model Draft {
+  /// Unique identifier for the draft
+  id          String   @id @default(cuid())
+  /// Reference to the user who owns this draft
+  userId      String
+  /// Title of the draft
+  title       String   @default("Untitled Draft")
+  /// Draft data as JSON
+  data        Json
+  /// Last updated timestamp
+  lastUpdated String
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// User who owns this draft
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Model for tracking failed login attempts
+model FailedLogin {
+  /// Email address that failed login
+  email       String   @id
+  /// Number of consecutive failed attempts
+  attempts    Int      @default(0)
+  /// IP address of the last failed attempt
+  ipAddress   String?
+  /// User agent of the last failed attempt
+  userAgent   String?
+  /// Timestamp when account will be unlocked
+  lockedUntil DateTime?
+  /// First failed attempt timestamp
+  firstAttempt DateTime @default(now())
+  /// Last failed attempt timestamp
+  lastAttempt  DateTime @default(now())
+  /// Reset timestamp (when attempts counter was last reset)
+  resetAt     DateTime?
+}
+
+/// Model for security event logging
+model SecurityLog {
+  /// Unique identifier for the log entry
+  id          String   @id @default(uuid())
+  /// Reference to the user (if available)
+  userId      String?
+  /// Email address (if available)
+  email       String?
+  /// Type of security event
+  eventType   String
+  /// IP address of the client
+  ipAddress   String?
+  /// User agent of the client
+  userAgent   String?
+  /// Device identifier
+  deviceId    String?
+  /// Additional details as JSON
+  details     String?
+  /// Timestamp of the event
+  createdAt   DateTime @default(now())
+
+  /// Optional relation to user
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+/// Custom role model for role-based access control
+model Role {
+  /// Unique identifier for the role
+  id          String   @id @default(cuid())
+  /// Name of the role
+  name        String   @unique
+  /// Description of the role
+  description String?
+  /// Whether this is a system role that cannot be deleted
+  isSystem    Boolean  @default(false)
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// Last update timestamp
+  updatedAt   DateTime @updatedAt
+
+  /// Users with this role
+  users       User[]
+  /// Permissions assigned to this role
+  rolePermissions RolePermission[]
+}
+
+/// Permission model for granular access control
+model Permission {
+  /// Unique identifier for the permission
+  id          String   @id @default(cuid())
+  /// Name of the permission
+  name        String   @unique
+  /// Description of the permission
+  description String?
+  /// Action part of the permission (create, read, update, delete, etc.)
+  action      String
+  /// Subject part of the permission (user, metadata, system, etc.)
+  subject     String
+  /// Optional conditions for the permission as JSON
+  conditions  Json?
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// Last update timestamp
+  updatedAt   DateTime @updatedAt
+
+  /// Roles that have this permission
+  rolePermissions RolePermission[]
+  /// Users that have this permission directly
+  userPermissions UserPermission[]
+  /// Permission groups that include this permission
+  permissionGroupItems PermissionGroupItem[]
+
+  @@unique([action, subject])
+  @@index([action, subject])
+}
+
+/// Junction table for role-permission relationships
+model RolePermission {
+  /// Unique identifier for the role-permission relationship
+  id          String   @id @default(cuid())
+  /// Reference to the role
+  roleId      String
+  /// Reference to the permission
+  permissionId String
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+
+  /// Role that has this permission
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  /// Permission assigned to the role
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+/// Junction table for user-permission relationships (direct permissions)
+model UserPermission {
+  /// Unique identifier for the user-permission relationship
+  id          String   @id @default(cuid())
+  /// Reference to the user
+  userId      String
+  /// Reference to the permission
+  permissionId String
+  /// Whether the permission is granted or denied
+  granted     Boolean  @default(true)
+  /// Optional conditions for the permission as JSON
+  conditions  Json?
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// Expiration timestamp for temporary permissions
+  expiresAt   DateTime?
+
+  /// User that has this permission
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Permission assigned to the user
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+}
+
+/// Permission group model for organizing permissions
+model PermissionGroup {
+  /// Unique identifier for the permission group
+  id          String   @id @default(cuid())
+  /// Name of the permission group
+  name        String   @unique
+  /// Description of the permission group
+  description String?
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+  /// Last update timestamp
+  updatedAt   DateTime @updatedAt
+
+  /// Permissions in this group
+  permissionGroupItems PermissionGroupItem[]
+}
+
+/// Junction table for permission-group relationships
+model PermissionGroupItem {
+  /// Unique identifier for the permission-group relationship
+  id          String   @id @default(cuid())
+  /// Reference to the permission group
+  groupId     String
+  /// Reference to the permission
+  permissionId String
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+
+  /// Permission group that includes this permission
+  group       PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  /// Permission included in the group
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, permissionId])
+  @@index([groupId])
+  @@index([permissionId])
+}
+
+/// Activity log model for activity-based permissions
+model ActivityLog {
+  /// Unique identifier for the activity log entry
+  id          String   @id @default(uuid())
+  /// Reference to the user who performed the action
+  userId      String
+  /// Action performed (create, read, update, delete, etc.)
+  action      String
+  /// Subject of the action (user, metadata, system, etc.)
+  subject     String
+  /// Optional ID of the subject
+  subjectId   String?
+  /// Optional metadata about the activity as JSON
+  metadata    Json?
+  /// IP address of the client
+  ipAddress   String?
+  /// User agent of the client
+  userAgent   String?
+  /// Creation timestamp
+  createdAt   DateTime @default(now())
+
+  /// User who performed the action
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action, subject])
+  @@index([createdAt])
+}

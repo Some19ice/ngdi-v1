@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { mockUsersData } from "@/lib/mock/admin-data"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { AUTH_PATHS } from "@/lib/auth/paths"
 
 // Use exact interface from UsersTable component
 interface User {
@@ -26,41 +28,53 @@ interface User {
   updatedAt: string | Date
 }
 
-// Mock function to get user data
-async function fetchUsers(): Promise<{ users: User[]; total: number }> {
-  // Format mock data to match required interface
-  const formattedUsers = mockUsersData.users.map((u) => ({
-    id: u.id,
-    email: u.email,
-    name: `${u.firstName} ${u.lastName}`,
-    // Cast role to UserRole since we know our mock data uses valid roles
-    role: u.role as UserRole,
-    organization: u.organization,
-    department: null,
-    createdAt: u.createdAt,
-    updatedAt: u.createdAt,
-  }))
+// Function to get user data from API
+async function fetchUsers(
+  authToken?: string
+): Promise<{ users: User[]; total: number }> {
+  try {
+    // Get API URL from environment
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
-  return {
-    // Explicitly cast to User[] since we've ensured compatibility
-    users: formattedUsers as User[],
-    total: mockUsersData.total,
+    // Fetch users from API
+    const response = await fetch(`${apiUrl}/admin/users`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch users: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+
+    return {
+      users: data.data.users || [],
+      total: data.data.total || 0,
+    }
+  } catch (error) {
+    console.error("Error fetching users:", error)
+    // Return empty array on error
+    return { users: [], total: 0 }
   }
 }
 
 export default async function UsersPage() {
-  // Use mock admin user
-  const user = {
-    id: "demo-user-id",
-    email: "admin@example.com",
-    role: UserRole.ADMIN,
+  // Check for authentication
+  const cookieStore = await cookies()
+  const authCookie = cookieStore.get("auth_token")
+
+  // If no auth cookie, redirect to login
+  if (!authCookie) {
+    redirect(AUTH_PATHS.SIGNIN)
   }
 
-  // Fetch mock users data
-  const { users, total } = await fetchUsers()
-
-  // Mock auth token
-  const authToken = "mock-auth-token-for-demo-purposes"
+  // Fetch users data from API
+  const { users, total } = await fetchUsers(authCookie.value)
 
   return (
     <div className="space-y-6">
@@ -94,16 +108,10 @@ export default async function UsersPage() {
           <UsersTable
             initialUsers={users}
             initialTotal={total}
-            authToken={authToken}
+            authToken={authCookie.value}
           />
         </CardContent>
       </Card>
-
-      <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
-        <p>
-          <strong>Note:</strong> Using mock data for demonstration purposes.
-        </p>
-      </div>
     </div>
   )
 }

@@ -136,24 +136,24 @@ export class TokenValidationService {
       }
 
       console.error("Token validation error:", error)
-      
+
       // Return appropriate error based on the type
       if (error instanceof Error) {
         if (error.message.includes("expired")) {
           return {
             isValid: false,
-            error: "Token has expired"
+            error: "Token has expired",
           }
         }
         return {
           isValid: false,
-          error: error.message
+          error: error.message,
         }
       }
-      
+
       return {
         isValid: false,
-        error: "Invalid token"
+        error: "Invalid token",
       }
     }
   }
@@ -224,7 +224,7 @@ export class TokenValidationService {
       if (options.checkFamily !== false && jwtPayload.family && redisService.isAvailable()) {
         const familyKey = `token_family:${jwtPayload.family}`
         const latestTokenId = await redisService.get(familyKey)
-        
+
         // If we have a record of this family but with a different token ID,
         // it means this token has been superseded by a newer one
         if (latestTokenId && latestTokenId !== jwtPayload.jti) {
@@ -237,13 +237,13 @@ export class TokenValidationService {
               true
             )
           }
-          
+
           // Blacklist this token as it's been superseded
           await redisService.blacklistToken(token)
-          
+
           return {
             isValid: false,
-            error: "Refresh token has been superseded"
+            error: "Refresh token has been superseded",
           }
         }
       }
@@ -271,7 +271,7 @@ export class TokenValidationService {
       }
 
       console.error("Refresh token validation error:", error)
-      
+
       // Return appropriate error based on the type
       if (error instanceof Error) {
         if (error.message.includes("expired")) {
@@ -285,7 +285,7 @@ export class TokenValidationService {
           error: error.message
         }
       }
-      
+
       return {
         isValid: false,
         error: "Invalid refresh token"
@@ -319,10 +319,10 @@ export class TokenValidationService {
         // Check expiration
         const currentTime = Math.floor(Date.now() / 1000)
         if (decoded.exp && decoded.exp < currentTime) {
-          return { 
-            isValid: false, 
+          return {
+            isValid: false,
             error: "Token expired",
-            exp: decoded.exp
+            exp: decoded.exp,
           }
         }
 
@@ -338,20 +338,21 @@ export class TokenValidationService {
           return { isValid: false, error: "Missing user ID in token" }
         }
 
-        return { 
+        return {
           isValid: true,
           userId,
           email: typeof decoded.email === "string" ? decoded.email : undefined,
           role: typeof decoded.role === "string" ? decoded.role : undefined,
-          exp: typeof decoded.exp === "number" ? decoded.exp : undefined
+          exp: typeof decoded.exp === "number" ? decoded.exp : undefined,
         }
       } catch (decodeError) {
         return { isValid: false, error: "Failed to decode token" }
       }
     } catch (error) {
-      return { 
-        isValid: false, 
-        error: error instanceof Error ? error.message : "Unknown validation error" 
+      return {
+        isValid: false,
+        error:
+          error instanceof Error ? error.message : "Unknown validation error",
       }
     }
   }
@@ -363,25 +364,25 @@ export class TokenValidationService {
     token: string
   ): { userId: string; email: string; role: string; expiry: number } | null {
     const cached = tokenCache.get(token)
-    
+
     if (!cached) {
       return null
     }
-    
+
     // Check if cache entry is expired
     const now = Date.now()
     if (now - cached.timestamp > CACHE_EXPIRY) {
       tokenCache.delete(token)
       return null
     }
-    
+
     // Check if token itself is expired
     const currentTime = Math.floor(now / 1000)
     if (cached.expiry < currentTime) {
       tokenCache.delete(token)
       return null
     }
-    
+
     return cached
   }
 
@@ -423,7 +424,7 @@ export class TokenValidationService {
       // Try to extract user info from token without verification
       let userId: string | undefined
       let email: string | undefined
-      
+
       try {
         const decoded = decodeJwt(token)
         userId = decoded.sub?.toString() || decoded.userId?.toString()
@@ -431,7 +432,7 @@ export class TokenValidationService {
       } catch (error) {
         // Ignore decode errors
       }
-      
+
       // Log the validation failure
       await securityLogService.logEvent({
         userId,
@@ -459,11 +460,11 @@ export class TokenValidationService {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, locked: true }
+        select: { id: true },
       })
-      
-      // User must exist and not be locked
-      return !!user && !user.locked
+
+      // User must exist
+      return !!user
     } catch (error) {
       console.error("User validation error:", error)
       return false
@@ -481,9 +482,9 @@ export class TokenValidationService {
         401
       )
     }
-    
+
     const [type, token] = header.split(" ")
-    
+
     if (type !== "Bearer" || !token) {
       throw new AuthError(
         AuthErrorCode.INVALID_TOKEN,
@@ -491,7 +492,7 @@ export class TokenValidationService {
         401
       )
     }
-    
+
     return token
   }
 
@@ -504,26 +505,26 @@ export class TokenValidationService {
     if (authHeader && authHeader.startsWith("Bearer ")) {
       return this.extractTokenFromHeader(authHeader)
     }
-    
+
     // If not in header, try to get from cookies
     const cookieHeader = c.req.raw.headers.get("cookie")
     if (cookieHeader) {
       const cookies = cookieHeader.split(";")
-      
+
       // Try multiple possible cookie names
       const possibleCookieNames = ["auth_token", "accessToken", "token"]
-      
+
       for (const cookieName of possibleCookieNames) {
         const authCookie = cookies.find((cookie) =>
           cookie.trim().startsWith(`${cookieName}=`)
         )
-        
+
         if (authCookie) {
           return authCookie.split("=")[1]
         }
       }
     }
-    
+
     throw new AuthError(
       AuthErrorCode.INVALID_TOKEN,
       "No authentication token found",

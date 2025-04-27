@@ -24,7 +24,7 @@ export async function checkUserPermission(
     // If not found in header, try to get from cookies
     if (!token) {
       // Create a cookie store from the request
-      const cookieStore = cookies()
+      const cookieStore = await cookies()
       token = cookieStore.get("auth_token")?.value || null
     }
 

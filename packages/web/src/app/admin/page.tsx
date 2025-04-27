@@ -1,19 +1,19 @@
-import { requireAuth } from "@/lib/auth"
-import { UserRole } from "@/lib/auth/constants"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 import { AdminDashboardClient } from "./components/admin-dashboard-client"
+import { AUTH_PATHS } from "@/lib/auth/paths"
 
 export const dynamic = "force-dynamic"
 
-// Admin page with auth requirements removed
+// Admin page with proper authentication
 export default async function AdminPage() {
-  // Authentication check bypassed
-  console.log("Admin page - Authentication bypassed")
+  // Check for authentication cookie - await the cookies() function
+  const cookieStore = await cookies()
+  const authCookie = cookieStore.get("auth_token")
 
-  // Create mock admin user
-  const user = {
-    id: "demo-user-id",
-    email: "demo@example.com",
-    role: UserRole.ADMIN,
+  // If no auth cookie, redirect to login
+  if (!authCookie) {
+    redirect(AUTH_PATHS.SIGNIN)
   }
 
   // Render the admin dashboard component

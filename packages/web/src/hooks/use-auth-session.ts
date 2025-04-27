@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { UserRole } from "@/lib/auth/constants"
 import { useCallback, useEffect } from "react"
 import { toast as sonnerToast } from "sonner" // For compatibility with existing code
+import { checkApiAvailability } from "@/lib/api-config"
 
 // Query keys
 const SESSION_QUERY_KEY = ["session"]
@@ -196,7 +197,7 @@ export function useAuthSession() {
     }
   }, [status, refetch, checkCookies])
 
-  // Enhanced login mutation with navigation handling
+  // Enhanced login mutation with navigation handling and better error handling
   const loginMutation = useMutation({
     mutationFn: async ({
       email,
@@ -212,7 +213,84 @@ export function useAuthSession() {
       })
 
       try {
+        // First check if API is available with a single retry
+        let apiAvailable = false
+
+        // Try the API connection check
+        console.log("Checking API availability...")
+        apiAvailable = await authClient.testApiConnection()
+
+        if (!apiAvailable) {
+          // One retry with a short delay
+          console.log(
+            "API not available on first attempt, retrying in 1000ms..."
+          )
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+
+          // Try again
+          console.log("Retrying API availability check...")
+          apiAvailable = await authClient.testApiConnection()
+        }
+
+        // If still not available, try the Next.js API proxy as a last resort
+        if (!apiAvailable) {
+          console.log(
+            "Trying API health check via Next.js API proxy as last resort"
+          )
+          try {
+            const response = await fetch("/api/health-check", {
+              method: "GET",
+              cache: "no-store",
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              if (data.apiServer === "healthy") {
+                console.log("API server is healthy via proxy route")
+                apiAvailable = true
+              }
+            }
+          } catch (error) {
+            console.warn(
+              "Proxy health check failed:",
+              error instanceof Error ? error.message : "Unknown error"
+            )
+          }
+        }
+
+        if (!apiAvailable) {
+          console.error("API server is not available after attempts")
+          throw new Error(
+            "API server is not available. Please check your connection and try again."
+          )
+        }
+
+        console.log("API is available, proceeding with login...")
         return await authClient.login(email, password)
+      } catch (error) {
+        console.error("Login error:", error)
+
+        // Enhance error with more context if it's a network error
+        if (error instanceof Error) {
+          // Check for specific error types
+          if (error.name === "AbortError") {
+            throw new Error("API Server Connection Error: Request timed out")
+          }
+
+          if (
+            error.message.includes("fetch") ||
+            error.message.includes("network") ||
+            error.message.includes("API server") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("NetworkError") ||
+            error.message.includes("timeout") ||
+            error.message.includes("ECONNREFUSED")
+          ) {
+            throw new Error(`API Server Connection Error: ${error.message}`)
+          }
+        }
+
+        throw error
       } finally {
         // Clear loading toast
         loadingToast.dismiss?.()
@@ -271,20 +349,58 @@ export function useAuthSession() {
       // Check if the error is related to API server connection issues
       const isApiServerError =
         error.message?.includes("API server is not available") ||
+        error.message?.includes("API Server Connection Error") ||
         error.message?.includes("Failed to fetch") ||
         error.message?.includes("Network Error") ||
+        error.message?.includes("timeout") ||
+        error.message?.includes("ECONNREFUSED") ||
         error.response?.status === 503 ||
+        error.response?.status === 504 ||
         error.response?.data?.apiStatus === "offline"
 
-      const errorMessage = isApiServerError
-        ? "The authentication server is not available. Please ensure the API server is running."
-        : error.response?.data?.message ||
+      // Create a user-friendly error message
+      let errorMessage = ""
+      let errorTitle = ""
+
+      if (isApiServerError) {
+        errorTitle = "Server Connection Error"
+
+        // Provide specific messages for different connection issues
+        if (error.message?.includes("timeout") || error.name === "AbortError") {
+          errorMessage =
+            "The server took too long to respond. Please try again later."
+        } else if (
+          error.message?.includes("ECONNREFUSED") ||
+          error.message?.includes("not available")
+        ) {
+          errorMessage =
+            "Cannot connect to the authentication server. Please ensure the API server is running."
+        } else if (
+          error.response?.status === 503 ||
+          error.response?.status === 504
+        ) {
+          errorMessage =
+            "The authentication server is temporarily unavailable. Please try again later."
+        } else {
+          errorMessage =
+            "There was a problem connecting to the authentication server. Please check your network connection and try again."
+        }
+      } else {
+        errorTitle = "Login failed"
+        errorMessage =
+          error.response?.data?.message ||
           error.message ||
           "Invalid email or password. Please try again."
 
+        // Clean up error messages
+        if (errorMessage.includes("Login failed:")) {
+          errorMessage = errorMessage.replace("Login failed:", "").trim()
+        }
+      }
+
       // Show error toast
       toast({
-        title: isApiServerError ? "Server Connection Error" : "Login failed",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       })
@@ -296,10 +412,19 @@ export function useAuthSession() {
       if (isApiServerError) {
         console.error("API Server Connection Error:", {
           message: error.message,
+          name: error.name,
           status: error.response?.status,
           data: error.response?.data,
           code: error.code,
+          stack: error.stack,
         })
+
+        // Suggest solutions in console
+        console.info("Possible solutions:")
+        console.info("1. Check if the API server is running")
+        console.info("2. Verify the API URL in .env.local is correct")
+        console.info("3. Check for network connectivity issues")
+        console.info("4. Ensure ports are not blocked by firewall")
       }
     },
   })

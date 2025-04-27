@@ -1,0 +1,54 @@
+{
+  "extends": ["../../.eslintrc.json"],
+  "plugins": ["@typescript-eslint", "prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "interface",
+        "format": ["PascalCase"],
+        "prefix": ["I"]
+      },
+      {
+        "selector": "typeAlias",
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "enum",
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "enumMember",
+        "format": ["UPPER_CASE"]
+      },
+      {
+        "selector": "variable",
+        "format": ["camelCase", "UPPER_CASE", "PascalCase"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "function",
+        "format": ["camelCase"]
+      },
+      {
+        "selector": "method",
+        "format": ["camelCase"]
+      },
+      {
+        "selector": "property",
+        "format": ["camelCase", "PascalCase"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "parameter",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "class",
+        "format": ["PascalCase"]
+      }
+    ]
+  }
+}

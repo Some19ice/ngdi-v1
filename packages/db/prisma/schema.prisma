@@ -123,226 +123,123 @@ model Metadata {
   /// Unique identifier for the metadata entry
   id                      String   @id @default(uuid())
 
-  // Legacy fields from original Metadata model
-  /// Title of the dataset (legacy field - use dataName instead)
+  // Core metadata fields (always required)
+  /// Title of the dataset
   title                   String
-  /// Author of the dataset (legacy field)
-  author                  String?
-  /// Organization name (legacy field)
-  organization            String?
-  /// Start date of the dataset (legacy field)
-  dateFrom               String?
-  /// End date of the dataset (legacy field)
-  dateTo                 String?
-  /// Framework type (legacy field - use dataType instead)
-  frameworkType          String?
-  /// Categories of the dataset (legacy field)
-  categories             String[] @default([])
-  /// Number of features (legacy field)
-  numFeatures           Int?
-  /// Software requirements (legacy field - use technicalPrerequisites instead)
-  softwareReqs          String?
-  /// Update cycle (legacy field - use updateFrequency instead)
-  updateCycle           String?
-  /// Last update date (legacy field)
-  lastUpdate            DateTime?
-  /// Next update date (legacy field)
-  nextUpdate            DateTime?
-
-  // Form 1: General Information
-  // Data Information
-  /// Type of data (Raster, Vector, Table)
-  dataType                String?
-  /// Name of the dataset
+  /// Name of the dataset (more descriptive title)
   dataName                String
-  /// Percentage of cloud cover for imagery
-  cloudCoverPercentage    String?
+  /// Type of data (Raster, Vector, Table)
+  dataType                String
+  /// Abstract/description of the dataset
+  abstract               String   @db.Text
+  /// Purpose of the dataset
+  purpose                String   @db.Text
   /// Date when the dataset was produced
   productionDate          String
-
-  // Fundamental Datasets (stored as JSON)
-  /// Information about fundamental dataset types
-  fundamentalDatasets     Json?
-
-  // Description
-  /// Abstract/description of the dataset
-  abstract               String? @db.Text
-  /// Purpose of the dataset
-  purpose                String? @db.Text
+  /// Organization name
+  organization            String
+  /// Author of the dataset
+  author                  String
+  /// Categories of the dataset
+  categories             String[] @default([])
+  /// Framework type
+  frameworkType          String
   /// URL to the thumbnail image
-  thumbnailUrl           String?
+  thumbnailUrl           String
   /// Name of the image file
-  imageName              String?
-
-  // Spatial Domain
-  /// Unit system for coordinates (DD or DMS)
-  coordinateUnit          String?
-  /// Southernmost latitude value
-  minLatitude             Float?
-  /// Westernmost longitude value
-  minLongitude            Float?
-  /// Northernmost latitude value
-  maxLatitude             Float?
-  /// Easternmost longitude value
-  maxLongitude            Float?
-  /// Coordinate system used
-  coordinateSystem       String?
-  /// Projection used
-  projection             String?
-  /// Scale of the dataset
-  scale                  Int?
-  /// Resolution of the dataset
-  resolution             String?
-  /// Accuracy level
-  accuracyLevel          String?
-  /// Completeness percentage
-  completeness           Int?
-  /// Consistency check status
-  consistencyCheck       Boolean?
+  imageName              String
+  /// Start date of the dataset
+  dateFrom               String
+  /// End date of the dataset
+  dateTo                 String
+  /// Frequency of updates (Monthly, Quarterly, etc.)
+  updateFrequency         String
   /// Validation status
   validationStatus       String?
-  /// File format
-  fileFormat             String?
-  /// File size in bytes
-  fileSize              BigInt?
-
-  // Location
-  /// Country covered by the dataset
-  country                 String?
-  /// Geopolitical zone within Nigeria
-  geopoliticalZone        String?
-  /// State or province
-  state                   String?
-  /// Local Government Area
-  lga                     String?
-  /// Town or city
-  townCity                String?
-
-  // Data Status
   /// Completion status (Complete or Incomplete)
   assessment              String?
-  /// Frequency of updates (Monthly, Quarterly, etc.)
-  updateFrequency         String?
 
-  // Resource Constraint
-  /// Limitations on access to the dataset
-  accessConstraints       String?  @db.Text
-  /// Limitations on use of the dataset
-  useConstraints          String?  @db.Text
-  /// Other constraints or legal prerequisites
-  otherConstraints        String?  @db.Text
-  /// Access restrictions
-  accessRestrictions     String[] @default([])
-  /// License type
-  licenseType           String?
-  /// Usage terms
-  usageTerms             String?
-  /// Attribution requirements
-  attributionRequirements String?
+  // Spatial information
+  /// Unit system for coordinates (DD or DMS)
+  coordinateUnit          String   @default("DD")
+  /// Southernmost latitude value
+  minLatitude             Float    @default(0)
+  /// Westernmost longitude value
+  minLongitude            Float    @default(0)
+  /// Northernmost latitude value
+  maxLatitude             Float    @default(0)
+  /// Easternmost longitude value
+  maxLongitude            Float    @default(0)
+  /// Coordinate system used
+  coordinateSystem       String
+  /// Projection used
+  projection             String
+  /// Scale of the dataset
+  scale                  Int
+  /// Resolution of the dataset
+  resolution             String?
+
+  // Location information (stored as JSON for flexibility)
+  /// Location information including country, state, LGA, etc.
+  locationInfo           Json?
+
+  // File information
+  /// File format
+  fileFormat             String
+  /// File size in bytes
+  fileSize              BigInt?
+  /// Number of features
+  numFeatures           Int?
+
+  // Quality information (stored as JSON for flexibility)
+  /// Quality information including accuracy, completeness, etc.
+  qualityInfo            Json?
+
+  // Distribution information
   /// Distribution format
-  distributionFormat     String?
+  distributionFormat     String
   /// Access method
-  accessMethod           String?
+  accessMethod           String
   /// Download URL
   downloadUrl           String?
   /// API endpoint
   apiEndpoint           String?
+  /// License type
+  licenseType           String
+  /// Usage terms
+  usageTerms             String
+  /// Attribution requirements
+  attributionRequirements String
+  /// Access restrictions
+  accessRestrictions     String[] @default([])
 
-  // Metadata Reference
-  /// Date when the metadata was created
-  metadataCreationDate    String?
-  /// Date when the metadata was last reviewed
-  metadataReviewDate      String?
-  /// Name of the contact person for metadata
-  metadataContactName     String?
-  /// Address of the contact person
-  metadataContactAddress  String?  @db.Text
-  /// Email of the contact person
-  metadataContactEmail    String?
-  /// Phone number of the contact person
-  metadataContactPhone    String?
+  // Contact information (stored as JSON for flexibility)
+  /// Contact information including contact person, email, etc.
+  contactInfo            Json?
 
-  // Form 2: Data Quality Information
-  // General Section
-  /// Report on logical consistency
-  logicalConsistencyReport String?  @db.Text
-  /// Report on completeness
-  completenessReport      String?  @db.Text
+  // Metadata reference information (stored as JSON for flexibility)
+  /// Metadata reference information including creation date, review date, etc.
+  metadataReferenceInfo  Json?
 
-  // Attribute Accuracy
-  /// Report on attribute accuracy
-  attributeAccuracyReport String?  @db.Text
+  // Data quality information (stored as JSON for flexibility)
+  /// Data quality information including consistency, completeness, etc.
+  dataQualityInfo        Json?
 
-  // Positional Accuracy (stored as JSON)
-  /// Information about horizontal and vertical accuracy
-  positionalAccuracy      Json?
+  // Data processing information (stored as JSON for flexibility)
+  /// Data processing information including processing steps, software version, etc.
+  dataProcessingInfo     Json?
 
-  // Source Information (stored as JSON)
-  /// Information about the source of the dataset
-  sourceInformation       Json?
+  // Distribution details (stored as JSON for flexibility)
+  /// Distribution details including distributor, fees, etc.
+  distributionDetails    Json?
 
-  // Data Processing Information
-  /// Description of processing steps
-  processingDescription   String?  @db.Text
-  /// Version of software used for processing
-  softwareVersion         String?
-  /// Date when the data was processed
-  processedDate           String?
+  // Legacy fields (for backward compatibility)
+  /// Legacy fields from original Metadata model
+  legacyFields           Json?
 
-  // Processor Contact Information
-  /// Name of the processor
-  processorName           String?
-  /// Email of the processor
-  processorEmail          String?
-  /// Address of the processor
-  processorAddress        String?  @db.Text
-
-  // Form 3: Data Distribution Information
-  // Distributor Information
-  /// Name of the distributor
-  distributorName         String?
-  /// Address of the distributor
-  distributorAddress      String?  @db.Text
-  /// Email of the distributor
-  distributorEmail        String?
-  /// Phone number of the distributor
-  distributorPhone        String?
-  /// Website of the distributor
-  distributorWebLink      String?
-  /// Social media handle of the distributor
-  distributorSocialMedia  String?
-  /// Indicates if distributor is also the custodian
-  isCustodian             Boolean? @default(true)
-  /// Name of the custodian if different from distributor
-  custodianName           String?
-  /// Contact information for the custodian if different from distributor
-  custodianContact        String?
-
-  // Distribution Details
-  /// Statement of liability
-  distributionLiability   String?  @db.Text
-  /// Process for custom orders
-  customOrderProcess      String?  @db.Text
-  /// Technical prerequisites for using the dataset
-  technicalPrerequisites  String?  @db.Text
-
-  // Standard Order Process
-  /// Fees for obtaining the dataset
-  fees                    String?
-  /// Typical time between order and delivery
-  turnaroundTime          String?
-  /// Instructions for ordering the dataset
-  orderingInstructions    String?  @db.Text
-  /// Maximum time for response about dataset availability
-  maximumResponseTime     String?
-
-  // Contact details from original Metadata model
-  /// Contact person
-  contactPerson          String?
-  /// Contact email
-  email                  String?
-  /// Department
-  department            String?
+  // Fundamental Datasets (stored as JSON)
+  /// Information about fundamental dataset types
+  fundamentalDatasets     Json?
 
   /// Reference to the user who created this entry
   userId                 String
@@ -353,7 +250,20 @@ model Metadata {
   /// Last update timestamp
   updatedAt              DateTime @updatedAt
 
+  // Indexes for common query patterns
   @@index([userId])
+  @@index([title])
+  @@index([dataName])
+  @@index([dataType])
+  @@index([organization])
+  @@index([frameworkType])
+  @@index([fileFormat])
+  @@index([validationStatus])
+  @@index([assessment])
+  @@index([dateFrom, dateTo])
+  @@index([productionDate])
+  @@index([updateFrequency])
+  @@index([categories])
 }
 
 /// Token for email verification and password reset

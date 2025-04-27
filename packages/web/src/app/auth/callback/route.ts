@@ -18,7 +18,9 @@ export async function GET(request: Request) {
       const { accessToken, refreshToken } = response.data
 
       // Set cookies for the tokens
-      cookies().set("access_token", accessToken, {
+      const cookieStore = await cookies()
+
+      cookieStore.set("access_token", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
         maxAge: 60 * 60, // 1 hour
       })
 
-      cookies().set("refresh_token", refreshToken, {
+      cookieStore.set("refresh_token", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -35,11 +37,11 @@ export async function GET(request: Request) {
       })
 
       // After successful authentication, redirect to the home page or a specified redirect URL
-      const redirectTo = cookies().get("redirectTo")?.value
+      const redirectTo = cookieStore.get("redirectTo")?.value
       const redirectUrl = redirectTo || "/"
 
       // Clear the redirect cookie
-      cookies().delete("redirectTo")
+      cookieStore.delete("redirectTo")
 
       return NextResponse.redirect(new URL(redirectUrl, requestUrl.origin))
     } catch (error) {

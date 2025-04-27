@@ -4,7 +4,9 @@
   "description": "Hono backend for NGDI Portal",
   "main": "dist/index.js",
   "scripts": {
+    "predev": "node scripts/check-port.js 3001 --kill",
     "dev": "tsx watch src/index.ts",
+    "dev:safe": "npm run predev && npm run dev",
     "build": "tsup",
     "start": "node dist/index.js",
     "start:prod": "NODE_ENV=production node dist/index.js",
@@ -13,7 +15,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "clean": "rm -rf node_modules dist"
+    "clean": "rm -rf node_modules dist",
+    "check-port": "node scripts/check-port.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",

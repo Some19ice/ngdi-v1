@@ -14,8 +14,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { adminGet } from "@/lib/api/admin-fetcher"
-import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
-import { mockDashboardStats } from "@/lib/mock/admin-data"
+import { useAuthSession } from "@/hooks/use-auth-session"
 
 // Helper function to get cookie by name
 function getCookie(name: string): string | null {
@@ -50,13 +49,20 @@ export function AdminDashboardClient() {
     email: string
     role: string
   } | null>(null)
-  const [useMockData, setUseMockData] = useState(false)
 
-  // Fetch user information
+  // Get user from auth session
+  const { user: authUser, isAuthenticated } = useAuthSession()
+
+  // Set user when auth session changes
   useEffect(() => {
-    // Using our mock admin user
-    setUser(MOCK_ADMIN_USER)
-  }, [])
+    if (isAuthenticated && authUser) {
+      setUser({
+        id: authUser.id,
+        email: authUser.email,
+        role: authUser.role,
+      })
+    }
+  }, [authUser, isAuthenticated])
 
   // Fetch stats for the dashboard
   useEffect(() => {
@@ -67,12 +73,57 @@ export function AdminDashboardClient() {
 
         // Get the API base URL from env and construct the proper endpoint URL
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
-        const statsUrl = `${apiUrl}/api/admin/dashboard-stats`
+        const statsUrl = `${apiUrl}/admin/dashboard-stats`
         console.log("Fetching dashboard stats from:", statsUrl)
 
         try {
-          // Use the new adminGet function that automatically adds auth headers
-          const result = await adminGet(statsUrl)
+          // Get token from localStorage or cookies
+          let authToken = localStorage.getItem("accessToken")
+
+          // If no token in localStorage, try to get from cookies
+          if (!authToken && typeof document !== "undefined") {
+            const cookieValue = document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("auth_token="))
+            if (cookieValue) {
+              authToken = cookieValue.split("=")[1]
+            }
+          }
+
+          // If still no token, use a fallback for development
+          if (!authToken && process.env.NODE_ENV === "development") {
+            console.warn("No auth token found, using fallback empty stats")
+            setStats({
+              totalUsers: 0,
+              totalMetadata: 0,
+              userRoleDistribution: [],
+              recentMetadataCount: 0,
+              userGrowthPoints: 0,
+              metadataByFrameworkCount: 0,
+              topOrganizationsCount: 0,
+            })
+            setLoading(false)
+            return
+          }
+
+          if (!authToken) {
+            throw new Error("No authentication token found")
+          }
+
+          // Make the request with the auth token
+          const response = await fetch(statsUrl, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            cache: "no-store",
+          })
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.statusText}`)
+          }
+
+          const result = await response.json()
 
           if (result && result.totalUsers !== undefined) {
             setStats(result)
@@ -81,18 +132,13 @@ export function AdminDashboardClient() {
           }
         } catch (error) {
           console.error("Error response from dashboard stats:", error)
-          // Use mock data as fallback
-          console.log("Using mock dashboard data instead")
-          setUseMockData(true)
-          setStats(mockDashboardStats)
-          setError("Showing mock data for demonstration")
+          setError("Failed to fetch dashboard stats. Please try again later.")
         }
       } catch (error) {
         console.error("Error fetching stats:", error)
-        setError("Failed to fetch stats. Using mock data instead.")
-        // Set mock data if there's an error
-        setUseMockData(true)
-        setStats(mockDashboardStats)
+        setError(
+          "Failed to fetch stats. Please check your connection and try again."
+        )
       } finally {
         setLoading(false)
       }
@@ -119,9 +165,6 @@ export function AdminDashboardClient() {
   const errorBanner = error ? (
     <div className="bg-amber-50 p-4 rounded-md text-amber-800 mb-6">
       <p className="font-medium">{error}</p>
-      {useMockData && (
-        <p className="text-sm mt-1">Using demonstration data for preview.</p>
-      )}
     </div>
   ) : null
 
@@ -162,11 +205,6 @@ export function AdminDashboardClient() {
           <p className="text-muted-foreground">
             Is Admin: {user?.role === "ADMIN" ? "Yes" : "No"}
           </p>
-          {useMockData && (
-            <div className="mt-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded inline-block">
-              Using Mock Data
-            </div>
-          )}
         </Card>
 
         {/* Quick actions card */}

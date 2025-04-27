@@ -28,8 +28,8 @@ import {
 } from "recharts"
 import { Loader2 } from "lucide-react"
 import { adminGet } from "@/lib/api/admin-fetcher"
-import { mockAnalyticsData } from "@/lib/mock/admin-data"
-import { MOCK_ADMIN_USER } from "@/lib/auth/mock"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { AUTH_PATHS } from "@/lib/auth/paths"
 
 // Define interfaces for the analytics data
 interface AnalyticsData {
@@ -62,12 +62,12 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
-  const user = MOCK_ADMIN_USER
+  // Use real authentication
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthSession()
   const [timePeriod, setTimePeriod] = useState("30")
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [useMockData, setUseMockData] = useState(false)
 
   // Fetch analytics data from the API
   useEffect(() => {
@@ -78,41 +78,78 @@ export default function AnalyticsPage() {
 
         // Call the API server using our admin fetcher utility
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
-        const url = `${apiUrl}/api/admin/analytics?period=${timePeriod}`
+        const url = `${apiUrl}/admin/analytics?period=${timePeriod}`
 
-        const response = await adminGet(url).catch(() => {
-          console.log("Using mock analytics data instead")
-          setUseMockData(true)
-          // Return mock data in the expected format
-          return { success: true, data: mockAnalyticsData }
-        })
+        const response = await adminGet(url)
 
         // Type-safe handling of the returned data
         if (response?.success && response.data) {
           setAnalytics(response.data)
-        } else if (useMockData) {
-          // Direct use of mock data if we're in mock mode
-          setAnalytics(mockAnalyticsData)
         } else {
           console.error("Invalid data format returned:", response)
-          setError("Invalid response format. Using mock data instead.")
-          setAnalytics(mockAnalyticsData)
+          setError("Invalid response format. Please try again later.")
         }
       } catch (err) {
         console.error("Failed to fetch analytics:", err)
-        setError("Failed to load analytics. Using mock data instead.")
-        // Use mock data as fallback
-        setAnalytics(mockAnalyticsData)
+
+        // Provide more specific error message
+        let errorMessage =
+          "Failed to load analytics. Please check your connection and try again."
+
+        if (err instanceof Error) {
+          // If it's a network error, provide more helpful message
+          if (
+            err.message.includes("Network error") ||
+            err.message.includes("Failed to fetch")
+          ) {
+            errorMessage =
+              "Could not connect to the API server. Please check if the API server is running."
+          } else {
+            // Use the error message from the API
+            errorMessage = err.message
+          }
+        }
+
+        setError(errorMessage)
       } finally {
         setLoading(false)
       }
     }
 
-    // Remove authentication and authorization checks
-    fetchAnalytics()
-  }, [timePeriod, useMockData])
+    // Only fetch if user is authenticated and is admin
+    if (isAuthenticated && user?.role === UserRole.ADMIN) {
+      fetchAnalytics()
+    }
+  }, [timePeriod, isAuthenticated, user])
 
-  // If loading, show loading indicator
+  // If auth is loading, show loading indicator
+  if (authLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-ngdi-green-500" />
+          <p className="mt-2 text-sm text-gray-500">
+            Loading authentication...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // If not authenticated, redirect to login
+  if (!isAuthenticated || !user) {
+    // Use client-side redirect since this is a client component
+    window.location.href = AUTH_PATHS.SIGNIN
+    return null
+  }
+
+  // If not admin, redirect to home
+  if (user.role !== UserRole.ADMIN) {
+    window.location.href = "/"
+    return null
+  }
+
+  // If data is loading, show loading indicator
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -126,14 +163,19 @@ export default function AnalyticsPage() {
     )
   }
 
-  // If error but we have mock data, show the UI with a notification
+  // If error, show error banner
   const errorBanner = error ? (
     <div className="bg-amber-50 p-4 rounded-md text-amber-800 mb-6">
       <h3 className="text-lg font-semibold mb-2">Notice</h3>
       <p>{error}</p>
-      <p className="text-sm mt-2">
-        Showing mock data for demonstration purposes.
-      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-4"
+        onClick={() => window.location.reload()}
+      >
+        Retry
+      </Button>
     </div>
   ) : null
 
@@ -169,11 +211,6 @@ export default function AnalyticsPage() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Analytics Overview</h2>
         <div className="flex items-center space-x-2">
-          {useMockData && (
-            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              Using Mock Data
-            </div>
-          )}
           <Select
             value={timePeriod}
             onValueChange={(value) => setTimePeriod(value)}

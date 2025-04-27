@@ -12,7 +12,7 @@ const AUTH_COOKIE_NAME = "auth_token"
  */
 async function getLoggedInUser() {
   // This function is only called in dynamic contexts
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
 
   // Check for auth cookie in the request
   const authToken = cookieStore.get(AUTH_COOKIE_NAME)?.value

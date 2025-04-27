@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client"
 import { config } from "../config"
 import { SignJWT } from "jose"
 import { UserRole } from "../types/auth.types"
-import { prisma } from "../db/prisma"
+import { prisma } from "../shared/prisma-client"
 import {
   TestApp,
   TestMethod,
@@ -19,9 +18,6 @@ import "@jest/globals"
 
 // Re-export prisma for tests
 export { prisma }
-
-// Create a test Prisma client
-export const prismaClient = new PrismaClient()
 
 // Convert string to Uint8Array for jose
 const textEncoder = new TextEncoder()
@@ -102,7 +98,7 @@ export async function createTestVerificationToken(
 export async function createTestMetadata(
   userId: string
 ): Promise<TestMetadata> {
-  const metadata = await prismaClient.metadata.create({
+  const metadata = await prisma.metadata.create({
     data: {
       userId,
       title: "Test Metadata",
@@ -156,7 +152,7 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 // Global teardown
 export async function teardownTestEnvironment(): Promise<void> {
   await clearDatabase()
-  await prismaClient.$disconnect()
+  await prisma.$disconnect()
 }
 
 // Helper to create a test request

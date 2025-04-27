@@ -12,8 +12,9 @@ export async function updateUserProfile(
   values: Partial<ProfileFormValues>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ""
-    const authToken = cookies().get("auth_token")?.value
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+    const cookieStore = await cookies()
+    const authToken = cookieStore.get("auth_token")?.value
 
     if (!authToken) {
       throw new Error("Authentication required")

@@ -55,7 +55,7 @@ async function getUserMetadata(userId: string) {
 
   try {
     // Get auth token from cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const authToken = cookieStore.get("auth_token")?.value
 
     if (!authToken) {
