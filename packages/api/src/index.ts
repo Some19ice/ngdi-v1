@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
-import { logger } from "hono/logger"
+import { logger as honoLogger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { prettyJSON } from "hono/pretty-json"
 import { OpenAPIHono } from "@hono/zod-openapi"
@@ -17,9 +17,10 @@ import rolesRouter from "./routes/roles"
 import userPermissionsRouter from "./routes/user-permissions"
 import permissionGroupsRouter from "./routes/permission-groups"
 import activityLogsRouter from "./routes/activity-logs"
+// Import centralized error handling
+import { errorMiddleware } from "./services/error-handling.service"
 import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
-import { errorMiddleware } from "./middleware/error-handler"
 import { rateLimit } from "./middleware/rate-limit"
 import csrf from "./middleware/csrf"
 import { serve } from "@hono/node-server"
@@ -55,7 +56,7 @@ app.get("/api/health", (c) => {
 
 // Now proceed with normal middleware
 // Apply global middleware
-app.use("*", logger())
+app.use("*", honoLogger())
 app.use(
   "*",
   cors({

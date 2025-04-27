@@ -1,17 +1,16 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { z } from "zod"
 import { prisma } from "../../lib/prisma"
-import { 
-  authMiddleware, 
-  requirePermission 
-} from "../../middleware"
-import { 
-  ROLE_READ, 
+import { authMiddleware, requirePermission } from "../../middleware"
+import {
+  ROLE_READ,
   ROLE_CREATE,
   ROLE_UPDATE,
   ROLE_DELETE,
-  ROLE_ASSIGN
+  ROLE_ASSIGN,
 } from "../../constants/permissions"
+import { errorHandler } from "../../services/error-handling.service"
+import { ApiError, ErrorCode } from "../../middleware/error-handler"
 
 // Create roles router
 const rolesRouter = new OpenAPIHono()
@@ -23,7 +22,7 @@ rolesRouter.use("*", authMiddleware)
 const roleSchema = z.object({
   name: z.string().min(3).max(100),
   description: z.string().optional(),
-  isSystem: z.boolean().optional().default(false)
+  isSystem: z.boolean().optional().default(false),
 })
 
 // Role response schema
@@ -33,17 +32,19 @@ const roleResponseSchema = z.object({
   description: z.string().nullable(),
   isSystem: z.boolean(),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 })
 
 // Role with permissions schema
 const roleWithPermissionsSchema = roleResponseSchema.extend({
-  permissions: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    action: z.string(),
-    subject: z.string()
-  }))
+  permissions: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      action: z.string(),
+      subject: z.string(),
+    })
+  ),
 })
 
 // List roles
@@ -60,25 +61,28 @@ rolesRouter.openapi(
         content: {
           "application/json": {
             schema: z.object({
-              roles: z.array(roleResponseSchema)
-            })
-          }
-        }
+              roles: z.array(roleResponseSchema),
+            }),
+          },
+        },
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
-      }
-    }
+        description: "Forbidden",
+      },
+    },
   }),
   async (c) => {
     // Check if user has permission to read roles
-    await requirePermission(ROLE_READ.action, ROLE_READ.subject)(c, async () => {})
+    await requirePermission(ROLE_READ.action, ROLE_READ.subject)(
+      c,
+      async () => {}
+    )
 
     const roles = await prisma.role.findMany({
-      orderBy: { name: "asc" }
+      orderBy: { name: "asc" },
     })
 
     return c.json({ roles })
@@ -95,32 +99,35 @@ rolesRouter.openapi(
     description: "Get role by ID with its permissions",
     request: {
       params: z.object({
-        id: z.string()
-      })
+        id: z.string(),
+      }),
     },
     responses: {
       200: {
         description: "Role details with permissions",
         content: {
           "application/json": {
-            schema: roleWithPermissionsSchema
-          }
-        }
+            schema: roleWithPermissionsSchema,
+          },
+        },
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "Role not found"
-      }
-    }
+        description: "Role not found",
+      },
+    },
   }),
   async (c) => {
     // Check if user has permission to read roles
-    await requirePermission(ROLE_READ.action, ROLE_READ.subject)(c, async () => {})
+    await requirePermission(ROLE_READ.action, ROLE_READ.subject)(
+      c,
+      async () => {}
+    )
 
     const { id } = c.req.param()
 
@@ -129,10 +136,10 @@ rolesRouter.openapi(
       include: {
         rolePermissions: {
           include: {
-            permission: true
-          }
-        }
-      }
+            permission: true,
+          },
+        },
+      },
     })
 
     if (!role) {
@@ -142,12 +149,12 @@ rolesRouter.openapi(
     // Transform the response
     const response = {
       ...role,
-      permissions: role.rolePermissions.map(rp => ({
+      permissions: role.rolePermissions.map((rp) => ({
         id: rp.permission.id,
         name: rp.permission.name,
         action: rp.permission.action,
-        subject: rp.permission.subject
-      }))
+        subject: rp.permission.subject,
+      })),
     }
 
     // Remove rolePermissions from the response
@@ -170,35 +177,38 @@ rolesRouter.openapi(
         content: {
           "application/json": {
             schema: roleSchema.extend({
-              permissionIds: z.array(z.string()).optional()
-            })
-          }
-        }
-      }
+              permissionIds: z.array(z.string()).optional(),
+            }),
+          },
+        },
+      },
     },
     responses: {
       201: {
         description: "Role created",
         content: {
           "application/json": {
-            schema: roleWithPermissionsSchema
-          }
-        }
+            schema: roleWithPermissionsSchema,
+          },
+        },
       },
       400: {
-        description: "Invalid input"
+        description: "Invalid input",
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
-      }
-    }
+        description: "Forbidden",
+      },
+    },
   }),
   async (c) => {
     // Check if user has permission to create roles
-    await requirePermission(ROLE_CREATE.action, ROLE_CREATE.subject)(c, async () => {})
+    await requirePermission(ROLE_CREATE.action, ROLE_CREATE.subject)(
+      c,
+      async () => {}
+    )
 
     const data = await c.req.json()
     const { permissionIds, ...roleData } = data
@@ -206,18 +216,18 @@ rolesRouter.openapi(
     try {
       // Create the role
       const role = await prisma.role.create({
-        data: roleData
+        data: roleData,
       })
 
       // Add permissions if provided
       if (permissionIds && permissionIds.length > 0) {
         await prisma.$transaction(
-          permissionIds.map(permissionId =>
+          permissionIds.map((permissionId) =>
             prisma.rolePermission.create({
               data: {
                 roleId: role.id,
-                permissionId
-              }
+                permissionId,
+              },
             })
           )
         )
@@ -229,21 +239,21 @@ rolesRouter.openapi(
         include: {
           rolePermissions: {
             include: {
-              permission: true
-            }
-          }
-        }
+              permission: true,
+            },
+          },
+        },
       })
 
       // Transform the response
       const response = {
         ...roleWithPermissions,
-        permissions: roleWithPermissions.rolePermissions.map(rp => ({
+        permissions: roleWithPermissions.rolePermissions.map((rp) => ({
           id: rp.permission.id,
           name: rp.permission.name,
           action: rp.permission.action,
-          subject: rp.permission.subject
-        }))
+          subject: rp.permission.subject,
+        })),
       }
 
       // Remove rolePermissions from the response
@@ -251,11 +261,16 @@ rolesRouter.openapi(
 
       return c.json(response, 201)
     } catch (error) {
+      // Handle specific Prisma errors before passing to the general error handler
       if (error.code === "P2002") {
-        return c.json({ error: "Role with this name already exists" }, 400)
+        throw new ApiError(
+          "Role with this name already exists",
+          400,
+          ErrorCode.UNIQUE_VIOLATION
+        )
       }
-      
-      return c.json({ error: "Failed to create role" }, 500)
+
+      return errorHandler(error, c)
     }
   }
 )
@@ -270,44 +285,47 @@ rolesRouter.openapi(
     description: "Update a role",
     request: {
       params: z.object({
-        id: z.string()
+        id: z.string(),
       }),
       body: {
         content: {
           "application/json": {
             schema: roleSchema.partial().extend({
-              permissionIds: z.array(z.string()).optional()
-            })
-          }
-        }
-      }
+              permissionIds: z.array(z.string()).optional(),
+            }),
+          },
+        },
+      },
     },
     responses: {
       200: {
         description: "Role updated",
         content: {
           "application/json": {
-            schema: roleWithPermissionsSchema
-          }
-        }
+            schema: roleWithPermissionsSchema,
+          },
+        },
       },
       400: {
-        description: "Invalid input"
+        description: "Invalid input",
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "Role not found"
-      }
-    }
+        description: "Role not found",
+      },
+    },
   }),
   async (c) => {
     // Check if user has permission to update roles
-    await requirePermission(ROLE_UPDATE.action, ROLE_UPDATE.subject)(c, async () => {})
+    await requirePermission(ROLE_UPDATE.action, ROLE_UPDATE.subject)(
+      c,
+      async () => {}
+    )
 
     const { id } = c.req.param()
     const data = await c.req.json()
@@ -316,7 +334,7 @@ rolesRouter.openapi(
     try {
       // Check if the role exists and is not a system role
       const existingRole = await prisma.role.findUnique({
-        where: { id }
+        where: { id },
       })
 
       if (!existingRole) {
@@ -330,25 +348,25 @@ rolesRouter.openapi(
       // Update the role
       const role = await prisma.role.update({
         where: { id },
-        data: roleData
+        data: roleData,
       })
 
       // Update permissions if provided
       if (permissionIds !== undefined) {
         // Delete existing role permissions
         await prisma.rolePermission.deleteMany({
-          where: { roleId: id }
+          where: { roleId: id },
         })
 
         // Add new permissions
         if (permissionIds.length > 0) {
           await prisma.$transaction(
-            permissionIds.map(permissionId =>
+            permissionIds.map((permissionId) =>
               prisma.rolePermission.create({
                 data: {
                   roleId: role.id,
-                  permissionId
-                }
+                  permissionId,
+                },
               })
             )
           )
@@ -361,21 +379,21 @@ rolesRouter.openapi(
         include: {
           rolePermissions: {
             include: {
-              permission: true
-            }
-          }
-        }
+              permission: true,
+            },
+          },
+        },
       })
 
       // Transform the response
       const response = {
         ...roleWithPermissions,
-        permissions: roleWithPermissions.rolePermissions.map(rp => ({
+        permissions: roleWithPermissions.rolePermissions.map((rp) => ({
           id: rp.permission.id,
           name: rp.permission.name,
           action: rp.permission.action,
-          subject: rp.permission.subject
-        }))
+          subject: rp.permission.subject,
+        })),
       }
 
       // Remove rolePermissions from the response
@@ -383,15 +401,20 @@ rolesRouter.openapi(
 
       return c.json(response)
     } catch (error) {
+      // Handle specific Prisma errors before passing to the general error handler
       if (error.code === "P2025") {
-        return c.json({ error: "Role not found" }, 404)
+        throw new ApiError("Role not found", 404, ErrorCode.RESOURCE_NOT_FOUND)
       }
-      
+
       if (error.code === "P2002") {
-        return c.json({ error: "Role with this name already exists" }, 400)
+        throw new ApiError(
+          "Role with this name already exists",
+          400,
+          ErrorCode.UNIQUE_VIOLATION
+        )
       }
-      
-      return c.json({ error: "Failed to update role" }, 500)
+
+      return errorHandler(error, c)
     }
   }
 )
@@ -406,8 +429,8 @@ rolesRouter.openapi(
     description: "Delete a role",
     request: {
       params: z.object({
-        id: z.string()
-      })
+        id: z.string(),
+      }),
     },
     responses: {
       200: {
@@ -415,35 +438,38 @@ rolesRouter.openapi(
         content: {
           "application/json": {
             schema: z.object({
-              message: z.string()
-            })
-          }
-        }
+              message: z.string(),
+            }),
+          },
+        },
       },
       400: {
-        description: "Cannot delete system role"
+        description: "Cannot delete system role",
       },
       401: {
-        description: "Unauthorized"
+        description: "Unauthorized",
       },
       403: {
-        description: "Forbidden"
+        description: "Forbidden",
       },
       404: {
-        description: "Role not found"
-      }
-    }
+        description: "Role not found",
+      },
+    },
   }),
   async (c) => {
     // Check if user has permission to delete roles
-    await requirePermission(ROLE_DELETE.action, ROLE_DELETE.subject)(c, async () => {})
+    await requirePermission(ROLE_DELETE.action, ROLE_DELETE.subject)(
+      c,
+      async () => {}
+    )
 
     const { id } = c.req.param()
 
     try {
       // Check if the role exists and is not a system role
       const role = await prisma.role.findUnique({
-        where: { id }
+        where: { id },
       })
 
       if (!role) {
@@ -456,16 +482,17 @@ rolesRouter.openapi(
 
       // Delete the role
       await prisma.role.delete({
-        where: { id }
+        where: { id },
       })
 
       return c.json({ message: "Role deleted successfully" })
     } catch (error) {
+      // Handle specific Prisma errors before passing to the general error handler
       if (error.code === "P2025") {
-        return c.json({ error: "Role not found" }, 404)
+        throw new ApiError("Role not found", 404, ErrorCode.RESOURCE_NOT_FOUND)
       }
-      
-      return c.json({ error: "Failed to delete role" }, 500)
+
+      return errorHandler(error, c)
     }
   }
 )

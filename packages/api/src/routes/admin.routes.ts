@@ -11,6 +11,7 @@ import { logger } from "../lib/logger"
 import { UserRole as PrismaUserRole } from "@prisma/client"
 import { SafeJSON } from "../utils/json-serializer"
 import { memoryCache } from "../utils/cache"
+import { errorHandler } from "../services/error-handling.service"
 
 // Define the user type based on the auth middleware
 interface User {
@@ -31,25 +32,6 @@ export const adminRouter = new Hono<{
     user: User
   }
 }>()
-  // DEMO MODE: Apply mock admin auth to all routes
-  .use("*", async (c, next) => {
-    console.log("[DEMO MODE] Skipping authentication for admin routes")
-
-    // Set mock admin user
-    const mockUser = {
-      id: "demo-user-id",
-      email: "demo@example.com",
-      role: UserRole.ADMIN,
-    }
-
-    // Set all the user variables
-    c.set("userId", mockUser.id)
-    c.set("userEmail", mockUser.email)
-    c.set("userRole", mockUser.role)
-    c.set("user", mockUser)
-
-    await next()
-  })
 
 /**
  * @openapi
@@ -216,24 +198,7 @@ adminRouter.put(
         data: user,
       })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return c.json(
-          {
-            success: false,
-            message: error.message,
-          },
-          404
-        )
-      }
-
-      console.error("Error updating user role:", error)
-      return c.json(
-        {
-          success: false,
-          message: "Failed to update user role",
-        },
-        500
-      )
+      return errorHandler(error, c)
     }
   }
 )
@@ -317,7 +282,7 @@ adminRouter.get(
     const { id } = c.req.valid("param")
 
     try {
-      console.log(`[API] Fetching details for user ${id}`)
+      logger.info(`Fetching details for user ${id}`)
       const userDetails = await adminService.getUserDetails(id)
 
       return c.json({
@@ -325,24 +290,7 @@ adminRouter.get(
         data: userDetails,
       })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return c.json(
-          {
-            success: false,
-            message: "User not found",
-          },
-          404
-        )
-      }
-
-      console.error("Error fetching user details:", error)
-      return c.json(
-        {
-          success: false,
-          message: "Failed to fetch user details",
-        },
-        500
-      )
+      return errorHandler(error, c)
     }
   }
 )
