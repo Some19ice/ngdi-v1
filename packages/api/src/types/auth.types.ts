@@ -95,9 +95,18 @@ export interface JWTPayload {
 /**
  * Password schema
  */
+import { passwordPolicyConfig } from "../config/password-policy.config"
+
 export const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters")
+  .min(
+    passwordPolicyConfig.strength.minLength,
+    `Password must be at least ${passwordPolicyConfig.strength.minLength} characters`
+  )
+  .max(
+    passwordPolicyConfig.strength.maxLength,
+    `Password must be at most ${passwordPolicyConfig.strength.maxLength} characters`
+  )
   .regex(/[A-Z]/, "Must contain at least one uppercase letter")
   .regex(/[a-z]/, "Must contain at least one lowercase letter")
   .regex(/[0-9]/, "Must contain at least one number")
@@ -213,13 +222,10 @@ export const resetPasswordSchema = z
       example: "reset-token-123",
       description: "Password reset token",
     }),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .openapi({
-        example: "newpassword123",
-        description: "New password",
-      }),
+    password: passwordSchema.openapi({
+      example: "NewP@ssword456",
+      description: "New password that meets all policy requirements",
+    }),
   })
   .openapi("ResetPasswordRequest")
 
@@ -231,16 +237,13 @@ export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().openapi({
-      example: "oldpassword123",
+      example: "OldP@ssword123",
       description: "Current password",
     }),
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .openapi({
-        example: "newpassword123",
-        description: "New password",
-      }),
+    newPassword: passwordSchema.openapi({
+      example: "NewP@ssword456",
+      description: "New password that meets all policy requirements",
+    }),
   })
   .openapi("ChangePasswordRequest")
 

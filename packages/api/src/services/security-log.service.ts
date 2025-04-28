@@ -10,6 +10,12 @@ export enum SecurityEventType {
   PASSWORD_RESET_REQUEST = "PASSWORD_RESET_REQUEST",
   PASSWORD_RESET_SUCCESS = "PASSWORD_RESET_SUCCESS",
   PASSWORD_RESET_FAILURE = "PASSWORD_RESET_FAILURE",
+  PASSWORD_CHANGED = "PASSWORD_CHANGED",
+  PASSWORD_EXPIRED = "PASSWORD_EXPIRED",
+  PASSWORD_GRACE_LOGIN = "PASSWORD_GRACE_LOGIN",
+  PASSWORD_POLICY_VIOLATION = "PASSWORD_POLICY_VIOLATION",
+  PASSWORD_RESET_ADMIN = "PASSWORD_RESET_ADMIN",
+  PASSWORD_HISTORY_VIOLATION = "PASSWORD_HISTORY_VIOLATION",
   ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
   ACCOUNT_UNLOCKED = "ACCOUNT_UNLOCKED",
   TOKEN_REFRESH = "TOKEN_REFRESH",
@@ -352,6 +358,41 @@ export class SecurityLogService {
         revokedAt: new Date().toISOString(),
       },
     })
+  }
+
+  /**
+   * Count security events for a user
+   */
+  async countEvents(options: {
+    userId?: string
+    email?: string
+    eventType?: SecurityEventType
+    since?: Date
+    until?: Date
+  }): Promise<number> {
+    const { userId, email, eventType, since, until } = options
+
+    const where: any = {}
+
+    if (userId) {
+      where.userId = userId
+    }
+
+    if (email) {
+      where.email = email
+    }
+
+    if (eventType) {
+      where.eventType = eventType
+    }
+
+    if (since || until) {
+      where.timestamp = {}
+      if (since) where.timestamp.gte = since
+      if (until) where.timestamp.lte = until
+    }
+
+    return prisma.securityLog.count({ where })
   }
 }
 

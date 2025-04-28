@@ -15,6 +15,7 @@ import {
   requireOwnership,
   requireActivity,
 } from "./permission.middleware"
+import { requireValidPassword } from "./password-policy.middleware"
 
 export {
   // Authentication middleware
@@ -23,6 +24,7 @@ export {
   requireRole,
   requireAnyRole,
   requireEmailVerification,
+  requireValidPassword,
 
   // Permission middleware
   requirePermission,

@@ -657,18 +657,77 @@ export class AuthService {
         )
       }
 
-      // Hash the new password
-      const hashedPassword = await hash(newPassword, 10)
-
-      // Update user password
-      await prisma.user.update({
+      // Find the user
+      const user = await prisma.user.findUnique({
         where: { email: verificationToken.identifier },
-        data: { password: hashedPassword },
+        select: { id: true, email: true, name: true },
+      })
+
+      if (!user) {
+        throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 404)
+      }
+
+      // Import the password policy service
+      const { passwordPolicyService } = await import(
+        "./password-policy.service"
+      )
+
+      // Validate password against policy
+      const validationResult = passwordPolicyService.validatePasswordStrength(
+        newPassword,
+        { email: user.email, name: user.name || undefined }
+      )
+
+      if (!validationResult.valid) {
+        throw new AuthError(
+          AuthErrorCode.PASSWORD_POLICY,
+          validationResult.errors.join(". "),
+          400
+        )
+      }
+
+      // Check if password is in history (skip for password reset)
+      // We allow reusing passwords during a reset since the user may have forgotten their password
+
+      // Hash the new password
+      const hashedPassword = await hash(newPassword, 12)
+
+      // Calculate new expiration date
+      const expirationDate = new Date()
+      const { passwordPolicyConfig } = await import(
+        "../config/password-policy.config"
+      )
+      expirationDate.setDate(
+        expirationDate.getDate() +
+          passwordPolicyConfig.expiration.expirationDays
+      )
+
+      // Update user password with policy-related fields
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          passwordLastChanged: new Date(),
+          passwordExpiresAt: expirationDate,
+          passwordChangeRequired:
+            passwordPolicyConfig.reset.forceChangeAfterReset,
+        },
       })
 
       // Delete verification token
       await prisma.verificationToken.delete({
         where: { token },
+      })
+
+      // Log security event
+      await securityLogService.logEvent({
+        userId: user.id,
+        email: user.email,
+        eventType: SecurityEventType.PASSWORD_RESET_SUCCESS,
+        details: {
+          resetAt: new Date().toISOString(),
+          forceChange: passwordPolicyConfig.reset.forceChangeAfterReset,
+        },
       })
     } catch (error) {
       logger.error("Password reset error:", {

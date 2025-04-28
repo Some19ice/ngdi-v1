@@ -74,6 +74,14 @@ model User {
   image         String?
   /// Hashed password for local authentication
   password      String
+  /// Timestamp when password was last changed
+  passwordLastChanged DateTime @default(now())
+  /// Timestamp when password expires
+  passwordExpiresAt DateTime?
+  /// Previous password hashes (JSON array of strings)
+  previousPasswords Json?     @default("[]")
+  /// Whether password change is required on next login
+  passwordChangeRequired Boolean @default(false)
   /// User's role in the system (legacy field)
   role          UserRole   @default(USER)
   /// Reference to the user's custom role
@@ -105,6 +113,7 @@ model User {
   updatedAt     DateTime   @updatedAt
 
   @@index([roleId])
+  @@index([passwordExpiresAt])
 }
 
 /// User roles for access control

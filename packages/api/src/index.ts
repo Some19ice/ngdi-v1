@@ -24,6 +24,7 @@ import { Context, Variables } from "./types/hono.types"
 import { Env } from "hono"
 import { rateLimit } from "./middleware/rate-limit"
 import csrf from "./middleware/csrf"
+import { requireValidPassword } from "./middleware/password-policy.middleware"
 import { serve } from "@hono/node-server"
 import { config } from "./config"
 
@@ -97,23 +98,33 @@ app.use("*", csrf())
 // Create API router
 const apiRouter = new OpenAPIHono()
 
-// Mount routes
+// Mount auth routes (no password policy check to allow password changes)
 apiRouter.route("/auth", authRouter)
-apiRouter.route("/users", userRouter)
-apiRouter.route("/metadata", metadataRouter)
-apiRouter.route("/search", searchRouter)
-apiRouter.route("/admin", adminRouter)
-apiRouter.route("/admin/dashboard-stats", dashboardStatsRouter)
+
+// Apply password policy middleware to all protected routes
+// This will check if the user's password is expired and needs to be changed
+const protectedApiRouter = new OpenAPIHono()
+protectedApiRouter.use("*", requireValidPassword)
+
+// Mount protected routes
+protectedApiRouter.route("/users", userRouter)
+protectedApiRouter.route("/metadata", metadataRouter)
+protectedApiRouter.route("/search", searchRouter)
+protectedApiRouter.route("/admin", adminRouter)
+protectedApiRouter.route("/admin/dashboard-stats", dashboardStatsRouter)
 
 // Mount permission system routes
-apiRouter.route("/permissions", permissionsRouter)
-apiRouter.route("/roles", rolesRouter)
-apiRouter.route("/user-permissions", userPermissionsRouter)
-apiRouter.route("/permission-groups", permissionGroupsRouter)
-apiRouter.route("/activity-logs", activityLogsRouter)
+protectedApiRouter.route("/permissions", permissionsRouter)
+protectedApiRouter.route("/roles", rolesRouter)
+protectedApiRouter.route("/user-permissions", userPermissionsRouter)
+protectedApiRouter.route("/permission-groups", permissionGroupsRouter)
+protectedApiRouter.route("/activity-logs", activityLogsRouter)
 
 // Mount settings routes
-apiRouter.route("/settings", settingsRouter)
+protectedApiRouter.route("/settings", settingsRouter)
+
+// Mount the protected router
+apiRouter.route("/", protectedApiRouter)
 
 // Mount API router
 app.route("/", apiRouter)

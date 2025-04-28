@@ -38,7 +38,10 @@ import {
   resetPasswordSchema,
   forgotPasswordSchema,
   resendVerificationSchema,
+  passwordSchema,
+  changePasswordSchema,
 } from "../types/auth.types"
+import { passwordPolicyService } from "../services/password-policy.service"
 
 import * as jose from "jose"
 import { Variables, Context } from "../types/hono.types"
@@ -1109,5 +1112,139 @@ auth.post(
     }
   }
 )
+
+// Change password route
+auth.post(
+  "/change-password",
+  authMiddleware,
+  csrfProtection,
+  zValidator("json", changePasswordSchema),
+  async (c) => {
+    try {
+      const { currentPassword, newPassword } = c.req.valid("json")
+      const user = c.get("user")
+
+      if (!user) {
+        throw new AuthError(
+          AuthErrorCode.UNAUTHORIZED,
+          "Authentication required",
+          401
+        )
+      }
+
+      // Get client info for security logging
+      const clientInfo = {
+        ipAddress:
+          c.req.header("x-forwarded-for") ||
+          c.req.header("x-real-ip") ||
+          "unknown",
+        userAgent: c.req.header("user-agent") || "unknown",
+        deviceId: c.req.header("x-device-id"),
+      }
+
+      logger.info(`Password change attempt for user: ${user.id}`, {
+        userId: user.id,
+        ipAddress: clientInfo.ipAddress,
+      })
+
+      // Verify current password
+      const currentUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { password: true },
+      })
+
+      if (!currentUser) {
+        throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 404)
+      }
+
+      const isCurrentPasswordValid = await compare(
+        currentPassword,
+        currentUser.password
+      )
+
+      if (!isCurrentPasswordValid) {
+        // Log security event for failed password change
+        await securityLogService.logEvent({
+          userId: user.id,
+          email: user.email,
+          eventType: SecurityEventType.PASSWORD_POLICY_VIOLATION,
+          ipAddress: clientInfo.ipAddress,
+          userAgent: clientInfo.userAgent,
+          details: {
+            reason: "Current password invalid",
+            timestamp: new Date().toISOString(),
+          },
+        })
+
+        throw new AuthError(
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Current password is incorrect",
+          400
+        )
+      }
+
+      // Change password using password policy service
+      await passwordPolicyService.changePassword(user.id, newPassword, {
+        email: user.email,
+        name: user.name,
+      })
+
+      // Revoke all refresh tokens for this user for security
+      await revokeAllUserTokens(
+        user.id,
+        "Password changed",
+        clientInfo.ipAddress
+      )
+
+      // Log successful password change
+      await securityLogService.logEvent({
+        userId: user.id,
+        email: user.email,
+        eventType: SecurityEventType.PASSWORD_CHANGED,
+        ipAddress: clientInfo.ipAddress,
+        userAgent: clientInfo.userAgent,
+        details: {
+          changedAt: new Date().toISOString(),
+        },
+      })
+
+      return c.json({
+        success: true,
+        message: "Password changed successfully",
+      })
+    } catch (error) {
+      return handleAuthError(c, error)
+    }
+  }
+)
+
+// Check password status route
+auth.get("/password-status", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user")
+
+    if (!user) {
+      throw new AuthError(
+        AuthErrorCode.UNAUTHORIZED,
+        "Authentication required",
+        401
+      )
+    }
+
+    // Get password expiration status
+    const expirationStatus =
+      await passwordPolicyService.getPasswordExpirationStatus(user.id)
+
+    return c.json({
+      success: true,
+      status: {
+        ...expirationStatus,
+        email: user.email,
+      },
+    })
+  } catch (error) {
+    return handleAuthError(c, error)
+  }
+})
 
 export default auth
