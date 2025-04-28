@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { UserRole } from "./src/lib/auth/constants"
-import {
-  AUTH_PATHS,
-  PROTECTED_ROUTES,
-  DEBUG_ROUTES,
-  ADMIN_ROUTES,
-  NODE_OFFICER_ROUTES,
-} from "./src/lib/auth/paths"
+import AUTH_CONFIG from "./src/lib/auth/auth-config"
+
+// Destructure for easier access
+const {
+  PATHS: AUTH_PATHS,
+  ROUTES: {
+    PROTECTED_ROUTES,
+    DEBUG_ROUTES,
+    ADMIN_ROUTES,
+    NODE_OFFICER_ROUTES,
+    PUBLIC_ROUTES,
+  },
+} = AUTH_CONFIG
 
 // Set up logging
 const enableDebug =
@@ -26,27 +32,51 @@ const log = {
 
 // Helper function to check if a path matches any of the routes in the array
 function matchesRoute(path: string, routes: string[]): boolean {
-  return routes.some(route => {
+  return routes.some((route) => {
     // Exact match
     if (route === path) return true
     // Route with wildcard (e.g., /admin/*)
-    if (route.endsWith('*') && path.startsWith(route.slice(0, -1))) return true
+    if (route.endsWith("*") && path.startsWith(route.slice(0, -1))) return true
     // Path starts with route and is followed by / or nothing
-    if (path.startsWith(route + '/') || path === route) return true
+    if (path.startsWith(route + "/") || path === route) return true
     return false
   })
 }
 
-// Helper function to validate JWT token (simplified)
-async function validateToken(token: string): Promise<{ isValid: boolean, role?: UserRole }> {
+/**
+ * Validates a JWT token by making a request to the API
+ * @param token The JWT token to validate
+ * @returns An object with isValid and role properties
+ */
+async function validateToken(
+  token: string
+): Promise<{ isValid: boolean; role?: UserRole; userId?: string }> {
   try {
-    // In a real implementation, this would make a request to the API to validate the token
-    // For now, we'll just check if the token exists
     if (!token) return { isValid: false }
 
-    // For demo purposes, assume token is valid
-    // In production, this would decode the token and verify its signature
-    return { isValid: true, role: UserRole.USER }
+    // Make a request to the API to validate the token
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+    const response = await fetch(`${apiUrl}/api/auth/validate-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ token }),
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      log.debug(`Token validation failed with status: ${response.status}`)
+      return { isValid: false }
+    }
+
+    const data = await response.json()
+    return {
+      isValid: data.isValid,
+      role: data.role as UserRole,
+      userId: data.userId,
+    }
   } catch (error) {
     log.error("Token validation error:", error)
     return { isValid: false }
@@ -75,16 +105,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Skip middleware for public routes
-  if (
-    pathname === "/" ||
-    pathname === "/about" ||
-    pathname === "/contact" ||
-    pathname === "/faq" ||
-    pathname === "/terms" ||
-    pathname === "/privacy" ||
-    pathname.startsWith("/auth/") ||
-    pathname === "/unauthorized"
-  ) {
+  if (matchesRoute(pathname, PUBLIC_ROUTES) || pathname.startsWith("/auth/")) {
     log.debug(`Skipping auth check for public route: ${pathname}`)
     return NextResponse.next()
   }
@@ -93,23 +114,22 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
   try {
-    // Try to get auth token from various cookie names
-    const cookieNames = ["auth_token", "accessToken", "token"]
+    // Try to get auth token from the configured cookie name
+    const { ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_KEY, AUTHENTICATED_COOKIE } =
+      AUTH_CONFIG.TOKEN
     let authToken = null
 
-    for (const name of cookieNames) {
-      const token = request.cookies.get(name)?.value
-      if (token) {
-        authToken = token
-        log.debug(`Auth token found in cookie: ${name}`)
-        break
-      }
+    // First check the cookie
+    const tokenFromCookie = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value
+    if (tokenFromCookie) {
+      authToken = tokenFromCookie
+      log.debug(`Auth token found in cookie: ${ACCESS_TOKEN_COOKIE}`)
     }
 
-    // Also check for authenticated flag
-    const authenticated = request.cookies.get("authenticated")?.value
+    // Check for authenticated flag
+    const authenticated = request.cookies.get(AUTHENTICATED_COOKIE)?.value
 
-    // Check if we have an Authorization header already
+    // Check if we have an Authorization header
     const authHeader = request.headers.get("Authorization")
     if (authHeader && authHeader.startsWith("Bearer ")) {
       // Use the token from the header
