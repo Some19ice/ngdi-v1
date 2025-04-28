@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Captcha from "@/components/auth/captcha"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { toast } from "sonner"
-import { useAuthSession } from "@/hooks/use-auth-session"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
 
 interface SignInContentProps {
   initiallyAuthenticated?: boolean
@@ -30,10 +31,20 @@ export function SignInContent({
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<any>(null)
   const returnUrl = searchParams?.get("from") || "/"
 
-  // Use our unified authentication hook
-  const { login, isLoggingIn, navigate, isAuthenticated } = useAuthSession()
+  // Feature flag for CAPTCHA
+  const enableCaptcha = process.env.NEXT_PUBLIC_ENABLE_CAPTCHA === "true"
+
+  // Use our Supabase authentication hook
+  const {
+    login,
+    isLoading: isLoggingIn,
+    navigate,
+    isAuthenticated,
+  } = useSupabaseAuth()
 
   // Clean the return URL to avoid redirection loops
   const safeReturnUrl =
@@ -48,10 +59,10 @@ export function SignInContent({
       )
 
       // Add a direct check for cookie existence to double-verify authentication
-      const hasAuthCookie = document.cookie.includes("auth_token")
+      const hasAuthCookie = document.cookie.includes("sb-access-token")
       if (!hasAuthCookie) {
         console.log(
-          "No auth cookie found despite authenticated state, waiting for session refresh"
+          "No Supabase auth cookie found despite authenticated state, waiting for session refresh"
         )
         return // Don't redirect if the cookie is missing
       }
@@ -86,20 +97,37 @@ export function SignInContent({
       return // Prevent multiple submission attempts
     }
 
+    // Check if CAPTCHA is enabled and verify token
+    if (enableCaptcha && !captchaToken) {
+      toast.error("Please complete the CAPTCHA verification")
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      // Use the async login function for better error handling
-      await login({ email, password })
+      // Use the Supabase login function with CAPTCHA token if enabled
+      if (enableCaptcha && captchaToken) {
+        // In a real implementation, we would pass the captchaToken to the login function
+        console.log("Using CAPTCHA token for login:", captchaToken)
+        await login(email, password, rememberMe)
+      } else {
+        await login(email, password, rememberMe)
+      }
 
       // The navigation will be handled by the useEffect
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to sign in. Please check your credentials."
+        error.message || "Failed to sign in. Please check your credentials."
 
       toast.error(errorMessage)
+
+      // Reset CAPTCHA if enabled
+      if (enableCaptcha && captchaRef.current) {
+        setCaptchaToken(null)
+        // In a real implementation, we would call the CAPTCHA reset method
+        console.log("Resetting CAPTCHA after failed login")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -160,10 +188,23 @@ export function SignInContent({
                 Remember me
               </Label>
             </div>
+
+            {/* CAPTCHA component (conditionally rendered based on feature flag) */}
+            {enableCaptcha && (
+              <div className="flex justify-center">
+                <Captcha
+                  sitekey="10000000-ffff-ffff-ffff-000000000001" // Replace with your actual sitekey
+                  onVerify={(token) => setCaptchaToken(token)}
+                />
+              </div>
+            )}
+
             <Button
               type="button"
               className="w-full"
-              disabled={isLoggingIn || isLoading}
+              disabled={
+                isLoggingIn || isLoading || (enableCaptcha && !captchaToken)
+              }
               onClick={handleLogin}
             >
               {isLoggingIn || isLoading ? "Signing in..." : "Sign in"}

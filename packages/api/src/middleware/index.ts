@@ -1,10 +1,14 @@
+// Legacy auth middleware has been removed
+
+// Supabase auth middleware
 import {
   authMiddleware,
   adminMiddleware,
   requireRole,
   requireAnyRole,
   requireEmailVerification,
-} from "./auth.middleware"
+  getTokenFromRequest,
+} from "./supabase-auth.middleware"
 import { errorHandler } from "./error-handler"
 import { validateBody, validateQuery, validateParams } from "./validation"
 import { rateLimit, authRateLimit } from "./rate-limit"
@@ -18,13 +22,16 @@ import {
 import { requireValidPassword } from "./password-policy.middleware"
 
 export {
-  // Authentication middleware
+  // Authentication middleware (Supabase)
   authMiddleware,
   adminMiddleware,
   requireRole,
   requireAnyRole,
   requireEmailVerification,
+  getTokenFromRequest,
   requireValidPassword,
+
+  // Legacy authentication middleware has been removed
 
   // Permission middleware
   requirePermission,

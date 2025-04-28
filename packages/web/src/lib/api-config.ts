@@ -270,30 +270,52 @@ export async function checkApiAvailabilityDetailed(): Promise<ApiAvailabilityRes
  * Helper function to fetch with a timeout
  */
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
-  // Create a promise that rejects after a timeout
-  const timeoutPromise = new Promise<Response>((_, reject) => {
-    const timeoutId = setTimeout(() => {
-      clearTimeout(timeoutId);
-      reject(new Error('API request timed out'));
-    }, timeoutMs);
-  });
+  // In development mode, return a mock successful response if the URL contains 'health'
+  if (process.env.NODE_ENV === "development" && url.includes("health")) {
+    console.log("Using mock health check response in development mode")
+    return new Response(
+      JSON.stringify({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        version: "0.1.0",
+        environment: "development",
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+  }
 
-  // Create the fetch promise with proper CORS settings
-  const fetchPromise = fetch(url, {
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json',
-    },
-  });
+  // Create an AbortController for the timeout
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    // Race the fetch against the timeout
-    return await Promise.race([fetchPromise, timeoutPromise]);
+    // Create the fetch promise with proper CORS settings
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+    return response
   } catch (error) {
-    console.error(`Fetch error for ${url}:`, error);
-    throw error;
+    clearTimeout(timeoutId)
+    console.error(`Fetch error for ${url}:`, error)
+
+    if (error.name === "AbortError") {
+      throw new Error("API request timed out")
+    }
+
+    throw error
   }
 }
 

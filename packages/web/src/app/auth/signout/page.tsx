@@ -11,21 +11,26 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
-import { useAuthSession } from "@/hooks/use-auth-session"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
+import { createClient } from "@/lib/supabase-client"
 
 export default function ForceSignoutPage() {
-  const { logout, navigate } = useAuthSession()
+  const { logout, navigate } = useSupabaseAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   // Function to forcibly clean up all auth data
-  const forceCleanup = useCallback(() => {
+  const forceCleanup = useCallback(async () => {
     try {
+      // Clear Supabase auth data
+      const supabase = createClient()
+      await supabase.auth.signOut({ scope: "global" })
+
       // Clear all auth-related localStorage items
-      localStorage.removeItem("auth_tokens")
-      localStorage.removeItem("auth_session")
-      localStorage.removeItem("auth_user")
+      localStorage.removeItem("supabase.auth.token")
+      localStorage.removeItem("supabase.auth.expires_at")
+      localStorage.removeItem("supabase.auth.refresh_token")
       localStorage.removeItem("auth_remember_me")
       localStorage.removeItem("auth_manual_signout")
 
@@ -69,17 +74,15 @@ export default function ForceSignoutPage() {
 
       // First try calling the API endpoint
       try {
-        await fetch("/api/auth/signout", {
-          method: "POST",
-          credentials: "include",
-        })
+        const supabase = createClient()
+        await supabase.auth.signOut({ scope: "global" })
       } catch (apiError) {
-        console.error("API signout failed:", apiError)
+        console.error("Supabase signout failed:", apiError)
         // Continue anyway
       }
 
       // Then forcibly clean up all auth data
-      forceCleanup()
+      await forceCleanup()
 
       // Set success state
       setSuccess(true)

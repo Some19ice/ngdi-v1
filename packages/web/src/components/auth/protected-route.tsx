@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { UserRole } from "@/lib/auth/constants"
-import { useAuth } from "@/hooks/use-auth"
-import AUTH_CONFIG from "@/lib/auth/auth-config"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
+import { AUTH_CONFIG } from "@/lib/auth/config"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 interface ProtectedRouteProps {
@@ -28,7 +28,7 @@ export function ProtectedRoute({
     </div>
   ),
 }: ProtectedRouteProps) {
-  const { session, isLoading, status } = useAuth()
+  const { session, isLoading, status } = useSupabaseAuth()
   const router = useRouter()
   const [authorized, setAuthorized] = useState(false)
 
@@ -39,7 +39,7 @@ export function ProtectedRoute({
 
       if (!isAuthenticated) {
         // User is not authenticated, redirect to login
-        router.push(AUTH_CONFIG.PATHS.SIGNIN)
+        router.push(AUTH_CONFIG.pages.signIn)
         setAuthorized(false)
         return
       }
@@ -51,7 +51,7 @@ export function ProtectedRoute({
 
         if (!hasRequiredRole) {
           // User doesn't have the required role, redirect to unauthorized
-          router.push(AUTH_CONFIG.PATHS.UNAUTHORIZED)
+          router.push(AUTH_CONFIG.pages.unauthorized)
           setAuthorized(false)
           return
         }

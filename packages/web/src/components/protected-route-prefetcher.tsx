@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuthSession } from "@/hooks/use-auth-session"
-import { authClient } from "@/lib/auth-client"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
+import { createClient } from "@/lib/supabase-client"
 
 /**
  * This component optimizes protected route loading by prefetching
@@ -11,13 +11,13 @@ import { authClient } from "@/lib/auth-client"
  * It should be included in the layout.tsx file so it's always present.
  */
 export function ProtectedRoutePrefetcher() {
-  const { status } = useAuthSession()
+  const { isAuthenticated } = useSupabaseAuth()
   const [prefetched, setPrefetched] = useState(false)
 
   // Prefetch authentication data when component mounts
   useEffect(() => {
     // Skip if we've already prefetched or we're not authenticated yet
-    if (prefetched || status !== "authenticated") return
+    if (prefetched || !isAuthenticated) return
 
     const prefetchData = async () => {
       try {
@@ -25,7 +25,8 @@ export function ProtectedRoutePrefetcher() {
 
         // Ensure authentication is already validated to avoid extra validation
         // This is non-blocking and happens in parallel
-        const authPromise = authClient.getSession()
+        const supabase = createClient()
+        const authPromise = supabase.auth.getSession()
 
         // Wait for authentication to complete, but proceed
         // even if it fails to avoid blocking the UI
@@ -46,7 +47,7 @@ export function ProtectedRoutePrefetcher() {
     } else {
       setTimeout(prefetchData, 500)
     }
-  }, [status, prefetched])
+  }, [isAuthenticated, prefetched])
 
   // This component doesn't render anything
   return null

@@ -1,6 +1,6 @@
 "use client"
 
-import { AuthProvider } from "@/lib/auth-context"
+import { AuthProvider } from "@/lib/supabase-auth-context"
 import { ThemeProvider } from "next-themes"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
@@ -9,10 +9,7 @@ import { ProtectedRoutePrefetcher } from "@/components/protected-route-prefetche
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { Toaster } from "sonner"
 
-import {
-  setupAxiosTokenRefresh,
-  setupTokenRefreshTimer,
-} from "@/lib/auth-refresh"
+// Supabase Auth handles token refresh automatically
 import axios from "axios"
 import dynamic from "next/dynamic"
 
@@ -58,13 +55,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   )
 
-  // Set up token refresh on client-side only
+  // Supabase Auth handles token refresh automatically
   useEffect(() => {
-    // Setup axios interceptor for token refresh
-    setupAxiosTokenRefresh(axios)
-
-    // Setup timer to refresh token before expiration
-    setupTokenRefreshTimer()
+    // Configure axios defaults
+    axios.defaults.baseURL = process.env.NEXT_PUBLIC_API_URL
+    axios.defaults.withCredentials = true
   }, [])
 
   return (

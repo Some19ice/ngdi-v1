@@ -6,7 +6,7 @@ import { prettyJSON } from "hono/pretty-json"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { swaggerUI } from "@hono/swagger-ui"
 // Import router implementations
-import authRouter from "./routes/auth.routes"
+import supabaseAuthRouter from "./routes/supabase-auth.routes"
 import { userRouter } from "./routes/user.routes"
 import metadataRouter from "./routes/metadata.routes"
 import searchRouter from "./routes/search.routes"
@@ -99,7 +99,8 @@ app.use("*", csrf())
 const apiRouter = new OpenAPIHono()
 
 // Mount auth routes (no password policy check to allow password changes)
-apiRouter.route("/auth", authRouter)
+// Supabase auth routes
+apiRouter.route("/auth", supabaseAuthRouter)
 
 // Apply password policy middleware to all protected routes
 // This will check if the user's password is expired and needs to be changed

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form"
 import { FocusTrap } from "@/components/ui/focus-trap"
 import Link from "next/link"
-import { authAxios } from "@/lib/auth-client"
+import { createClient } from "@/lib/supabase-client"
 
 const resetPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -44,16 +44,21 @@ export default function ResetPasswordPage() {
     setSuccess(false)
 
     try {
-      await authAxios.post("/api/auth/reset-password", {
-        email: data.email,
+      const supabase = createClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
       })
+
+      if (error) {
+        throw error
+      }
+
       setSuccess(true)
       form.reset()
     } catch (error: any) {
       console.error("Password reset error:", error)
       setError(
-        error?.response?.data?.message ||
-          "Failed to send reset email. Please try again."
+        error?.message || "Failed to send reset email. Please try again."
       )
     } finally {
       setIsLoading(false)
@@ -127,4 +132,4 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   )
-} 
+}

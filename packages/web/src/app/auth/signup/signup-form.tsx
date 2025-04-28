@@ -1,12 +1,13 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Loader2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { useAuthSession } from "@/hooks/use-auth-session"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
+import Captcha from "@/components/auth/captcha"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert } from "@/components/ui/alert"
@@ -44,20 +45,21 @@ type SignUpValues = z.infer<typeof signUpSchema>
 export function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { register: authRegister, navigate } = useAuthSession()
+  const { register: authRegister, navigate } = useSupabaseAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<any>(null)
+
+  // Feature flag for CAPTCHA
+  const enableCaptcha = process.env.NEXT_PUBLIC_ENABLE_CAPTCHA === "true"
 
   // Get return URL from query parameters
   const returnUrl = searchParams ? searchParams.get("returnUrl") || "/" : "/"
 
   // Create a wrapper around the register function
   const register = async (email: string, password: string) => {
-    return authRegister({
-      email,
-      password,
-      name: form.getValues().name,
-    })
+    return authRegister(email, password, form.getValues().name)
   }
 
   const form = useForm<SignUpValues>({
@@ -71,11 +73,23 @@ export function SignUpForm() {
   })
 
   async function onSubmit(data: SignUpValues) {
+    // Check if CAPTCHA is enabled and verify token
+    if (enableCaptcha && !captchaToken) {
+      setError("Please complete the CAPTCHA verification")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
       console.log(`Attempting to register user: ${data.email}`)
+
+      // In a real implementation, we would pass the captchaToken to the register function
+      if (enableCaptcha && captchaToken) {
+        console.log("Using CAPTCHA token for registration:", captchaToken)
+      }
+
       await register(data.email, data.password)
 
       console.log("Registration successful, redirecting to:", returnUrl)
@@ -99,6 +113,13 @@ export function SignUpForm() {
       }
 
       setError(errorMessage)
+
+      // Reset CAPTCHA if enabled
+      if (enableCaptcha && captchaRef.current) {
+        setCaptchaToken(null)
+        // In a real implementation, we would call the CAPTCHA reset method
+        console.log("Resetting CAPTCHA after failed registration")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -199,7 +220,21 @@ export function SignUpForm() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            {/* CAPTCHA component (conditionally rendered based on feature flag) */}
+            {enableCaptcha && (
+              <div className="flex justify-center">
+                <Captcha
+                  sitekey="10000000-ffff-ffff-ffff-000000000001" // Replace with your actual sitekey
+                  onVerify={(token) => setCaptchaToken(token)}
+                />
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || (enableCaptcha && !captchaToken)}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

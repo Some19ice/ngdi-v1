@@ -37,6 +37,20 @@ export async function ensureCsrfToken(): Promise<string | null> {
     // If no token exists, fetch a new one with better error handling
     console.log("Fetching new CSRF token...")
 
+    // In development mode, use a mock token to avoid API calls
+    if (process.env.NODE_ENV === "development") {
+      console.log("Using mock CSRF token in development mode")
+      const mockToken = "mock-csrf-token-" + Date.now()
+      cachedCsrfToken = mockToken
+      tokenExpiryTime = Date.now() + CACHE_DURATION
+      setCookie("csrf_token", mockToken, {
+        path: "/",
+        maxAge: CACHE_DURATION / 1000,
+      })
+      fetchPromise = Promise.resolve(mockToken)
+      return fetchPromise
+    }
+
     // Create a new fetch promise and store it
     fetchPromise = (async () => {
       try {

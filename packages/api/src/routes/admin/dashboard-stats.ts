@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { authMiddleware } from "../../middleware/auth.middleware"
+import { authMiddleware } from "../../middleware"
 import { prisma } from "../../lib/prisma"
 import { UserRole } from "../../types/auth.types"
 
@@ -29,7 +29,7 @@ dashboardStatsRouter.get("/", async (c) => {
     // Get recent metadata count (last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    
+
     const recentMetadataCount = await prisma.metadata.count({
       where: {
         createdAt: {
@@ -39,26 +39,30 @@ dashboardStatsRouter.get("/", async (c) => {
     })
 
     // Get top organizations count
-    const topOrganizationsCount = await prisma.metadata.groupBy({
-      by: ["organization"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
+    const topOrganizationsCount = await prisma.metadata
+      .groupBy({
+        by: ["organization"],
         _count: {
-          id: "desc",
+          id: true,
         },
-      },
-      take: 10,
-    }).then(orgs => orgs.length)
+        orderBy: {
+          _count: {
+            id: "desc",
+          },
+        },
+        take: 10,
+      })
+      .then((orgs) => orgs.length)
 
     // Get metadata by framework count
-    const metadataByFrameworkCount = await prisma.metadata.groupBy({
-      by: ["frameworkType"],
-      _count: {
-        id: true,
-      },
-    }).then(frameworks => frameworks.length)
+    const metadataByFrameworkCount = await prisma.metadata
+      .groupBy({
+        by: ["frameworkType"],
+        _count: {
+          id: true,
+        },
+      })
+      .then((frameworks) => frameworks.length)
 
     // Calculate user growth (new users in last 30 days)
     const newUsers = await prisma.user.count({
