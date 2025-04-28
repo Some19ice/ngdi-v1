@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, memo, useMemo } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { metadataService } from "@/lib/services/metadata.service"
 import {
@@ -41,6 +41,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, Search } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useDebounce, useThrottle } from "@/lib/optimization/memo-utils"
+import { DeferredRender } from "@/components/ui/deferred-render"
+import { withMemo } from "@/lib/optimization/with-memo"
+import { usePerformanceMonitor } from "@/hooks/use-performance-monitor"
 
 interface MetadataListProps {
   initialMetadata: MetadataItem[]
@@ -48,11 +52,14 @@ interface MetadataListProps {
   authToken?: string
 }
 
-export function MetadataList({
+function MetadataListComponent({
   initialMetadata = [],
   initialTotal = 0,
   authToken,
 }: MetadataListProps) {
+  // Add performance monitoring
+  usePerformanceMonitor("MetadataList")
+
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("all")
@@ -63,27 +70,9 @@ export function MetadataList({
   const [manuallyFetched, setManuallyFetched] = useState(false)
   const { toast } = useToast()
 
-  // Add debounced search state
-  const [debouncedSearch, setDebouncedSearch] = useState(search)
-  const [debouncedCategory, setDebouncedCategory] = useState(category)
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [search])
-
-  // Debounce category input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedCategory(category)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [category])
+  // Use the debounce hook from our optimization utilities
+  const debouncedSearch = useDebounce(search, 500)
+  const debouncedCategory = useDebounce(category, 500)
 
   // Update query when debounced values change
   useEffect(() => {
@@ -108,27 +97,31 @@ export function MetadataList({
       try {
         // Use the API directly if we have an auth token
         if (authToken) {
-          console.log("Fetching metadata with auth token", {
-            url: `/api/search/metadata`,
-            params,
-            authTokenLength: authToken.length,
+          if (process.env.NODE_ENV === "development") {
+            console.log("Fetching metadata with auth token", {
+              url: `/api/search/metadata`,
+              params,
+              authTokenLength: authToken.length,
+            })
+          }
+
+          const queryParams = new URLSearchParams({
+            page: params.page.toString(),
+            limit: params.limit.toString(),
+            sortBy: params.sortBy,
+            sortOrder: params.sortOrder,
           })
 
-          const response = await fetch(
-            `/api/search/metadata?${new URLSearchParams({
-              page: params.page.toString(),
-              limit: params.limit.toString(),
-              ...(params.search ? { search: params.search } : {}),
-              ...(params.category ? { category: params.category } : {}),
-              sortBy: params.sortBy,
-              sortOrder: params.sortOrder,
-            })}`,
-            {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          )
+          // Only add search and category if they have values
+          if (params.search) queryParams.append("search", params.search)
+          if (params.category && params.category !== "all")
+            queryParams.append("category", params.category)
+
+          const response = await fetch(`/api/search/metadata?${queryParams}`, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          })
 
           if (!response.ok) {
             const errorText = await response.text().catch(() => "Unknown error")
@@ -147,7 +140,10 @@ export function MetadataList({
         }
 
         // Fall back to the service if no auth token
-        console.log("Fetching metadata with service (no auth token)", params)
+        if (process.env.NODE_ENV === "development") {
+          console.log("Fetching metadata with service (no auth token)", params)
+        }
+
         const result = await metadataService.searchMetadata(params)
         return {
           metadata: result.metadata,
@@ -163,9 +159,9 @@ export function MetadataList({
     [authToken]
   )
 
-  // Use React Query for data fetching
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: [
+  // Use React Query for data fetching with memoized query key
+  const queryKey = useMemo(
+    () => [
       "metadata",
       page,
       debouncedSearch,
@@ -173,7 +169,12 @@ export function MetadataList({
       sortBy,
       sortOrder,
     ],
-    queryFn: () =>
+    [page, debouncedSearch, debouncedCategory, sortBy, sortOrder]
+  )
+
+  // Memoize the query function to prevent unnecessary re-renders
+  const queryFn = useCallback(
+    () =>
       fetchMetadata({
         page,
         limit: 10,
@@ -182,7 +183,12 @@ export function MetadataList({
         sortBy,
         sortOrder,
       }),
-    initialData:
+    [fetchMetadata, page, debouncedSearch, debouncedCategory, sortBy, sortOrder]
+  )
+
+  // Memoize the initial data
+  const initialData = useMemo(
+    () =>
       initialMetadata && initialTotal
         ? {
             metadata: initialMetadata,
@@ -191,14 +197,23 @@ export function MetadataList({
             totalPages: Math.ceil(initialTotal / 10),
           }
         : undefined,
+    [initialMetadata, initialTotal]
+  )
+
+  // Use React Query for data fetching
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey,
+    queryFn,
+    initialData,
   })
 
-  const confirmDelete = (id: string) => {
+  // Memoize handlers to prevent unnecessary re-renders
+  const confirmDelete = useCallback((id: string) => {
     setItemToDelete(id)
     setIsDeleteDialogOpen(true)
-  }
+  }, [])
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!itemToDelete) return
 
     try {
@@ -219,16 +234,46 @@ export function MetadataList({
       setIsDeleteDialogOpen(false)
       setItemToDelete(null)
     }
-  }
+  }, [itemToDelete, refetch, toast])
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = useCallback((value: string) => {
     // Format is "field:order"
     const [field, order] = value.split(":")
     setSortBy(field)
     setSortOrder(order as "asc" | "desc")
     setManuallyFetched(true)
-  }
+  }, [])
 
+  // Memoize the search input handler
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearch(e.target.value)
+    },
+    []
+  )
+
+  // Memoize the category change handler
+  const handleCategoryChange = useCallback((value: string) => {
+    setCategory(value)
+  }, [])
+
+  // Memoize the pagination handlers
+  const handlePrevPage = useCallback(() => {
+    setPage(page - 1)
+    setManuallyFetched(true)
+  }, [page])
+
+  const handleNextPage = useCallback(() => {
+    setPage(page + 1)
+    setManuallyFetched(true)
+  }, [page])
+
+  const handlePageClick = useCallback((pageNum: number) => {
+    setPage(pageNum)
+    setManuallyFetched(true)
+  }, [])
+
+  // Render the component
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -238,11 +283,11 @@ export function MetadataList({
             <Input
               placeholder="Search by name, ID, type..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               className="pl-8"
             />
           </div>
-          <Select value={category} onValueChange={setCategory}>
+          <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
@@ -290,19 +335,24 @@ export function MetadataList({
             <Skeleton className="h-8 w-32" />
           </div>
           <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center space-x-4 rounded-md border p-4"
-              >
-                <Skeleton className="h-12 w-12" />
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-                </div>
-                <Skeleton className="h-10 w-[100px]" />
-              </div>
-            ))}
+            {/* Memoize the loading skeletons */}
+            {useMemo(
+              () =>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center space-x-4 rounded-md border p-4"
+                  >
+                    <Skeleton className="h-12 w-12" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                    <Skeleton className="h-10 w-[100px]" />
+                  </div>
+                )),
+              []
+            )}
           </div>
         </div>
       ) : (
@@ -321,47 +371,50 @@ export function MetadataList({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.metadata.map((item: MetadataItem) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/metadata/${item.id}`}
-                          className="hover:underline text-primary"
-                        >
-                          {item.title}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{item.dataType || "Unknown"}</TableCell>
-                      <TableCell>
-                        {item.cloudCoverPercentage || "N/A"}
-                      </TableCell>
-                      <TableCell>{formatDate(item.dateFrom)}</TableCell>
-                      <TableCell>
-                        {item.abstract || "No abstract available"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/metadata/${item.id}`}>
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </Link>
-                          <Link href={`/metadata/${item.id}/edit`}>
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => confirmDelete(item.id)}
+                  {useMemo(() => {
+                    // Memoize the table rows to prevent unnecessary re-renders
+                    return data.metadata.map((item: MetadataItem) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          <Link
+                            href={`/metadata/${item.id}`}
+                            className="hover:underline text-primary"
                           >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {item.title}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{item.dataType || "Unknown"}</TableCell>
+                        <TableCell>
+                          {item.cloudCoverPercentage || "N/A"}
+                        </TableCell>
+                        <TableCell>{formatDate(item.dateFrom)}</TableCell>
+                        <TableCell>
+                          {item.abstract || "No abstract available"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link href={`/metadata/${item.id}`}>
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
+                            </Link>
+                            <Link href={`/metadata/${item.id}/edit`}>
+                              <Button variant="outline" size="sm">
+                                Edit
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => confirmDelete(item.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  }, [data.metadata, confirmDelete])}
                 </TableBody>
               </Table>
             </div>
@@ -393,10 +446,7 @@ export function MetadataList({
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => {
-                    setPage(page - 1)
-                    setManuallyFetched(true)
-                  }}
+                  onClick={handlePrevPage}
                   disabled={page === 1}
                   variant="outline"
                   size="sm"
@@ -404,43 +454,40 @@ export function MetadataList({
                   Previous
                 </Button>
                 <div className="flex h-9 items-center gap-1.5">
-                  {Array.from(
-                    { length: Math.min(5, data.totalPages || 1) },
-                    (_, i) => {
-                      // Logic to show relevant page numbers
-                      let pageNum = i + 1
-                      if ((data.totalPages || 1) > 5) {
-                        if (page <= 3) {
-                          pageNum = i + 1
-                        } else if (page >= (data.totalPages || 1) - 2) {
-                          pageNum = (data.totalPages || 1) - 4 + i
-                        } else {
-                          pageNum = page - 2 + i
+                  {useMemo(() => {
+                    // Memoize the pagination buttons to prevent unnecessary re-renders
+                    return Array.from(
+                      { length: Math.min(5, data.totalPages || 1) },
+                      (_, i) => {
+                        // Logic to show relevant page numbers
+                        let pageNum = i + 1
+                        if ((data.totalPages || 1) > 5) {
+                          if (page <= 3) {
+                            pageNum = i + 1
+                          } else if (page >= (data.totalPages || 1) - 2) {
+                            pageNum = (data.totalPages || 1) - 4 + i
+                          } else {
+                            pageNum = page - 2 + i
+                          }
                         }
-                      }
 
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={pageNum === page ? "default" : "outline"}
-                          size="sm"
-                          className="h-9 w-9 p-0"
-                          onClick={() => {
-                            setPage(pageNum)
-                            setManuallyFetched(true)
-                          }}
-                        >
-                          {pageNum}
-                        </Button>
-                      )
-                    }
-                  )}
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pageNum === page ? "default" : "outline"}
+                            size="sm"
+                            className="h-9 w-9 p-0"
+                            onClick={() => handlePageClick(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      }
+                    )
+                  }, [data.totalPages, page])}
                 </div>
                 <Button
-                  onClick={() => {
-                    setPage(page + 1)
-                    setManuallyFetched(true)
-                  }}
+                  onClick={handleNextPage}
                   disabled={!data || page >= (data.totalPages || 1)}
                   variant="outline"
                   size="sm"
@@ -479,3 +526,6 @@ export function MetadataList({
     </div>
   )
 }
+
+// Apply memoization to the component
+export const MetadataList = withMemo(MetadataListComponent)
