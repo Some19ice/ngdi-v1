@@ -63,17 +63,17 @@ This document outlines the remaining tasks to complete the implementation of rec
   - [x] Update package dependencies to use the common package
   - [ ] Test changes to ensure functionality is maintained
 
-- [ ] Standardize API client usage:
+- [x] Standardize API client usage:
   - [x] Create standardized API client structure
   - [x] Implement proper error handling for API calls
-  - [ ] Ensure consistent API client usage across all components
-  - [ ] Add retry logic for transient failures
+  - [x] Ensure consistent API client usage across all components
+  - [x] Add retry logic for transient failures
 
-- [ ] Improve error handling in components:
+- [x] Improve error handling in components:
   - [x] Add error handling to gallery page
   - [x] Implement user-friendly error messages
   - [x] Add fallback UI for error states
-  - [ ] Add error boundaries to key components
+  - [x] Add error boundaries to key components
 
 ## Authentication Tasks
 

@@ -23,8 +23,8 @@ This document tracks the progress of implementing recommendations from the compr
 |----|---------------|--------|------------------------|
 | WEB-01 | Remove mock data implementations | ✅ Partially Completed | Removed `packages/web/src/lib/mock/news-data.ts`. Replaced mock data with API client implementations in documentation search and gallery pages. Removed mock data from profile page, user activity page, admin user creation form, and settings form. Updated Redis implementation to only use MockRedis in test mode. |
 | WEB-02 | Disable demo mode | ✅ Partially Completed | Removed forced dynamic rendering from Next.js configuration. Updated config files to allow static generation for most pages while keeping dynamic rendering for auth and admin pages. |
-| WEB-03 | Standardize API client usage | ✅ Partially Completed | Created standardized API client implementations for documentation and gallery features. |
-| WEB-04 | Improve error handling in components | ✅ Partially Completed | Added proper error handling and loading states to gallery page. |
+| WEB-03 | Standardize API client usage | ✅ Completed | Created standardized API client with retry logic, service factory, and service registry. Implemented consistent API service usage across components. Added React Query integration and example components. |
+| WEB-04 | Improve error handling in components | ✅ Completed | Added comprehensive error handling with error boundaries, API data wrappers, and consistent error UI. Implemented global error boundary in app providers. |
 | WEB-05 | Enhance form validation | 🔄 In Progress | - |
 | WEB-06 | Optimize component rendering | 🔄 In Progress | - |
 | WEB-07 | Implement proper authentication flow | 🔄 In Progress | - |
