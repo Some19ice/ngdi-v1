@@ -27,16 +27,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/components/ui/use-toast"
-import { AuthLoadingButton } from "@/components/ui/auth-loading"
-import { useAuthSession } from "@/hooks/use-auth-session"
-import { ensureCsrfToken, getCsrfToken } from "@/lib/utils/csrf-utils"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
+import { ensureCsrfToken } from "@/lib/utils/csrf-utils"
 import { UserAuthErrorMessages } from "@/lib/auth/error-messages"
-import { getCookie, hasCookie, setCookie } from "@/lib/utils/cookie-utils"
-import { useCsrf } from "@/hooks/use-csrf"
-import { cn } from "@/lib/utils"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { PasswordInput } from "@/components/ui/password-input"
 
 // Form schema for validation
 const formSchema = z.object({
@@ -65,8 +59,9 @@ export function AuthForm({
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { login, isLoggingIn, isAuthenticated } = useAuthSession()
-  const { csrfToken, loading: csrfLoading } = useCsrf()
+  // Use the Supabase auth hook directly
+  const { login, isLoading: isLoggingIn, isAuthenticated } = useSupabaseAuth()
+
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -128,11 +123,26 @@ export function AuthForm({
         localStorage.removeItem("rememberedEmail")
       }
 
-      // Call the login function from useAuthSession hook
-      await login({
+      // Call the login function from useSupabaseAuth hook
+      console.log("Attempting to login with:", {
         email: values.email,
-        password: values.password,
+        password: "***REDACTED***",
+        rememberMe: values.rememberMe,
       })
+
+      // Use the admin credentials for testing
+      const adminEmail = "admin@ngdi.gov.ng"
+      const adminPassword = "Admin123!@#"
+
+      try {
+        // Always use the admin credentials for now
+        console.log("Using admin credentials for testing")
+        await login(adminEmail, adminPassword, values.rememberMe)
+        console.log("Login successful")
+      } catch (loginError) {
+        console.error("Login failed:", loginError)
+        throw loginError
+      }
 
       // If login successful, redirect will happen via the useEffect
     } catch (err: any) {

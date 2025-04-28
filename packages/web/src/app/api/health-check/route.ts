@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getApiUrl } from "@/lib/api-config"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 300 // Revalidate every 5 minutes
+export const fetchCache = "force-cache" // Force caching of the response
 
 export async function GET() {
   // Use the configured API endpoint
