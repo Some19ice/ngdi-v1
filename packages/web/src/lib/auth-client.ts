@@ -7,6 +7,8 @@ import {
   getCsrfTokenFromCookie,
 } from "./csrf-client"
 import { getApiUrl } from "./api-config"
+import tokenService from "./auth/token-service"
+import AUTH_CONFIG from "./auth/auth-config"
 
 // Re-export the Session type
 export type { Session }
@@ -290,12 +292,11 @@ export const authClient = {
           throw new Error("Login failed: Invalid server response")
         }
 
-        // Always store tokens in localStorage for client-side access
-        localStorage.setItem("accessToken", data.accessToken)
-        localStorage.setItem("refreshToken", data.refreshToken)
-        localStorage.setItem("authenticated", "true")
+        // Store tokens using token service
+        tokenService.setAccessToken(data.accessToken, rememberMe)
+        tokenService.setRefreshToken(data.refreshToken, rememberMe)
 
-        console.log("Login successful, tokens stored in localStorage")
+        console.log("Login successful, tokens stored using token service")
 
         return {
           user: data.user,
@@ -350,10 +351,8 @@ export const authClient = {
         credentials: "include", // Important for cookies
       })
 
-      // Clear all auth-related items from local storage
-      localStorage.removeItem("accessToken")
-      localStorage.removeItem("refreshToken")
-      localStorage.removeItem("authenticated")
+      // Clear all auth-related tokens using token service
+      tokenService.clearTokens()
 
       console.log("Logout successful, tokens cleared from localStorage")
     } catch (error) {
@@ -365,7 +364,7 @@ export const authClient = {
   // Refresh token with real implementation
   async refreshToken(): Promise<string> {
     try {
-      const refreshToken = localStorage.getItem("refreshToken") || ""
+      const refreshToken = tokenService.getRefreshToken() || ""
 
       const response = await fetch(getApiUrl("/auth/refresh-token"), {
         method: "POST",
@@ -382,9 +381,15 @@ export const authClient = {
 
       const data = await response.json()
 
-      // Update stored tokens
-      localStorage.setItem("accessToken", data.data.accessToken)
-      localStorage.setItem("refreshToken", data.data.refreshToken)
+      // Update stored tokens using token service
+      tokenService.setAccessToken(
+        data.data.accessToken,
+        tokenService.hasRememberMe()
+      )
+      tokenService.setRefreshToken(
+        data.data.refreshToken,
+        tokenService.hasRememberMe()
+      )
 
       return data.data.accessToken
     } catch (error) {
@@ -431,8 +436,8 @@ export const authClient = {
 
       return {
         user: data.data,
-        accessToken: localStorage.getItem("accessToken") || "",
-        refreshToken: localStorage.getItem("refreshToken") || "",
+        accessToken: tokenService.getAccessToken() || "",
+        refreshToken: tokenService.getRefreshToken() || "",
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }
     } catch (error) {
@@ -443,7 +448,7 @@ export const authClient = {
 
   // Get access token
   getAccessToken(): string | null {
-    return localStorage.getItem("accessToken")
+    return tokenService.getAccessToken()
   },
 
   // Exchange code for session (for OAuth flows)
@@ -467,12 +472,11 @@ export const authClient = {
 
       const data = await response.json()
 
-      // Store tokens in localStorage for client-side access
-      localStorage.setItem("accessToken", data.accessToken)
-      localStorage.setItem("refreshToken", data.refreshToken)
-      localStorage.setItem("authenticated", "true")
+      // Store tokens using token service
+      tokenService.setAccessToken(data.accessToken, true)
+      tokenService.setRefreshToken(data.refreshToken, true)
 
-      console.log("Registration successful, tokens stored in localStorage")
+      console.log("Registration successful, tokens stored using token service")
 
       return {
         user: data.user,
@@ -515,12 +519,11 @@ export const authClient = {
 
       const data = await response.json()
 
-      // Store tokens in localStorage for client-side access
-      localStorage.setItem("accessToken", data.accessToken)
-      localStorage.setItem("refreshToken", data.refreshToken)
-      localStorage.setItem("authenticated", "true")
+      // Store tokens using token service
+      tokenService.setAccessToken(data.accessToken, true)
+      tokenService.setRefreshToken(data.refreshToken, true)
 
-      console.log("Registration successful, tokens stored in localStorage")
+      console.log("Registration successful, tokens stored using token service")
 
       return {
         user: data.user,

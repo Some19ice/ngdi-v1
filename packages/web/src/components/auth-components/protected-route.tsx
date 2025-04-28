@@ -4,8 +4,11 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { UserRole } from "@/lib/auth/constants"
 import { useAuthSession } from "@/hooks/use-auth-session"
-import { AUTH_PATHS } from "@/lib/auth/paths"
+import AUTH_CONFIG from "@/lib/auth/auth-config"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+
+// Destructure for easier access
+const { PATHS: AUTH_PATHS } = AUTH_CONFIG
 
 interface ProtectedRouteProps {
   children: React.ReactNode
