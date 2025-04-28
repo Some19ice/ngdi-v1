@@ -43,6 +43,7 @@ import * as jose from "jose"
 import { Variables } from "../types/hono.types"
 import { ErrorHandler } from "hono"
 import { config } from "../config"
+import { rateLimitConfig } from "../config/rate-limit.config"
 
 // Create CSRF protection middleware
 const csrfProtection = csrf()
@@ -59,46 +60,21 @@ const honoErrorHandler: ErrorHandler<{ Variables: Variables }> = (err, c) => {
 auth.onError(honoErrorHandler)
 
 // Apply rate limiting to auth routes
-auth.use(
-  "/login",
-  rateLimit({
-    windowSeconds: 300, // 5 minutes
-    maxRequests: 5, // 5 attempts
-    keyPrefix: "rate:login:",
-    message: "Too many login attempts. Please try again later.",
-    skipSuccessfulRequests: true, // Don't count successful logins against the limit
-  })
-)
+// Apply rate limiting to auth routes with enhanced security using standardized config
+auth.use("/login", rateLimit(rateLimitConfig.auth.login))
 
-auth.use(
-  "/register",
-  rateLimit({
-    windowSeconds: 3600, // 1 hour
-    maxRequests: 3, // 3 attempts
-    keyPrefix: "rate:register:",
-    message: "Too many registration attempts. Please try again later.",
-  })
-)
+auth.use("/register", rateLimit(rateLimitConfig.auth.register))
 
-auth.use(
-  "/forgot-password",
-  rateLimit({
-    windowSeconds: 3600, // 1 hour
-    maxRequests: 3, // 3 attempts
-    keyPrefix: "rate:forgot:",
-    message: "Too many password reset requests. Please try again later.",
-  })
-)
+auth.use("/forgot-password", rateLimit(rateLimitConfig.auth.forgotPassword))
 
-auth.use(
-  "/reset-password",
-  rateLimit({
-    windowSeconds: 3600, // 1 hour
-    maxRequests: 5, // 5 attempts
-    keyPrefix: "rate:reset:",
-    message: "Too many password reset attempts. Please try again later.",
-  })
-)
+auth.use("/reset-password", rateLimit(rateLimitConfig.auth.resetPassword))
+
+auth.use("/refresh-token", rateLimit(rateLimitConfig.auth.refreshToken))
+
+auth.use("/verify-email", rateLimit(rateLimitConfig.auth.verifyEmail))
+
+// Apply a general rate limit to all auth endpoints
+auth.use("*", rateLimit(rateLimitConfig.auth.global))
 
 // Login route with real authentication
 auth.post(
@@ -389,9 +365,14 @@ auth.post("/refresh-token", async (c) => {
       userAgent: c.req.header("user-agent"),
     }
 
-    // Generate new access token with shorter expiration (15 minutes)
+    // Generate new access token with enhanced security
     const accessToken = await generateToken(tokenPayload, "15m", {
       includeJti: true,
+      type: TokenType.ACCESS,
+      sessionId: jwtPayload.sessionId || crypto.randomUUID(),
+      deviceId: clientInfo.deviceId,
+      fingerprint: c.req.header("x-fingerprint"), // Optional browser fingerprint
+      scope: ["api:access", "user:read"], // Basic scopes for regular access
     })
 
     // Generate new refresh token with the same family but new ID
@@ -401,14 +382,36 @@ auth.post("/refresh-token", async (c) => {
       {
         includeJti: true,
         family: tokenFamily,
+        sessionId: jwtPayload.sessionId || crypto.randomUUID(),
+        previousTokenId: jwtPayload.jti, // Track the previous token for audit trail
+        deviceId: clientInfo.deviceId,
+        fingerprint: c.req.header("x-fingerprint"), // Optional browser fingerprint
       }
     )
 
-    // Store the new token ID in the family for future validation
-    await storeTokenFamily(tokenFamily, newTokenId)
+    // Token family is now stored automatically in the generateRefreshToken function
 
-    // Revoke the old refresh token
-    await revokeToken(refreshToken, 60 * 60 * 24) // 24 hours
+    // Revoke the old refresh token with reason
+    await revokeToken(
+      refreshToken,
+      "Token rotation during refresh",
+      jwtPayload.userId
+    )
+
+    // Log the token rotation for security auditing
+    await securityLogService.logEvent({
+      userId: jwtPayload.userId,
+      email: jwtPayload.email,
+      eventType: SecurityEventType.TOKEN_REFRESHED,
+      ipAddress: clientInfo.ipAddress,
+      userAgent: clientInfo.userAgent,
+      deviceId: clientInfo.deviceId,
+      details: {
+        oldTokenId: jwtPayload.jti,
+        newTokenId: newTokenId,
+        tokenFamily: tokenFamily,
+      },
+    })
 
     // Set new cookies with improved settings
     // Set the primary auth_token cookie
@@ -895,7 +898,7 @@ auth.get("/csrf", async (c) => {
 })
 
 // Token validation endpoint
-auth.post("/validate-token", async (c) => {
+auth.post("/validate-token", csrfProtection, async (c) => {
   try {
     const { token } = await c.req.json()
 
@@ -970,16 +973,31 @@ auth.post("/validate-token", async (c) => {
 // CSRF token endpoint - provides a CSRF token for client-side forms
 auth.get("/csrf-token", async (c) => {
   try {
-    // Generate a new CSRF token
+    // Generate a new CSRF token with enhanced security
     const token = crypto.randomBytes(32).toString("hex")
 
-    // Set the token as a cookie
+    // Get client information for logging
+    const clientInfo = {
+      ip:
+        c.req.header("x-forwarded-for") ||
+        c.req.header("x-real-ip") ||
+        c.req.header("cf-connecting-ip") ||
+        "unknown",
+      userAgent: c.req.header("user-agent") || "unknown",
+    }
+
+    // Set the token as a cookie with enhanced security settings
     setCookieWithOptions(c, "csrf_token", token, {
-      httpOnly: false, // Allow JavaScript access
-      sameSite: "lax",
+      httpOnly: false, // Allow JavaScript access (required for the double-submit pattern)
+      sameSite: "Strict", // Enhanced from Lax to Strict
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 2, // 2 hours (reduced from 24 hours for security)
+    })
+
+    logger.info("Generated new CSRF token", {
+      ip: clientInfo.ip,
+      userAgent: clientInfo.userAgent,
     })
 
     // Return the token to the client

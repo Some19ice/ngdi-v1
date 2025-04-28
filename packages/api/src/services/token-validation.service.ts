@@ -1,10 +1,18 @@
-import { jwtVerify, decodeJwt } from "jose"
+import { decodeJwt } from "jose"
 import { config } from "../config"
-import { JwtPayload } from "../utils/jwt"
+import {
+  JwtPayload,
+  verifyToken,
+  verifyRefreshToken,
+  TokenType,
+  revokeToken,
+  isTokenRevoked,
+} from "../utils/jwt"
 import { redisService } from "./redis.service"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import { prisma } from "../lib/prisma"
 import { securityLogService, SecurityEventType } from "./security-log.service"
+import { logger } from "../lib/logger"
 
 // Convert string to Uint8Array for jose
 const textEncoder = new TextEncoder()
@@ -70,7 +78,7 @@ export class TokenValidationService {
           userId: cachedResult.userId,
           email: cachedResult.email,
           role: cachedResult.role,
-          exp: cachedResult.expiry
+          exp: cachedResult.expiry,
         }
       }
 
@@ -102,18 +110,19 @@ export class TokenValidationService {
           }
           return {
             isValid: false,
-            error: "Token has been revoked"
+            error: "Token has been revoked",
           }
         }
       }
 
-      // Verify the token with full cryptographic validation
-      const { payload } = await jwtVerify(token, jwtSecret, {
+      // Verify the token with full security checks
+      const jwtPayload = await verifyToken(token, {
+        audience: options.audience || config.jwt.audience,
         issuer: options.issuer || config.jwt.issuer,
-        audience: options.audience || config.jwt.audience
+        checkExpiration: true,
+        checkRevocation: options.checkBlacklist !== false,
+        type: TokenType.ACCESS,
       })
-
-      const jwtPayload = payload as unknown as JwtPayload
 
       // Cache the successful validation result
       this.cacheValidationResult(token, jwtPayload)
@@ -123,7 +132,7 @@ export class TokenValidationService {
         userId: jwtPayload.userId,
         email: jwtPayload.email,
         role: jwtPayload.role,
-        exp: jwtPayload.exp
+        exp: jwtPayload.exp,
       }
     } catch (error) {
       // Log validation failure if requested
@@ -207,45 +216,36 @@ export class TokenValidationService {
           }
           return {
             isValid: false,
-            error: "Refresh token has been revoked"
+            error: "Refresh token has been revoked",
           }
         }
       }
 
-      // Verify the token with full cryptographic validation
-      const { payload } = await jwtVerify(token, refreshSecret, {
+      // Verify the token with full security checks
+      const jwtPayload = await verifyRefreshToken(token, {
+        audience: options.audience || config.jwt.audience,
         issuer: options.issuer || config.jwt.issuer,
-        audience: options.audience || config.jwt.audience
+        checkExpiration: true,
+        checkRevocation: options.checkBlacklist !== false,
+        checkFamily: options.checkFamily !== false,
       })
 
-      const jwtPayload = payload as unknown as JwtPayload
-
-      // Check if the token family has been revoked (for refresh token rotation)
-      if (options.checkFamily !== false && jwtPayload.family && redisService.isAvailable()) {
-        const familyKey = `token_family:${jwtPayload.family}`
-        const latestTokenId = await redisService.get(familyKey)
-
-        // If we have a record of this family but with a different token ID,
-        // it means this token has been superseded by a newer one
-        if (latestTokenId && latestTokenId !== jwtPayload.jti) {
-          // Log validation failure if requested
-          if (options.logFailures && options.clientInfo) {
-            await this.logValidationFailure(
-              token,
-              "Refresh token has been superseded",
-              options.clientInfo,
-              true
-            )
-          }
-
-          // Blacklist this token as it's been superseded
-          await redisService.blacklistToken(token)
-
-          return {
-            isValid: false,
-            error: "Refresh token has been superseded",
-          }
-        }
+      // Log successful validation if client info is provided
+      if (options.clientInfo && options.clientInfo.ipAddress) {
+        await securityLogService.logEvent({
+          userId: jwtPayload.userId,
+          email: jwtPayload.email,
+          eventType: SecurityEventType.TOKEN_VALIDATION_SUCCESS,
+          ipAddress: options.clientInfo.ipAddress,
+          userAgent: options.clientInfo.userAgent,
+          deviceId: options.clientInfo.deviceId,
+          details: {
+            tokenType: TokenType.REFRESH,
+            jti: jwtPayload.jti,
+            family: jwtPayload.family,
+            sessionId: jwtPayload.sessionId,
+          },
+        })
       }
 
       return {
@@ -256,8 +256,13 @@ export class TokenValidationService {
         exp: jwtPayload.exp,
         details: {
           family: jwtPayload.family,
-          jti: jwtPayload.jti
-        }
+          jti: jwtPayload.jti,
+          sessionId: jwtPayload.sessionId,
+          deviceId: jwtPayload.deviceId,
+          issuedAt: jwtPayload.issuedAt,
+          expiresAt: jwtPayload.expiresAt,
+          type: TokenType.REFRESH,
+        },
       }
     } catch (error) {
       // Log validation failure if requested
@@ -270,25 +275,43 @@ export class TokenValidationService {
         )
       }
 
-      console.error("Refresh token validation error:", error)
+      logger.debug("Refresh token validation error:", {
+        error: error instanceof Error ? error.message : String(error),
+        clientInfo: options.clientInfo,
+      })
 
       // Return appropriate error based on the type
       if (error instanceof Error) {
         if (error.message.includes("expired")) {
           return {
             isValid: false,
-            error: "Refresh token has expired"
+            error: "Refresh token has expired",
+          }
+        } else if (error.message.includes("revoked")) {
+          return {
+            isValid: false,
+            error: "Refresh token has been revoked",
+          }
+        } else if (error.message.includes("superseded")) {
+          return {
+            isValid: false,
+            error: "Refresh token has been superseded",
+          }
+        } else if (error.message.includes("family")) {
+          return {
+            isValid: false,
+            error: "Refresh token family has been revoked",
           }
         }
         return {
           isValid: false,
-          error: error.message
+          error: error.message,
         }
       }
 
       return {
         isValid: false,
-        error: "Invalid refresh token"
+        error: "Invalid refresh token",
       }
     }
   }
@@ -308,7 +331,7 @@ export class TokenValidationService {
       if (!token.includes(".") || token.split(".").length !== 3) {
         return {
           isValid: false,
-          error: "Invalid token format (not a JWT)"
+          error: "Invalid token format (not a JWT)",
         }
       }
 
@@ -398,7 +421,7 @@ export class TokenValidationService {
           email: payload.email,
           role: payload.role,
           expiry: payload.exp,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         })
       }
     } catch (error) {
@@ -444,8 +467,9 @@ export class TokenValidationService {
         details: {
           reason,
           isRefreshToken,
-          tokenFragment: token.length > 10 ? `${token.substring(0, 10)}...` : token
-        }
+          tokenFragment:
+            token.length > 10 ? `${token.substring(0, 10)}...` : token,
+        },
       })
     } catch (error) {
       // Ensure logging errors don't break the application

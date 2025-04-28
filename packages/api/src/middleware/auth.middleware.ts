@@ -48,13 +48,15 @@ export async function authMiddleware(c: Context, next: Next) {
       )
     }
 
-    // Validate the token
+    // Validate the token with enhanced security
     const validationResult = await tokenValidationService.validateAccessToken(
       token,
       {
-        checkBlacklist: true,
+        checkRevocation: true,
         logFailures: true,
         clientInfo,
+        audience: config.jwt.audience,
+        issuer: config.jwt.issuer,
       }
     )
 

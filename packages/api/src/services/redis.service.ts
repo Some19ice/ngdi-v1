@@ -72,6 +72,13 @@ export const redisService = {
   },
 
   /**
+   * Alias for delete to maintain consistent naming
+   */
+  async del(key: string): Promise<void> {
+    return this.delete(key)
+  },
+
+  /**
    * Delete keys matching a pattern
    */
   async deleteByPattern(pattern: string): Promise<void> {
@@ -202,6 +209,85 @@ export const redisService = {
       await redis.del(key)
     } catch (error) {
       console.error(`Redis reset rate limit error for key "${key}":`, error)
+    }
+  },
+
+  /**
+   * Get keys matching a pattern
+   */
+  async keys(pattern: string): Promise<string[]> {
+    if (!redis) return []
+    try {
+      return (await redis.keys(pattern)) as string[]
+    } catch (error) {
+      console.error(`Redis keys error for pattern "${pattern}":`, error)
+      return []
+    }
+  },
+
+  /**
+   * Check if a key exists
+   */
+  async exists(key: string): Promise<boolean> {
+    if (!redis) return false
+    try {
+      const result = await redis.exists(key)
+      return result === 1
+    } catch (error) {
+      console.error(`Redis exists error for key "${key}":`, error)
+      return false
+    }
+  },
+
+  /**
+   * Add a member to a set
+   */
+  async sadd(key: string, member: string): Promise<number> {
+    if (!redis) return 0
+    try {
+      return await redis.sadd(key, member)
+    } catch (error) {
+      console.error(`Redis sadd error for key "${key}":`, error)
+      return 0
+    }
+  },
+
+  /**
+   * Get all members of a set
+   */
+  async smembers(key: string): Promise<string[]> {
+    if (!redis) return []
+    try {
+      return (await redis.smembers(key)) as string[]
+    } catch (error) {
+      console.error(`Redis smembers error for key "${key}":`, error)
+      return []
+    }
+  },
+
+  /**
+   * Remove a member from a set
+   */
+  async srem(key: string, member: string): Promise<number> {
+    if (!redis) return 0
+    try {
+      return await redis.srem(key, member)
+    } catch (error) {
+      console.error(`Redis srem error for key "${key}":`, error)
+      return 0
+    }
+  },
+
+  /**
+   * Set a key expiration time
+   */
+  async expire(key: string, seconds: number): Promise<number> {
+    if (!redis) return 0
+    try {
+      return await redis.expire(key, seconds)
+    } catch (error) {
+      console.error(`Redis expire error for key "${key}":`, error)
+      return 0
     }
   },
 }

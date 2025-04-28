@@ -13,9 +13,11 @@ export enum SecurityEventType {
   ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
   ACCOUNT_UNLOCKED = "ACCOUNT_UNLOCKED",
   TOKEN_REFRESH = "TOKEN_REFRESH",
+  TOKEN_REFRESHED = "TOKEN_REFRESHED", // New event for successful token rotation
   TOKEN_REVOKED = "TOKEN_REVOKED",
   TOKEN_VALIDATION_FAILURE = "TOKEN_VALIDATION_FAILURE",
   TOKEN_VALIDATION_SUCCESS = "TOKEN_VALIDATION_SUCCESS",
+  TOKEN_FAMILY_REVOKED = "TOKEN_FAMILY_REVOKED", // New event for revoking a token family
   EMAIL_VERIFICATION = "EMAIL_VERIFICATION",
   REGISTRATION = "REGISTRATION",
   PROFILE_UPDATE = "PROFILE_UPDATE",
@@ -23,6 +25,8 @@ export enum SecurityEventType {
   SUSPICIOUS_ACTIVITY = "SUSPICIOUS_ACTIVITY",
   CSRF_VIOLATION = "CSRF_VIOLATION",
   RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
+  IP_BANNED = "IP_BANNED",
+  IP_UNBANNED = "IP_UNBANNED",
 }
 
 /**
@@ -232,6 +236,120 @@ export class SecurityLogService {
       eventType: SecurityEventType.RATE_LIMIT_EXCEEDED,
       ipAddress,
       details: { path, method },
+    })
+  }
+
+  /**
+   * Log an IP ban event
+   */
+  async logIpBanned(
+    ipAddress: string,
+    reason: string,
+    duration?: number,
+    adminUserId?: string
+  ): Promise<void> {
+    await this.logEvent({
+      eventType: SecurityEventType.IP_BANNED,
+      ipAddress,
+      userId: adminUserId,
+      details: {
+        reason,
+        duration,
+        bannedAt: new Date().toISOString(),
+        expiresAt: duration
+          ? new Date(Date.now() + duration * 1000).toISOString()
+          : "never",
+      },
+    })
+  }
+
+  /**
+   * Log an IP unban event
+   */
+  async logIpUnbanned(
+    ipAddress: string,
+    reason?: string,
+    adminUserId?: string
+  ): Promise<void> {
+    await this.logEvent({
+      eventType: SecurityEventType.IP_UNBANNED,
+      ipAddress,
+      userId: adminUserId,
+      details: {
+        reason,
+        unbannedAt: new Date().toISOString(),
+      },
+    })
+  }
+
+  /**
+   * Log a token refresh event
+   */
+  async logTokenRefresh(
+    userId: string,
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+    deviceId?: string,
+    details?: Record<string, any>
+  ): Promise<void> {
+    await this.logEvent({
+      userId,
+      email,
+      eventType: SecurityEventType.TOKEN_REFRESHED,
+      ipAddress,
+      userAgent,
+      deviceId,
+      details: {
+        refreshedAt: new Date().toISOString(),
+        ...details,
+      },
+    })
+  }
+
+  /**
+   * Log a token revocation event
+   */
+  async logTokenRevocation(
+    userId: string,
+    tokenId: string,
+    reason: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    await this.logEvent({
+      userId,
+      eventType: SecurityEventType.TOKEN_REVOKED,
+      ipAddress,
+      userAgent,
+      details: {
+        tokenId,
+        reason,
+        revokedAt: new Date().toISOString(),
+      },
+    })
+  }
+
+  /**
+   * Log a token family revocation event
+   */
+  async logTokenFamilyRevocation(
+    userId: string,
+    family: string,
+    reason: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    await this.logEvent({
+      userId,
+      eventType: SecurityEventType.TOKEN_FAMILY_REVOKED,
+      ipAddress,
+      userAgent,
+      details: {
+        family,
+        reason,
+        revokedAt: new Date().toISOString(),
+      },
     })
   }
 }
