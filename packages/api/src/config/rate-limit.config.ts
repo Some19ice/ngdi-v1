@@ -1,6 +1,6 @@
 /**
  * Rate limiting configuration
- * 
+ *
  * This file contains standardized rate limiting settings for different types of endpoints.
  * Using these configurations ensures consistent rate limiting across the application.
  */
@@ -24,7 +24,7 @@ export const rateLimitConfig = {
       maxProgressiveSteps: 3, // Up to 8x the original window (5min -> 10min -> 20min -> 40min)
       trackFailedAttempts: true, // Track failed attempts for account lockout
     },
-    
+
     /**
      * Registration rate limits
      */
@@ -37,7 +37,7 @@ export const rateLimitConfig = {
       progressiveMultiplier: 2, // Double the window each time
       maxProgressiveSteps: 2, // Up to 4x the original window (1h -> 2h -> 4h)
     },
-    
+
     /**
      * Password reset request rate limits
      */
@@ -48,7 +48,7 @@ export const rateLimitConfig = {
       message: "Too many password reset requests. Please try again later.",
       progressive: true, // Enable progressive rate limiting
     },
-    
+
     /**
      * Password reset confirmation rate limits
      */
@@ -59,7 +59,7 @@ export const rateLimitConfig = {
       message: "Too many password reset attempts. Please try again later.",
       progressive: true, // Enable progressive rate limiting
     },
-    
+
     /**
      * Token refresh rate limits
      */
@@ -69,7 +69,7 @@ export const rateLimitConfig = {
       keyPrefix: "rate:refresh:",
       message: "Too many token refresh attempts. Please try again later.",
     },
-    
+
     /**
      * Email verification rate limits
      */
@@ -79,7 +79,20 @@ export const rateLimitConfig = {
       keyPrefix: "rate:verify:",
       message: "Too many verification attempts. Please try again later.",
     },
-    
+
+    /**
+     * Resend verification email rate limits
+     */
+    resendVerification: {
+      windowSeconds: 3600, // 1 hour
+      maxRequests: 3, // 3 attempts
+      keyPrefix: "rate:resend-verify:",
+      message: "Too many verification email requests. Please try again later.",
+      progressive: true, // Enable progressive rate limiting
+      progressiveMultiplier: 2, // Double the window each time
+      maxProgressiveSteps: 2, // Up to 4x the original window (1h -> 2h -> 4h)
+    },
+
     /**
      * Global auth rate limits
      */
@@ -90,7 +103,7 @@ export const rateLimitConfig = {
       message: "Too many requests. Please try again later.",
     },
   },
-  
+
   /**
    * API rate limits
    */
@@ -104,7 +117,7 @@ export const rateLimitConfig = {
       keyPrefix: "rate:api-standard:",
       message: "Rate limit exceeded. Please slow down your requests.",
     },
-    
+
     /**
      * Sensitive API rate limits (for endpoints that might be expensive)
      */
@@ -112,9 +125,10 @@ export const rateLimitConfig = {
       windowSeconds: 60, // 1 minute
       maxRequests: 20, // 20 requests per minute
       keyPrefix: "rate:api-sensitive:",
-      message: "Rate limit exceeded for sensitive operation. Please try again later.",
+      message:
+        "Rate limit exceeded for sensitive operation. Please try again later.",
     },
-    
+
     /**
      * Search API rate limits
      */
@@ -124,7 +138,7 @@ export const rateLimitConfig = {
       keyPrefix: "rate:api-search:",
       message: "Search rate limit exceeded. Please try again later.",
     },
-    
+
     /**
      * Global API rate limits
      */
@@ -135,7 +149,7 @@ export const rateLimitConfig = {
       message: "Global rate limit exceeded. Please slow down your requests.",
     },
   },
-  
+
   /**
    * Admin API rate limits
    */

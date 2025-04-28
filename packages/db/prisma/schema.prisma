@@ -12,7 +12,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 
@@ -283,15 +282,15 @@ model Settings {
   /// Unique identifier for the settings record
   id                      String   @id
   /// Site name
-  siteName                String
+  siteName                String   @default("NGDI Portal")
   /// Site description
-  siteDescription         String
+  siteDescription         String   @default("Geospatial Data Infrastructure Portal")
   /// Support email address
-  supportEmail            String
+  supportEmail            String   @default("support@example.com")
   /// Maximum upload size in MB
-  maxUploadSize           Int
+  maxUploadSize           Int      @default(10)
   /// Default language
-  defaultLanguage         String
+  defaultLanguage         String   @default("en")
   /// Maintenance mode flag
   maintenanceMode         Boolean  @default(false)
   /// Registration enabled flag
@@ -301,15 +300,15 @@ model Settings {
   /// Metadata validation required flag
   metadataValidation      Boolean  @default(true)
   /// Auto backup enabled flag
-  autoBackup              Boolean  @default(true)
+  autoBackup              Boolean  @default(false)
   /// Backup frequency (daily, weekly, monthly)
-  backupFrequency         String
+  backupFrequency         String   @default("weekly")
   /// Storage provider (local, s3, etc.)
-  storageProvider         String
+  storageProvider         String   @default("local")
   /// API rate limit per minute
-  apiRateLimit            Int
+  apiRateLimit            Int      @default(100)
   /// Last update timestamp
-  updatedAt               DateTime @updatedAt
+  updatedAt               DateTime @default(now()) @updatedAt
 }
 
 /// Model for storing form drafts
@@ -547,3 +546,5 @@ model ActivityLog {
   @@index([action, subject])
   @@index([createdAt])
 }
+
+

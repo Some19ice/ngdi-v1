@@ -8,6 +8,9 @@ import {
   SecurityEventType,
 } from "../services/security-log.service"
 import { prisma } from "../lib/prisma"
+import { logger } from "../lib/logger"
+import { config } from "../config"
+import { settingsService } from "../services/settings.service"
 
 /**
  * Interface for JWT payload
@@ -95,6 +98,9 @@ export async function authMiddleware(c: Context, next: Next) {
     c.set("userEmail", user.email)
     c.set("userRole", user.role)
     c.set("user", user)
+
+    // Add email verification status to context
+    c.set("emailVerified", !!user.emailVerified)
 
     // Log successful token validation (optional, can be disabled for high-traffic APIs)
     // await securityLogService.logEvent({
@@ -214,3 +220,74 @@ export function requireAnyRole(roles: (UserRole | string)[]) {
     )
   }
 }
+
+/**
+ * Middleware to enforce email verification
+ *
+ * This middleware checks if a user's email is verified and blocks access
+ * to protected routes if verification is required but not completed.
+ */
+export async function requireEmailVerification(c: Context, next: Next) {
+  try {
+    // Get user from context (set by auth middleware)
+    const user = c.get("user")
+
+    if (!user) {
+      throw new AuthError(
+        AuthErrorCode.UNAUTHORIZED,
+        "User not found in context",
+        401
+      )
+    }
+
+    // Check if email verification is required in system settings
+    const isVerificationRequired =
+      await settingsService.isEmailVerificationRequired()
+
+    // If email verification is not required, proceed
+    if (!isVerificationRequired) {
+      await next()
+      return
+    }
+
+    // Check if user's email is verified
+    if (!user.emailVerified) {
+      logger.info(`Access blocked - email not verified: ${user.email}`, {
+        userId: user.id,
+        email: user.email,
+      })
+
+      throw new AuthError(
+        AuthErrorCode.EMAIL_NOT_VERIFIED,
+        "Email verification required. Please verify your email before proceeding.",
+        403,
+        {
+          requiresVerification: true,
+          email: user.email,
+        }
+      )
+    }
+
+    // Email is verified, proceed
+    await next()
+  } catch (error) {
+    // Pass AuthError instances up the chain
+    if (error instanceof AuthError) {
+      throw error
+    }
+
+    // Handle other errors
+    logger.error("Email verification middleware error:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
+    throw new AuthError(
+      AuthErrorCode.SERVER_ERROR,
+      "Email verification check failed",
+      500
+    )
+  }
+}
+
+

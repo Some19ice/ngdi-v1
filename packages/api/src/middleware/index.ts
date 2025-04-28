@@ -3,6 +3,7 @@ import {
   adminMiddleware,
   requireRole,
   requireAnyRole,
+  requireEmailVerification,
 } from "./auth.middleware"
 import { errorHandler } from "./error-handler"
 import { validateBody, validateQuery, validateParams } from "./validation"
@@ -21,6 +22,7 @@ export {
   adminMiddleware,
   requireRole,
   requireAnyRole,
+  requireEmailVerification,
 
   // Permission middleware
   requirePermission,

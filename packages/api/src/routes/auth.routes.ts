@@ -37,13 +37,22 @@ import {
   requestPasswordResetSchema,
   resetPasswordSchema,
   forgotPasswordSchema,
+  resendVerificationSchema,
 } from "../types/auth.types"
 
 import * as jose from "jose"
-import { Variables } from "../types/hono.types"
+import { Variables, Context } from "../types/hono.types"
 import { ErrorHandler } from "hono"
 import { config } from "../config"
 import { rateLimitConfig } from "../config/rate-limit.config"
+
+// Token types for JWT
+enum TokenType {
+  ACCESS = "access",
+  REFRESH = "refresh",
+  VERIFICATION = "verification",
+  RESET = "reset",
+}
 
 // Create CSRF protection middleware
 const csrfProtection = csrf()
@@ -54,6 +63,44 @@ const auth = new Hono<{ Variables: Variables }>()
 // Create an error handler that conforms to Hono's expected type
 const honoErrorHandler: ErrorHandler<{ Variables: Variables }> = (err, c) => {
   return errorHandler(err, c)
+}
+
+// Helper function to handle auth errors
+function handleAuthError(c: Context, error: any) {
+  logger.error("Auth error:", {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  })
+
+  if (error instanceof AuthError) {
+    return c.json(
+      {
+        success: false,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      },
+      error.status
+    )
+  }
+
+  if (error instanceof HTTPException) {
+    return c.json(
+      {
+        success: false,
+        message: error.message,
+      },
+      error.status
+    )
+  }
+
+  return c.json(
+    {
+      success: false,
+      message: "An unexpected error occurred",
+    },
+    500
+  )
 }
 
 // Apply error handler
@@ -72,6 +119,11 @@ auth.use("/reset-password", rateLimit(rateLimitConfig.auth.resetPassword))
 auth.use("/refresh-token", rateLimit(rateLimitConfig.auth.refreshToken))
 
 auth.use("/verify-email", rateLimit(rateLimitConfig.auth.verifyEmail))
+
+auth.use(
+  "/resend-verification",
+  rateLimit(rateLimitConfig.auth.resendVerification)
+)
 
 // Apply a general rate limit to all auth endpoints
 auth.use("*", rateLimit(rateLimitConfig.auth.global))
@@ -1020,5 +1072,42 @@ auth.get("/csrf-token", async (c) => {
 })
 
 // CSRF token validation middleware is now imported from middleware/csrf.ts
+
+// Resend verification email route
+auth.post(
+  "/resend-verification",
+  csrfProtection,
+  zValidator("json", resendVerificationSchema),
+  async (c) => {
+    try {
+      const { email } = c.req.valid("json")
+
+      // Get client info for security logging
+      const clientInfo = {
+        ipAddress:
+          c.req.header("x-forwarded-for") ||
+          c.req.header("x-real-ip") ||
+          "unknown",
+        userAgent: c.req.header("user-agent") || "unknown",
+        deviceId: c.req.header("x-device-id"),
+      }
+
+      // Log the resend verification attempt
+      logger.info(`Resend verification email requested for: ${email}`, {
+        ipAddress: clientInfo.ipAddress,
+        userAgent: clientInfo.userAgent,
+      })
+
+      await AuthService.resendVerificationEmail(email)
+
+      return c.json({
+        success: true,
+        message: "Verification email sent successfully",
+      })
+    } catch (error) {
+      return handleAuthError(c, error)
+    }
+  }
+)
 
 export default auth

@@ -371,10 +371,52 @@ const roles = [
 ]
 
 /**
+ * Seed default system settings
+ */
+async function seedSettings() {
+  console.log("Seeding default system settings...")
+
+  // Check if settings already exist
+  const existingSettings = await prisma.settings.findFirst({
+    where: { id: "default" },
+  })
+
+  if (existingSettings) {
+    console.log("Default settings already exist, skipping...")
+    return
+  }
+
+  // Create default settings
+  await prisma.settings.create({
+    data: {
+      id: "default",
+      siteName: "NGDI Portal",
+      siteDescription: "Geospatial Data Infrastructure Portal",
+      supportEmail: "support@example.com",
+      maxUploadSize: 10, // 10 MB
+      defaultLanguage: "en",
+      maintenanceMode: false,
+      enableRegistration: true,
+      requireEmailVerification: true, // Default to requiring verification
+      metadataValidation: true,
+      autoBackup: false,
+      backupFrequency: "weekly",
+      storageProvider: "local",
+      apiRateLimit: 100,
+    },
+  })
+
+  console.log("Default system settings created successfully")
+}
+
+/**
  * Seed the database with initial data
  */
 async function main() {
   console.log("Starting database seeding...")
+
+  // Seed settings
+  await seedSettings()
 
   // Create permissions
   console.log("Creating permissions...")

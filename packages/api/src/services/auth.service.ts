@@ -27,6 +27,8 @@ import { emailService } from "../services/email.service"
 import { generateToken as createJwtToken, verifyToken } from "../utils/jwt"
 import { accountLockoutService } from "./account-lockout.service"
 import { securityLogService, SecurityEventType } from "./security-log.service"
+import { settingsService } from "./settings.service"
+import { logger } from "../lib/logger"
 
 export interface AuthResult {
   success: boolean
@@ -210,6 +212,8 @@ export class AuthService {
           organization: data.organization,
           department: data.department,
           phone: data.phone,
+          // Email is not verified yet
+          emailVerified: null,
         },
       })
 
@@ -245,6 +249,26 @@ export class AuthService {
       // Store the token family for future validation
       await storeTokenFamily(tokenFamily, refreshTokenId)
 
+      // Generate and store email verification token
+      await this.generateEmailVerificationToken(
+        user.email,
+        user.name || undefined
+      )
+
+      // Log security event
+      await securityLogService.logEvent({
+        userId: user.id,
+        email: user.email,
+        eventType: SecurityEventType.REGISTRATION,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        deviceId: data.deviceId,
+        details: {
+          name: user.name,
+          organization: user.organization,
+        },
+      })
+
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user
 
@@ -256,6 +280,7 @@ export class AuthService {
           role: mapPrismaRoleToAppRole(user.role),
           organization: user.organization || undefined,
           department: user.department || undefined,
+          emailVerified: user.emailVerified,
         },
         accessToken,
         refreshToken,
@@ -266,6 +291,71 @@ export class AuthService {
         throw error
       }
       throw new HTTPException(500, { message: "Registration failed" })
+    }
+  }
+
+  /**
+   * Generate and store an email verification token and send verification email
+   */
+  static async generateEmailVerificationToken(
+    email: string,
+    name?: string
+  ): Promise<string> {
+    try {
+      // Generate a random token
+      const token = randomUUID()
+
+      // Set expiration to 24 hours from now
+      const expires = new Date()
+      expires.setHours(expires.getHours() + 24)
+
+      // Delete any existing verification tokens for this email
+      await prisma.verificationToken.deleteMany({
+        where: {
+          identifier: email,
+          // Only delete tokens for email verification (not password reset)
+          token: {
+            startsWith: "email_", // We'll prefix email verification tokens
+          },
+        },
+      })
+
+      // Create a new verification token with email_ prefix
+      const verificationToken = `email_${token}`
+      await prisma.verificationToken.create({
+        data: {
+          identifier: email,
+          token: verificationToken,
+          expires,
+        },
+      })
+
+      // Send verification email
+      try {
+        await emailService.sendVerificationEmail(email, verificationToken, name)
+      } catch (error) {
+        logger.error("Failed to send verification email:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          email,
+        })
+
+        // In development, log the token
+        if (process.env.NODE_ENV === "development") {
+          logger.info(
+            `[DEV] Verification token for ${email}: ${verificationToken}`
+          )
+        }
+      }
+
+      return verificationToken
+    } catch (error) {
+      logger.error("Error generating verification token:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        email,
+      })
+      throw new Error("Failed to generate verification token")
     }
   }
 
@@ -389,6 +479,7 @@ export class AuthService {
 
   static async verifyEmail(token: string): Promise<void> {
     try {
+      // Check if token is valid and not expired
       const verificationToken = await prisma.verificationToken.findFirst({
         where: {
           token,
@@ -406,7 +497,36 @@ export class AuthService {
         )
       }
 
-      // Update user
+      // Check if this is an email verification token (should start with email_)
+      if (!token.startsWith("email_")) {
+        throw new AuthError(
+          AuthErrorCode.INVALID_TOKEN,
+          "Invalid token type",
+          400
+        )
+      }
+
+      // Get user information
+      const user = await prisma.user.findUnique({
+        where: { email: verificationToken.identifier },
+        select: { id: true, name: true, email: true, emailVerified: true },
+      })
+
+      if (!user) {
+        throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 404)
+      }
+
+      // If email is already verified, just return success
+      if (user.emailVerified) {
+        // Delete the token since it's no longer needed
+        await prisma.verificationToken.delete({
+          where: { token },
+        })
+
+        return
+      }
+
+      // Update user to mark email as verified
       await prisma.user.update({
         where: { email: verificationToken.identifier },
         data: { emailVerified: new Date() },
@@ -416,8 +536,36 @@ export class AuthService {
       await prisma.verificationToken.delete({
         where: { token },
       })
+
+      // Log security event
+      await securityLogService.logEvent({
+        userId: user.id,
+        email: user.email,
+        eventType: SecurityEventType.EMAIL_VERIFICATION,
+        details: {
+          verifiedAt: new Date().toISOString(),
+        },
+      })
+
+      // Send verification success email
+      try {
+        await emailService.sendVerificationSuccessEmail(
+          user.email,
+          user.name || undefined
+        )
+      } catch (error) {
+        // Just log the error, don't fail the verification process
+        logger.error("Failed to send verification success email:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          email: user.email,
+        })
+      }
     } catch (error) {
-      console.error("Email verification error:", error)
+      logger.error("Email verification error:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       if (error instanceof AuthError) {
         throw error
       }
@@ -459,14 +607,22 @@ export class AuthService {
       try {
         await emailService.sendPasswordResetEmail(email, token)
       } catch (error) {
-        console.error("Email service error:", error)
+        logger.error("Email service error:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          email,
+        })
         // In development, just log the token
         if (process.env.NODE_ENV === "development") {
-          console.log(`[DEV] Password reset token for ${email}: ${token}`)
+          logger.info(`[DEV] Password reset token for ${email}: ${token}`)
         }
       }
     } catch (error) {
-      console.error("Forgot password error:", error)
+      logger.error("Forgot password error:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        email,
+      })
       // Don't expose errors to the client for security reasons
     }
   }
@@ -515,13 +671,72 @@ export class AuthService {
         where: { token },
       })
     } catch (error) {
-      console.error("Password reset error:", error)
+      logger.error("Password reset error:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       if (error instanceof AuthError) {
         throw error
       }
       throw new AuthError(
         AuthErrorCode.RESET_PASSWORD_FAILED,
         "Failed to reset password",
+        500
+      )
+    }
+  }
+
+  /**
+   * Resend verification email to a user
+   */
+  static async resendVerificationEmail(email: string): Promise<void> {
+    try {
+      // Find user by email
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, name: true, email: true, emailVerified: true },
+      })
+
+      if (!user) {
+        throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 404)
+      }
+
+      // If email is already verified, return an error
+      if (user.emailVerified) {
+        throw new AuthError(
+          AuthErrorCode.EMAIL_ALREADY_VERIFIED,
+          "Email is already verified",
+          400
+        )
+      }
+
+      // Generate and send new verification token
+      await this.generateEmailVerificationToken(
+        user.email,
+        user.name || undefined
+      )
+
+      // Log security event
+      await securityLogService.logEvent({
+        userId: user.id,
+        email: user.email,
+        eventType: SecurityEventType.VERIFICATION_EMAIL_RESENT,
+        details: {
+          sentAt: new Date().toISOString(),
+        },
+      })
+    } catch (error) {
+      logger.error("Resend verification email error:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        email,
+      })
+      if (error instanceof AuthError) {
+        throw error
+      }
+      throw new AuthError(
+        AuthErrorCode.VERIFICATION_FAILED,
+        "Failed to resend verification email",
         500
       )
     }

@@ -275,6 +275,20 @@ export const verifyEmailSchema = z
 export type VerifyEmailRequest = z.infer<typeof verifyEmailSchema>
 
 /**
+ * Resend verification email schema
+ */
+export const resendVerificationSchema = z
+  .object({
+    email: z.string().email().openapi({
+      example: "user@example.com",
+      description: "Email address to resend verification email to",
+    }),
+  })
+  .openapi("ResendVerificationRequest")
+
+export type ResendVerificationRequest = z.infer<typeof resendVerificationSchema>
+
+/**
  * Auth response
  */
 export const authResponseSchema = z

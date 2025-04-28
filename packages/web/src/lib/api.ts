@@ -6,9 +6,11 @@ import axios, {
 } from "axios"
 import { toast } from "@/components/ui/use-toast"
 import { ApiError, ApiResponse } from "@/types/api"
+import { getCsrfToken, ensureCsrfToken } from "./utils/csrf-utils"
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
+  _csrfRetry?: boolean
 }
 
 class ApiClient {
@@ -21,6 +23,7 @@ class ApiClient {
       headers: {
         "Content-Type": "application/json",
       },
+      withCredentials: true, // Important for CSRF cookies
     })
 
     this.setupInterceptors()
@@ -29,11 +32,34 @@ class ApiClient {
   private setupInterceptors() {
     // Request interceptor
     this.api.interceptors.request.use(
-      (config) => {
+      async (config: CustomAxiosRequestConfig) => {
+        // Add authorization token if available
         const token = this.getStoredAccessToken()
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
+
+        // Add CSRF token for state-changing methods
+        const method = config.method?.toUpperCase()
+        if (method && ["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+          // Get CSRF token from cookie or cache
+          let csrfToken = getCsrfToken()
+
+          // If no token is available and this is not a CSRF retry, fetch a new one
+          if (!csrfToken && !config._csrfRetry) {
+            try {
+              csrfToken = await ensureCsrfToken()
+            } catch (error) {
+              console.error("Failed to get CSRF token:", error)
+            }
+          }
+
+          // Add token to headers if available
+          if (csrfToken) {
+            config.headers["X-CSRF-Token"] = csrfToken
+          }
+        }
+
         return config
       },
       (error) => {
@@ -51,7 +77,7 @@ class ApiClient {
           return Promise.reject(error)
         }
 
-        // Handle 401 errors
+        // Handle 401 errors (Unauthorized)
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true
 
@@ -63,6 +89,28 @@ class ApiClient {
             this.clearTokens()
             window.location.href = "/login"
             return Promise.reject(refreshError)
+          }
+        }
+
+        // Handle 403 errors that might be CSRF related
+        if (
+          error.response?.status === 403 &&
+          error.response?.data?.error?.includes("CSRF") &&
+          !originalRequest._csrfRetry
+        ) {
+          originalRequest._csrfRetry = true
+
+          try {
+            // Get a fresh CSRF token
+            const newCsrfToken = await ensureCsrfToken()
+
+            if (newCsrfToken) {
+              // Update the request with the new token
+              originalRequest.headers["X-CSRF-Token"] = newCsrfToken
+              return this.api(originalRequest)
+            }
+          } catch (csrfError) {
+            console.error("Failed to refresh CSRF token:", csrfError)
           }
         }
 

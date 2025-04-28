@@ -17,6 +17,7 @@ import rolesRouter from "./routes/roles"
 import userPermissionsRouter from "./routes/user-permissions"
 import permissionGroupsRouter from "./routes/permission-groups"
 import activityLogsRouter from "./routes/activity-logs"
+import settingsRouter from "./routes/settings.routes"
 // Import centralized error handling
 import { errorMiddleware } from "./services/error-handling.service"
 import { Context, Variables } from "./types/hono.types"
@@ -110,6 +111,9 @@ apiRouter.route("/roles", rolesRouter)
 apiRouter.route("/user-permissions", userPermissionsRouter)
 apiRouter.route("/permission-groups", permissionGroupsRouter)
 apiRouter.route("/activity-logs", activityLogsRouter)
+
+// Mount settings routes
+apiRouter.route("/settings", settingsRouter)
 
 // Mount API router
 app.route("/", apiRouter)
