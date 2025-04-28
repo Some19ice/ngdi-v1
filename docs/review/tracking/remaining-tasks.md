@@ -179,5 +179,7 @@ This document outlines the remaining tasks to complete the implementation of rec
 7. ✅ Implement password policies
 8. ✅ Enhance form validation and input validation across the application
 9. Implement device tracking and suspicious activity detection
-10. Improve testing infrastructure and coverage
-11. Enhance API documentation
+10. Implement proper authentication flow (WEB-07)
+11. Optimize component rendering (WEB-06)
+12. Improve testing infrastructure and coverage
+13. Enhance API documentation
