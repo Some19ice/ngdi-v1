@@ -50,14 +50,24 @@ const defaultOptions: RateLimitOptions = {
 
   // Client identification function
   identifyClient: (c: Context) => {
-    // Get client IP with fallbacks
-    return (
-      c.req.header("x-forwarded-for") ||
-      c.req.header("x-real-ip") ||
-      c.req.header("cf-connecting-ip") ||
-      c.req.raw.headers.get("x-forwarded-for") ||
-      "unknown"
-    )
+    try {
+      // Get client IP with fallbacks
+      return (
+        c.req.header("x-forwarded-for") ||
+        c.req.header("x-real-ip") ||
+        c.req.header("cf-connecting-ip") ||
+        (c.req.raw?.headers
+          ? c.req.raw.headers.get("x-forwarded-for")
+          : null) ||
+        "unknown"
+      )
+    } catch (error) {
+      // If there's an error accessing headers, return a default value
+      logger.error("Error identifying client:", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return "unknown"
+    }
   },
 }
 
@@ -184,8 +194,8 @@ export function rateLimit(options: Partial<RateLimitOptions> = {}) {
     }
 
     try {
-      // Check if Redis is available
-      if (!redisService.isAvailable()) {
+      // Check if Redis is available - if not, skip rate limiting but continue
+      if (!redisService || !redisService.isAvailable()) {
         logger.warn(
           "Rate limiting skipped: Redis not available",
           requestDetails
@@ -194,12 +204,14 @@ export function rateLimit(options: Partial<RateLimitOptions> = {}) {
         return
       }
 
-      // Check if IP is banned (if enabled)
-      if (opts.blockBannedIPs && (await isIPBanned(clientId))) {
+      // Check if IP is banned (if enabled and IP ban service is available)
+      if (opts.blockBannedIPs && ipBanService && (await isIPBanned(clientId))) {
         logger.warn("Request blocked from banned IP", requestDetails)
 
-        // Log security event
-        await securityLogService.logRateLimitExceeded(clientId, path, method)
+        // Log security event if service is available
+        if (securityLogService) {
+          await securityLogService.logRateLimitExceeded(clientId, path, method)
+        }
 
         throw new AuthError(AuthErrorCode.BANNED, "Access denied", 403, {
           reason: "IP address is banned",
@@ -251,8 +263,10 @@ export function rateLimit(options: Partial<RateLimitOptions> = {}) {
         // Set Retry-After header
         c.header("Retry-After", ttl.toString())
 
-        // Log security event
-        await securityLogService.logRateLimitExceeded(clientId, path, method)
+        // Log security event if service is available
+        if (securityLogService) {
+          await securityLogService.logRateLimitExceeded(clientId, path, method)
+        }
 
         throw new AuthError(
           AuthErrorCode.RATE_LIMITED,

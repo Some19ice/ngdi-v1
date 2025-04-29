@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { supabaseConfig } from '../config/supabase.config'
+import { supabaseAuthConfig } from "../config/supabase-auth.config"
 
 /**
  * Security event types for logging
@@ -38,8 +38,8 @@ export interface SecurityLogEntry {
  */
 export class SecurityLoggingService {
   private supabase = createClient(
-    supabaseConfig.url,
-    supabaseConfig.serviceRoleKey
+    supabaseAuthConfig.url,
+    supabaseAuthConfig.serviceRoleKey
   )
 
   /**
@@ -56,17 +56,17 @@ export class SecurityLoggingService {
 
       // Insert the log entry into the security_logs table
       const { data, error } = await this.supabase
-        .from('security_logs')
+        .from("security_logs")
         .insert([entry])
 
       if (error) {
-        console.error('Error logging security event:', error)
+        console.error("Error logging security event:", error)
         return { success: false, error }
       }
 
       return { success: true, data }
     } catch (error) {
-      console.error('Exception logging security event:', error)
+      console.error("Exception logging security event:", error)
       return { success: false, error }
     }
   }
@@ -80,20 +80,20 @@ export class SecurityLoggingService {
   async getUserSecurityLogs(userId: string, limit = 100): Promise<any> {
     try {
       const { data, error } = await this.supabase
-        .from('security_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .from("security_logs")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
         .limit(limit)
 
       if (error) {
-        console.error('Error fetching user security logs:', error)
+        console.error("Error fetching user security logs:", error)
         return { success: false, error }
       }
 
       return { success: true, data }
     } catch (error) {
-      console.error('Exception fetching user security logs:', error)
+      console.error("Exception fetching user security logs:", error)
       return { success: false, error }
     }
   }
@@ -114,28 +114,28 @@ export class SecurityLoggingService {
   }): Promise<any> {
     try {
       let query = this.supabase
-        .from('security_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from("security_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
 
       if (options.eventType) {
-        query = query.eq('event_type', options.eventType)
+        query = query.eq("event_type", options.eventType)
       }
 
       if (options.userId) {
-        query = query.eq('user_id', options.userId)
+        query = query.eq("user_id", options.userId)
       }
 
       if (options.email) {
-        query = query.eq('email', options.email)
+        query = query.eq("email", options.email)
       }
 
       if (options.startDate) {
-        query = query.gte('created_at', options.startDate)
+        query = query.gte("created_at", options.startDate)
       }
 
       if (options.endDate) {
-        query = query.lte('created_at', options.endDate)
+        query = query.lte("created_at", options.endDate)
       }
 
       if (options.limit) {
@@ -143,19 +143,22 @@ export class SecurityLoggingService {
       }
 
       if (options.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
+        query = query.range(
+          options.offset,
+          options.offset + (options.limit || 10) - 1
+        )
       }
 
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching security logs:', error)
+        console.error("Error fetching security logs:", error)
         return { success: false, error }
       }
 
       return { success: true, data }
     } catch (error) {
-      console.error('Exception fetching security logs:', error)
+      console.error("Exception fetching security logs:", error)
       return { success: false, error }
     }
   }

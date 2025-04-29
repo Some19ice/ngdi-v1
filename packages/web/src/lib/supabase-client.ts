@@ -1,6 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "./database.types"
-import { AUTH_CONFIG } from "./auth/supabase-config"
+import { supabaseAuthConfig } from "./auth/supabase-auth.config"
 
 /**
  * Create a Supabase client for browser-side use
@@ -19,13 +19,13 @@ export function createClient() {
         flowType: "pkce",
         // Store tokens in cookies for better security
         cookies: {
-          name: AUTH_CONFIG.cookies.prefix,
-          lifetime: AUTH_CONFIG.cookies.maxAge,
-          domain: AUTH_CONFIG.cookies.domain,
+          name: supabaseAuthConfig.cookies.prefix,
+          lifetime: supabaseAuthConfig.cookies.maxAge,
+          domain: supabaseAuthConfig.cookies.domain,
           // Use 'strict' for better security (prevents CSRF)
           sameSite: "strict",
           secure: process.env.NODE_ENV === "production",
-          path: AUTH_CONFIG.cookies.path,
+          path: supabaseAuthConfig.cookies.path,
         },
       },
     }

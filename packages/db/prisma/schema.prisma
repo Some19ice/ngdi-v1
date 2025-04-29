@@ -74,14 +74,6 @@ model User {
   image         String?
   /// Hashed password for local authentication
   password      String
-  /// Timestamp when password was last changed
-  passwordLastChanged DateTime @default(now())
-  /// Timestamp when password expires
-  passwordExpiresAt DateTime?
-  /// Previous password hashes (JSON array of strings)
-  previousPasswords Json?     @default("[]")
-  /// Whether password change is required on next login
-  passwordChangeRequired Boolean @default(false)
   /// User's role in the system (legacy field)
   role          UserRole   @default(USER)
   /// Reference to the user's custom role
@@ -92,20 +84,11 @@ model User {
   department    String?
   /// User's contact phone number
   phone         String?
-  /// Whether the account is locked
-  locked        Boolean    @default(false)
-  /// Timestamp when the account will be unlocked
-  lockedUntil   DateTime?
-  /// Number of failed login attempts
-  failedAttempts Int       @default(0)
-  /// Last failed login attempt timestamp
-  lastFailedAttempt DateTime?
 
   accounts      Account[]
   sessions      Session[]
   metadata      Metadata[]
   drafts        Draft[]
-  securityLogs  SecurityLog[]
   userPermissions UserPermission[]
   activityLogs  ActivityLog[]
   customRole    Role?          @relation(fields: [roleId], references: [id])
@@ -113,7 +96,6 @@ model User {
   updatedAt     DateTime   @updatedAt
 
   @@index([roleId])
-  @@index([passwordExpiresAt])
 }
 
 /// User roles for access control
@@ -340,55 +322,7 @@ model Draft {
   @@index([userId])
 }
 
-/// Model for tracking failed login attempts
-model FailedLogin {
-  /// Email address that failed login
-  email       String   @id
-  /// Number of consecutive failed attempts
-  attempts    Int      @default(0)
-  /// IP address of the last failed attempt
-  ipAddress   String?
-  /// User agent of the last failed attempt
-  userAgent   String?
-  /// Timestamp when account will be unlocked
-  lockedUntil DateTime?
-  /// First failed attempt timestamp
-  firstAttempt DateTime @default(now())
-  /// Last failed attempt timestamp
-  lastAttempt  DateTime @default(now())
-  /// Reset timestamp (when attempts counter was last reset)
-  resetAt     DateTime?
-}
 
-/// Model for security event logging
-model SecurityLog {
-  /// Unique identifier for the log entry
-  id          String   @id @default(uuid())
-  /// Reference to the user (if available)
-  userId      String?
-  /// Email address (if available)
-  email       String?
-  /// Type of security event
-  eventType   String
-  /// IP address of the client
-  ipAddress   String?
-  /// User agent of the client
-  userAgent   String?
-  /// Device identifier
-  deviceId    String?
-  /// Additional details as JSON
-  details     String?
-  /// Timestamp of the event
-  createdAt   DateTime @default(now())
-
-  /// Optional relation to user
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([email])
-  @@index([eventType])
-  @@index([createdAt])
-}
 
 /// Custom role model for role-based access control
 model Role {

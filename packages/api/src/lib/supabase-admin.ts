@@ -1,14 +1,17 @@
 import { createClient } from "@supabase/supabase-js"
-import { supabaseConfig } from "../config/supabase.config"
+import {
+  supabaseAuthConfig,
+  isSupabaseConfigured,
+} from "../config/supabase-auth.config"
 import { logger } from "./logger"
 
 // Log Supabase configuration status
-if (!supabaseConfig.url || !supabaseConfig.serviceRoleKey) {
+if (!supabaseAuthConfig.url || !supabaseAuthConfig.serviceRoleKey) {
   logger.warn(
     "Missing Supabase configuration. Using placeholder values in development mode.",
     {
-      url: !!supabaseConfig.url,
-      serviceRoleKey: !!supabaseConfig.serviceRoleKey,
+      url: !!supabaseAuthConfig.url,
+      serviceRoleKey: !!supabaseAuthConfig.serviceRoleKey,
       environment: process.env.NODE_ENV,
     }
   )
@@ -26,8 +29,8 @@ if (!supabaseConfig.url || !supabaseConfig.serviceRoleKey) {
  * This client uses the service role key and should only be used server-side
  */
 export const supabaseAdmin = createClient(
-  supabaseConfig.url,
-  supabaseConfig.serviceRoleKey,
+  supabaseAuthConfig.url,
+  supabaseAuthConfig.serviceRoleKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -41,8 +44,8 @@ export const supabaseAdmin = createClient(
  * This client uses the anonymous key and can be used for public operations
  */
 export const supabaseAnon = createClient(
-  supabaseConfig.url,
-  supabaseConfig.anonKey,
+  supabaseAuthConfig.url,
+  supabaseAuthConfig.anonKey,
   {
     auth: {
       autoRefreshToken: false,

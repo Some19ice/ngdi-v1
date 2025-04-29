@@ -1,7 +1,8 @@
-import { prisma } from "../lib/prisma"
+import { logger } from "../lib/logger"
 
 /**
  * Security event types for logging
+ * Simplified version that maintains the same interface
  */
 export enum SecurityEventType {
   LOGIN_SUCCESS = "LOGIN_SUCCESS",
@@ -19,13 +20,13 @@ export enum SecurityEventType {
   ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
   ACCOUNT_UNLOCKED = "ACCOUNT_UNLOCKED",
   TOKEN_REFRESH = "TOKEN_REFRESH",
-  TOKEN_REFRESHED = "TOKEN_REFRESHED", // New event for successful token rotation
+  TOKEN_REFRESHED = "TOKEN_REFRESHED",
   TOKEN_REVOKED = "TOKEN_REVOKED",
   TOKEN_VALIDATION_FAILURE = "TOKEN_VALIDATION_FAILURE",
   TOKEN_VALIDATION_SUCCESS = "TOKEN_VALIDATION_SUCCESS",
-  TOKEN_FAMILY_REVOKED = "TOKEN_FAMILY_REVOKED", // New event for revoking a token family
+  TOKEN_FAMILY_REVOKED = "TOKEN_FAMILY_REVOKED",
   EMAIL_VERIFICATION = "EMAIL_VERIFICATION",
-  VERIFICATION_EMAIL_RESENT = "VERIFICATION_EMAIL_RESENT", // New event for resending verification emails
+  VERIFICATION_EMAIL_RESENT = "VERIFICATION_EMAIL_RESENT",
   REGISTRATION = "REGISTRATION",
   PROFILE_UPDATE = "PROFILE_UPDATE",
   PERMISSION_CHANGE = "PERMISSION_CHANGE",
@@ -50,7 +51,8 @@ interface SecurityLogEntry {
 }
 
 /**
- * Service for logging security-related events
+ * Simplified service for logging security-related events
+ * This version logs to the console instead of the database
  */
 export class SecurityLogService {
   /**
@@ -58,38 +60,11 @@ export class SecurityLogService {
    */
   async logEvent(entry: SecurityLogEntry): Promise<void> {
     try {
-      // Log to database if available
-      if (prisma) {
-        // Check if we have a SecurityLog model
-        // If not, just log to console
-        try {
-          // @ts-ignore - SecurityLog model might not exist yet
-          await prisma.securityLog.create({
-            data: {
-              userId: entry.userId,
-              email: entry.email,
-              eventType: entry.eventType,
-              ipAddress: entry.ipAddress,
-              userAgent: entry.userAgent,
-              deviceId: entry.deviceId,
-              details: entry.details ? JSON.stringify(entry.details) : null,
-            },
-          })
-        } catch (error) {
-          // If model doesn't exist, log to console
-          console.warn(
-            "SecurityLog model not available, logging to console only"
-          )
-          this.logToConsole(entry)
-        }
-      } else {
-        // Fallback to console logging
-        this.logToConsole(entry)
-      }
+      // Log to console only
+      this.logToConsole(entry)
     } catch (error) {
       // Ensure logging errors don't break the application
       console.error("Error logging security event:", error)
-      this.logToConsole(entry)
     }
   }
 
@@ -362,6 +337,7 @@ export class SecurityLogService {
 
   /**
    * Count security events for a user
+   * Simplified version that always returns 0 since we're not storing events
    */
   async countEvents(options: {
     userId?: string
@@ -370,29 +346,11 @@ export class SecurityLogService {
     since?: Date
     until?: Date
   }): Promise<number> {
-    const { userId, email, eventType, since, until } = options
+    // Log the request for debugging purposes
+    logger.debug("Security event count requested", options)
 
-    const where: any = {}
-
-    if (userId) {
-      where.userId = userId
-    }
-
-    if (email) {
-      where.email = email
-    }
-
-    if (eventType) {
-      where.eventType = eventType
-    }
-
-    if (since || until) {
-      where.timestamp = {}
-      if (since) where.timestamp.gte = since
-      if (until) where.timestamp.lte = until
-    }
-
-    return prisma.securityLog.count({ where })
+    // Always return 0 since we're not storing events
+    return 0
   }
 }
 

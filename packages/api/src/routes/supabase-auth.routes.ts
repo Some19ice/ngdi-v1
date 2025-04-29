@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
-import { supabaseAdmin } from "../lib/supabase-admin"
+import { supabaseAdmin, isSupabaseConfigured } from "../lib/supabase-admin"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import {
   securityLogService,
@@ -21,8 +21,8 @@ import { UserRole } from "../types/auth.types"
 // Create CSRF protection middleware
 const csrfProtection = csrf()
 
-// Create auth router
-const auth = new Hono<{ Variables: Variables }>()
+// Create auth router using OpenAPIHono for compatibility with the main API router
+const auth = new OpenAPIHono<{ Variables: Variables }>()
 
 // Create an error handler that conforms to Hono's expected type
 const honoErrorHandler: ErrorHandler<{ Variables: Variables }> = (err, c) => {
@@ -109,6 +109,16 @@ auth.post(
         deviceId: clientInfo.deviceId,
       })
 
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured) {
+        logger.warn("Supabase not configured, authentication not available")
+        throw new AuthError(
+          AuthErrorCode.SERVER_ERROR,
+          "Authentication service not available",
+          503
+        )
+      }
+
       // Sign in with Supabase
       const { data: authData, error } =
         await supabaseAdmin.auth.signInWithPassword({
@@ -181,13 +191,13 @@ auth.post(
         deviceId: clientInfo.deviceId,
       })
 
-      // Set cookies for client-side access
+      // Set cookies for client-side access with enhanced security
       setCookieWithOptions(
         c,
         "sb-access-token",
         authData.session.access_token,
         {
-          sameSite: "lax",
+          sameSite: "strict", // Enhanced from lax to strict
           secure: process.env.NODE_ENV === "production",
           httpOnly: true,
           path: "/",
@@ -200,21 +210,21 @@ auth.post(
         "sb-refresh-token",
         authData.session.refresh_token,
         {
-          sameSite: "lax",
+          sameSite: "strict", // Enhanced from lax to strict
           secure: process.env.NODE_ENV === "production",
           httpOnly: true,
           path: "/",
-          maxAge: 60 * 60 * 24 * 7, // 7 days
+          maxAge: 60 * 60 * 24 * 3, // Reduced from 7 days to 3 days
         }
       )
 
       // Set authenticated flag for client-side checks
       setCookieWithOptions(c, "authenticated", "true", {
         httpOnly: false,
-        sameSite: "lax",
+        sameSite: "strict", // Enhanced from lax to strict
         secure: process.env.NODE_ENV === "production",
         path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 3, // Reduced from 7 days to 3 days
       })
 
       // Return user data and session
@@ -278,6 +288,16 @@ auth.post(
         ipAddress: clientInfo.ipAddress,
         deviceId: clientInfo.deviceId,
       })
+
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured) {
+        logger.warn("Supabase not configured, registration not available")
+        throw new AuthError(
+          AuthErrorCode.SERVER_ERROR,
+          "Registration service not available",
+          503
+        )
+      }
 
       // Register with Supabase
       const { data: authData, error } =
@@ -462,23 +482,7 @@ auth.post("/logout", csrfProtection, async (c) => {
 auth.get("/me", async (c) => {
   console.log("GET /auth/me endpoint called")
 
-  // In development mode with no Supabase config, return mock data
-  if (process.env.NODE_ENV === "development") {
-    console.log("Using mock data for /auth/me in development mode")
-    return c.json({
-      authenticated: true,
-      user: {
-        id: "mock-user-id",
-        email: "user@example.com",
-        name: "Demo User",
-        role: "USER",
-        emailVerified: new Date().toISOString(),
-        organization: "Demo Organization",
-        department: "Demo Department",
-        phone: "123-456-7890",
-      },
-    })
-  }
+  // No demo mode - always use real authentication
 
   try {
     // Get token from cookie or header
@@ -495,24 +499,14 @@ auth.get("/me", async (c) => {
       })
     }
 
-    // In development mode, return mock data if Supabase is not configured
-    if (
-      process.env.NODE_ENV === "development" &&
-      (!supabaseAdmin || !supabaseAdmin.auth)
-    ) {
-      console.log("Using mock data for /auth/me in development mode")
+    // No demo mode - always use real authentication
+
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      logger.warn("Supabase not configured, authentication check not available")
       return c.json({
-        authenticated: true,
-        user: {
-          id: "mock-user-id",
-          email: "user@example.com",
-          name: "Demo User",
-          role: "USER",
-          emailVerified: new Date().toISOString(),
-          organization: "Demo Organization",
-          department: "Demo Department",
-          phone: "123-456-7890",
-        },
+        authenticated: false,
+        message: "Authentication service not available",
       })
     }
 
@@ -600,26 +594,7 @@ auth.get("/check", async (c) => {
       })
     }
 
-    // In development mode, return mock data if Supabase is not configured
-    if (
-      process.env.NODE_ENV === "development" &&
-      (!supabaseAdmin || !supabaseAdmin.auth)
-    ) {
-      console.log("Using mock data for /auth/check in development mode")
-      return c.json({
-        authenticated: true,
-        user: {
-          id: "mock-user-id",
-          email: "user@example.com",
-          name: "Demo User",
-          role: "USER",
-          emailVerified: new Date().toISOString(),
-          organization: "Demo Organization",
-          department: "Demo Department",
-          phone: "123-456-7890",
-        },
-      })
-    }
+    // No demo mode - always use real authentication
 
     // Verify token with Supabase
     let data, error

@@ -8,7 +8,7 @@ import { UserRole } from "@/lib/auth/constants"
 import { createClient } from "@/lib/supabase-client"
 import { useToast } from "@/components/ui/use-toast"
 import { toast as sonnerToast } from "sonner" // For compatibility with existing code
-import { AUTH_CONFIG } from "@/lib/auth/config"
+import { supabaseAuthConfig } from "@/lib/auth/supabase-auth.config"
 
 // Query key for session data
 export const SESSION_QUERY_KEY = ["auth", "session"]
@@ -296,7 +296,7 @@ export function useSupabaseAuth() {
       sonnerToast.success("Account created successfully")
 
       // Navigate to verification page
-      navigate(AUTH_CONFIG.pages.verifyEmail)
+      navigate(supabaseAuthConfig.pages.verifyRequest)
     },
     onError: (error: any) => {
       // Show error toast
@@ -387,9 +387,42 @@ export function useSupabaseAuth() {
   }
 
   const refreshSession = async () => {
-    await refetch()
-  }
+    // Implement proactive token refresh
+    try {
+      // Check if we need to refresh the token
+      if (session?.accessToken) {
+        // Call the Supabase refresh method
+        const { data, error } = await supabase.auth.refreshSession()
 
+        if (error) throw error
+
+        if (data.session) {
+          // Update the session in the cache with the new tokens
+          queryClient.setQueryData(SESSION_QUERY_KEY, {
+            user: {
+              id: data.session.user.id,
+              email: data.session.user.email || "",
+              name: data.session.user.user_metadata?.name || null,
+              role: data.session.user.user_metadata?.role || UserRole.USER,
+              emailVerified: data.session.user.email_confirmed_at
+                ? new Date(data.session.user.email_confirmed_at)
+                : null,
+            },
+            accessToken: data.session.access_token,
+            refreshToken: data.session.refresh_token,
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          })
+
+          // Log successful refresh
+          console.debug("Session refreshed successfully")
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing session:", error)
+      // Fallback to refetch
+      await refetch()
+    }
+  }
   return {
     session,
     status,

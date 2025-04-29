@@ -1,6 +1,4 @@
-import { prisma } from "../lib/prisma"
-import { passwordPolicyConfig } from "../config/password-policy.config"
-import { hash, compare } from "bcryptjs"
+import { hash } from "bcryptjs"
 import { logger } from "../lib/logger"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import { SecurityEventType, securityLogService } from "./security-log.service"
@@ -24,18 +22,16 @@ export interface PasswordExpirationStatus {
 }
 
 /**
- * Password policy service
- * 
- * This service handles password policy enforcement, including:
- * - Password strength validation
- * - Password expiration management
- * - Password history tracking
- * - Password change enforcement
+ * Simplified password policy service
+ *
+ * This service provides basic password validation but doesn't enforce
+ * complex policies like password history, expiration, etc.
  */
 export class PasswordPolicyService {
   /**
    * Validate password strength
-   * 
+   * Simplified version with basic validation
+   *
    * @param password The password to validate
    * @param userData Optional user data to check for personal information
    * @returns Validation result with errors if any
@@ -45,52 +41,19 @@ export class PasswordPolicyService {
     userData?: { name?: string; email?: string }
   ): PasswordValidationResult {
     const errors: string[] = []
-    const config = passwordPolicyConfig.strength
 
-    // Check length
-    if (password.length < config.minLength) {
-      errors.push(`Password must be at least ${config.minLength} characters long`)
+    // Basic length check
+    if (password.length < 8) {
+      errors.push("Password must be at least 8 characters long")
     }
 
-    if (password.length > config.maxLength) {
-      errors.push(`Password must be at most ${config.maxLength} characters long`)
-    }
-
-    // Check character requirements
-    if (config.requireUppercase && !/[A-Z]/.test(password)) {
+    // Basic complexity check
+    if (!/[A-Z]/.test(password)) {
       errors.push("Password must contain at least one uppercase letter")
     }
 
-    if (config.requireLowercase && !/[a-z]/.test(password)) {
-      errors.push("Password must contain at least one lowercase letter")
-    }
-
-    if (config.requireNumbers && !/[0-9]/.test(password)) {
+    if (!/[0-9]/.test(password)) {
       errors.push("Password must contain at least one number")
-    }
-
-    if (config.requireSpecialChars && !/[^A-Za-z0-9]/.test(password)) {
-      errors.push("Password must contain at least one special character")
-    }
-
-    // Check for common passwords
-    if (config.commonPasswords.includes(password.toLowerCase())) {
-      errors.push("Password is too common and easily guessable")
-    }
-
-    // Check for personal information
-    if (config.rejectPersonalInfo && userData) {
-      const personalInfo = [
-        userData.name,
-        userData.email?.split("@")[0],
-      ].filter(Boolean).map(info => info?.toLowerCase())
-
-      for (const info of personalInfo) {
-        if (info && info.length > 2 && password.toLowerCase().includes(info)) {
-          errors.push("Password must not contain personal information")
-          break
-        }
-      }
     }
 
     return {
@@ -101,7 +64,8 @@ export class PasswordPolicyService {
 
   /**
    * Check if a password is in the user's password history
-   * 
+   * Simplified version that always returns false
+   *
    * @param userId User ID
    * @param newPassword New password to check
    * @returns Whether the password is in the history
@@ -110,51 +74,14 @@ export class PasswordPolicyService {
     userId: string,
     newPassword: string
   ): Promise<boolean> {
-    try {
-      if (!passwordPolicyConfig.history.enabled) {
-        return false
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { previousPasswords: true, password: true },
-      })
-
-      if (!user) {
-        throw new Error("User not found")
-      }
-
-      // Check current password
-      const isCurrentPassword = await compare(newPassword, user.password)
-      if (isCurrentPassword) {
-        return true
-      }
-
-      // Check previous passwords
-      const previousPasswords = user.previousPasswords 
-        ? (user.previousPasswords as string[]) 
-        : []
-
-      for (const prevPassword of previousPasswords) {
-        const matches = await compare(newPassword, prevPassword)
-        if (matches) {
-          return true
-        }
-      }
-
-      return false
-    } catch (error) {
-      logger.error("Error checking password history:", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      })
-      return false
-    }
+    logger.debug(`Checking password history for user ${userId}`)
+    return false
   }
 
   /**
    * Add a password to the user's password history
-   * 
+   * Simplified version that does nothing
+   *
    * @param userId User ID
    * @param currentPassword Current password hash to add to history
    */
@@ -162,209 +89,43 @@ export class PasswordPolicyService {
     userId: string,
     currentPassword: string
   ): Promise<void> {
-    try {
-      if (!passwordPolicyConfig.history.enabled) {
-        return
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { previousPasswords: true },
-      })
-
-      if (!user) {
-        throw new Error("User not found")
-      }
-
-      // Get previous passwords
-      let previousPasswords = user.previousPasswords 
-        ? (user.previousPasswords as string[]) 
-        : []
-
-      // Add current password to history
-      previousPasswords.push(currentPassword)
-
-      // Keep only the most recent passwords based on config
-      if (previousPasswords.length > passwordPolicyConfig.history.rememberCount) {
-        previousPasswords = previousPasswords.slice(-passwordPolicyConfig.history.rememberCount)
-      }
-
-      // Update user's password history
-      await prisma.user.update({
-        where: { id: userId },
-        data: { previousPasswords },
-      })
-    } catch (error) {
-      logger.error("Error adding password to history:", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      })
-    }
+    logger.debug(`Adding password to history for user ${userId}`)
+    // No-op in simplified version
   }
 
   /**
    * Check if a password change is allowed based on minimum age
-   * 
+   * Simplified version that always returns true
+   *
    * @param userId User ID
    * @returns Whether password change is allowed
    */
   static async isPasswordChangeAllowed(userId: string): Promise<boolean> {
-    try {
-      if (!passwordPolicyConfig.history.enabled || 
-          passwordPolicyConfig.history.minimumAge <= 0) {
-        return true
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { passwordLastChanged: true, passwordChangeRequired: true },
-      })
-
-      if (!user) {
-        throw new Error("User not found")
-      }
-
-      // Always allow password change if it's required
-      if (user.passwordChangeRequired) {
-        return true
-      }
-
-      // Check if minimum age requirement is met
-      const minimumAgeMs = passwordPolicyConfig.history.minimumAge * 24 * 60 * 60 * 1000
-      const passwordAge = Date.now() - user.passwordLastChanged.getTime()
-      
-      return passwordAge >= minimumAgeMs
-    } catch (error) {
-      logger.error("Error checking if password change is allowed:", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      })
-      return true // Fail open to allow password changes
-    }
+    logger.debug(`Checking if password change is allowed for user ${userId}`)
+    return true
   }
 
   /**
    * Get password expiration status for a user
-   * 
+   * Simplified version that always returns not expired
+   *
    * @param userId User ID
    * @returns Password expiration status
    */
   static async getPasswordExpirationStatus(
     userId: string
   ): Promise<PasswordExpirationStatus> {
-    try {
-      if (!passwordPolicyConfig.expiration.enabled) {
-        return {
-          isExpired: false,
-          requiresChange: false,
-        }
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { 
-          passwordExpiresAt: true, 
-          passwordChangeRequired: true,
-          passwordLastChanged: true,
-        },
-      })
-
-      if (!user) {
-        throw new Error("User not found")
-      }
-
-      // If password change is required, return that status
-      if (user.passwordChangeRequired) {
-        return {
-          isExpired: false,
-          requiresChange: true,
-        }
-      }
-
-      // If expiration date is not set, calculate it
-      if (!user.passwordExpiresAt) {
-        const expirationDate = new Date(user.passwordLastChanged)
-        expirationDate.setDate(
-          expirationDate.getDate() + passwordPolicyConfig.expiration.expirationDays
-        )
-        
-        // Update the user with the calculated expiration date
-        await prisma.user.update({
-          where: { id: userId },
-          data: { passwordExpiresAt: expirationDate },
-        })
-        
-        const daysUntilExpiration = Math.ceil(
-          (expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-        )
-        
-        return {
-          isExpired: daysUntilExpiration <= 0,
-          daysUntilExpiration: Math.max(0, daysUntilExpiration),
-          requiresChange: daysUntilExpiration <= 0,
-        }
-      }
-
-      // Check if password is expired
-      const now = new Date()
-      const isExpired = user.passwordExpiresAt < now
-      
-      if (!isExpired) {
-        // Calculate days until expiration
-        const daysUntilExpiration = Math.ceil(
-          (user.passwordExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        )
-        
-        return {
-          isExpired: false,
-          daysUntilExpiration,
-          requiresChange: false,
-        }
-      }
-      
-      // Password is expired, check for grace logins
-      if (passwordPolicyConfig.expiration.allowGraceLogins) {
-        // Get grace logins from security logs
-        const graceLogins = await securityLogService.countEvents({
-          userId,
-          eventType: SecurityEventType.PASSWORD_GRACE_LOGIN,
-          since: user.passwordExpiresAt,
-        })
-        
-        const graceLoginsRemaining = Math.max(
-          0, 
-          passwordPolicyConfig.expiration.graceLogins - graceLogins
-        )
-        
-        return {
-          isExpired: true,
-          requiresChange: true,
-          graceLoginsRemaining,
-        }
-      }
-      
-      return {
-        isExpired: true,
-        requiresChange: true,
-        graceLoginsRemaining: 0,
-      }
-    } catch (error) {
-      logger.error("Error getting password expiration status:", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      })
-      
-      // Fail open to allow login
-      return {
-        isExpired: false,
-        requiresChange: false,
-      }
+    logger.debug(`Getting password expiration status for user ${userId}`)
+    return {
+      isExpired: false,
+      requiresChange: false,
     }
   }
 
   /**
    * Record a grace login for a user with expired password
-   * 
+   * Simplified version that only logs the event
+   *
    * @param userId User ID
    * @param ipAddress IP address
    * @param userAgent User agent
@@ -374,27 +135,18 @@ export class PasswordPolicyService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<void> {
-    try {
-      await securityLogService.logEvent({
-        userId,
-        eventType: SecurityEventType.PASSWORD_GRACE_LOGIN,
-        ipAddress,
-        userAgent,
-        details: {
-          timestamp: new Date().toISOString(),
-        },
-      })
-    } catch (error) {
-      logger.error("Error recording grace login:", {
-        error: error instanceof Error ? error.message : String(error),
-        userId,
-      })
-    }
+    logger.debug(`Recording grace login for user ${userId}`)
+    await securityLogService.logEvent({
+      userId,
+      eventType: SecurityEventType.PASSWORD_GRACE_LOGIN,
+      ipAddress,
+      userAgent,
+    })
   }
 
   /**
    * Change a user's password with policy enforcement
-   * 
+   *
    * @param userId User ID
    * @param newPassword New password
    * @param userData Optional user data for validation
@@ -410,20 +162,16 @@ export class PasswordPolicyService {
       // Get user
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { 
-          email: true, 
-          name: true, 
+        select: {
+          email: true,
+          name: true,
           password: true,
           passwordLastChanged: true,
         },
       })
 
       if (!user) {
-        throw new AuthError(
-          AuthErrorCode.USER_NOT_FOUND,
-          "User not found",
-          404
-        )
+        throw new AuthError(AuthErrorCode.USER_NOT_FOUND, "User not found", 404)
       }
 
       // Combine provided userData with user data from database
@@ -434,7 +182,10 @@ export class PasswordPolicyService {
 
       // Validate password strength
       if (!skipValidation) {
-        const validationResult = this.validatePasswordStrength(newPassword, fullUserData)
+        const validationResult = this.validatePasswordStrength(
+          newPassword,
+          fullUserData
+        )
         if (!validationResult.valid) {
           throw new AuthError(
             AuthErrorCode.PASSWORD_POLICY,
@@ -474,7 +225,8 @@ export class PasswordPolicyService {
       // Calculate new expiration date
       const expirationDate = new Date()
       expirationDate.setDate(
-        expirationDate.getDate() + passwordPolicyConfig.expiration.expirationDays
+        expirationDate.getDate() +
+          passwordPolicyConfig.expiration.expirationDays
       )
 
       // Update user's password
@@ -501,12 +253,12 @@ export class PasswordPolicyService {
       if (error instanceof AuthError) {
         throw error
       }
-      
+
       logger.error("Error changing password:", {
         error: error instanceof Error ? error.message : String(error),
         userId,
       })
-      
+
       throw new AuthError(
         AuthErrorCode.PASSWORD_CHANGE_FAILED,
         "Failed to change password",
@@ -517,7 +269,7 @@ export class PasswordPolicyService {
 
   /**
    * Reset a user's password (admin function)
-   * 
+   *
    * @param userId User ID
    * @param requireChange Whether to require password change on next login
    */
@@ -558,7 +310,7 @@ export class PasswordPolicyService {
         error: error instanceof Error ? error.message : String(error),
         userId,
       })
-      
+
       throw new AuthError(
         AuthErrorCode.PASSWORD_RESET_FAILED,
         "Failed to reset password",
@@ -576,39 +328,49 @@ export class PasswordPolicyService {
     const lowercaseChars = "abcdefghijklmnopqrstuvwxyz"
     const numberChars = "0123456789"
     const specialChars = "!@#$%^&*()-_=+[]{}|;:,.<>?"
-    
+
     let password = ""
-    
+
     // Ensure at least one of each required character type
     if (passwordPolicyConfig.strength.requireUppercase) {
-      password += uppercaseChars.charAt(Math.floor(Math.random() * uppercaseChars.length))
+      password += uppercaseChars.charAt(
+        Math.floor(Math.random() * uppercaseChars.length)
+      )
     }
-    
+
     if (passwordPolicyConfig.strength.requireLowercase) {
-      password += lowercaseChars.charAt(Math.floor(Math.random() * lowercaseChars.length))
+      password += lowercaseChars.charAt(
+        Math.floor(Math.random() * lowercaseChars.length)
+      )
     }
-    
+
     if (passwordPolicyConfig.strength.requireNumbers) {
-      password += numberChars.charAt(Math.floor(Math.random() * numberChars.length))
+      password += numberChars.charAt(
+        Math.floor(Math.random() * numberChars.length)
+      )
     }
-    
+
     if (passwordPolicyConfig.strength.requireSpecialChars) {
-      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
+      password += specialChars.charAt(
+        Math.floor(Math.random() * specialChars.length)
+      )
     }
-    
+
     // Fill the rest of the password with random characters
     const allChars = [
       ...(passwordPolicyConfig.strength.requireUppercase ? uppercaseChars : []),
       ...(passwordPolicyConfig.strength.requireLowercase ? lowercaseChars : []),
       ...(passwordPolicyConfig.strength.requireNumbers ? numberChars : []),
-      ...(passwordPolicyConfig.strength.requireSpecialChars ? specialChars : []),
+      ...(passwordPolicyConfig.strength.requireSpecialChars
+        ? specialChars
+        : []),
     ].join("")
-    
+
     const remainingLength = length - password.length
     for (let i = 0; i < remainingLength; i++) {
       password += allChars.charAt(Math.floor(Math.random() * allChars.length))
     }
-    
+
     // Shuffle the password
     return password
       .split("")

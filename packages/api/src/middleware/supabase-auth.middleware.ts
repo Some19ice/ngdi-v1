@@ -3,29 +3,18 @@ import { Context } from "../types/hono.types"
 import { UserRole } from "../types/auth.types"
 import { AuthError, AuthErrorCode } from "../types/error.types"
 import { supabaseAuthService } from "../services/supabase-auth.service"
-import {
-  securityLogService,
-  SecurityEventType,
-} from "../services/security-log.service"
+// import {
+//   securityLogService,
+//   SecurityEventType,
+// } from "../services/security-log.service" // Removed unused imports
 import { logger } from "../lib/logger"
 import { settingsService } from "../services/settings.service"
 
 /**
- * Authentication middleware that validates Supabase Auth tokens
+ * Simplified Authentication middleware that validates Supabase Auth tokens
  */
 export async function authMiddleware(c: Context, next: Next) {
   try {
-    // Get client information for logging
-    const clientInfo = {
-      ipAddress:
-        c.req.header("x-forwarded-for") ||
-        c.req.header("x-real-ip") ||
-        c.req.header("cf-connecting-ip") ||
-        "unknown",
-      userAgent: c.req.header("user-agent") || "unknown",
-      deviceId: c.req.header("x-device-id") || "unknown",
-    }
-
     // Get token from request (header or cookie)
     const authHeader = c.req.header("Authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -37,12 +26,8 @@ export async function authMiddleware(c: Context, next: Next) {
     }
 
     const token = authHeader.replace("Bearer ", "")
-
-    // Validate the token with Supabase
-    const validationResult = await supabaseAuthService.validateToken(token, {
-      logFailures: true,
-      clientInfo,
-    })
+    // Validate the token with Supabase (using simplified signature)
+    const validationResult = await supabaseAuthService.validateToken(token)
 
     if (!validationResult.isValid) {
       // Token validation failed
@@ -83,15 +68,7 @@ export async function authMiddleware(c: Context, next: Next) {
     // Add email verification status to context
     c.set("emailVerified", !!userData.emailVerified)
 
-    // Log successful token validation
-    await securityLogService.logEvent({
-      userId: userData.id,
-      email: userData.email,
-      eventType: SecurityEventType.TOKEN_VALIDATION_SUCCESS,
-      ipAddress: clientInfo.ipAddress,
-      userAgent: clientInfo.userAgent,
-      deviceId: clientInfo.deviceId,
-    })
+    // Removed custom security logging
 
     await next()
   } catch (error) {

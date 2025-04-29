@@ -1,6 +1,6 @@
 /**
- * Supabase configuration for the API package
- * This file contains configuration for Supabase integration
+ * Supabase Auth configuration for the API package
+ * This file contains configuration for Supabase Auth integration
  */
 
 // Validate required environment variables
@@ -38,7 +38,10 @@ const validateConfig = () => {
 
 const configValidation = validateConfig()
 
-export const supabaseConfig = {
+/**
+ * Supabase Auth configuration
+ */
+export const supabaseAuthConfig = {
   /**
    * Supabase URL from environment variables
    */
@@ -127,4 +130,119 @@ export const supabaseConfig = {
       httpOnly: true,
     },
   },
+
+  /**
+   * Security configuration
+   */
+  security: {
+    /**
+     * Rate limiting configuration
+     */
+    rateLimit: {
+      /**
+       * Login rate limit
+       */
+      login: {
+        /**
+         * Maximum number of attempts
+         */
+        maxAttempts: 5,
+        
+        /**
+         * Window in milliseconds
+         */
+        windowMs: 15 * 60 * 1000, // 15 minutes
+      },
+      
+      /**
+       * Registration rate limit
+       */
+      register: {
+        maxAttempts: 3,
+        windowMs: 60 * 60 * 1000, // 1 hour
+      },
+      
+      /**
+       * Password reset rate limit
+       */
+      passwordReset: {
+        maxAttempts: 3,
+        windowMs: 60 * 60 * 1000, // 1 hour
+      },
+      
+      /**
+       * Email verification rate limit
+       */
+      emailVerification: {
+        maxAttempts: 5,
+        windowMs: 60 * 60 * 1000, // 1 hour
+      },
+      
+      /**
+       * Global rate limit for all auth endpoints
+       */
+      global: {
+        maxAttempts: 20,
+        windowMs: 60 * 60 * 1000, // 1 hour
+      },
+    },
+    
+    /**
+     * Token validation configuration
+     */
+    tokenValidation: {
+      /**
+       * Whether to check token expiration
+       */
+      checkExpiration: true,
+      
+      /**
+       * Whether to check token revocation
+       */
+      checkRevocation: true,
+    },
+  },
+
+  /**
+   * Logging configuration
+   */
+  logging: {
+    /**
+     * Log level
+     */
+    level: process.env.NODE_ENV === "production" ? "error" : "debug",
+    
+    /**
+     * Events to log
+     */
+    events: {
+      login: true,
+      logout: true,
+      register: true,
+      passwordReset: true,
+      emailVerification: true,
+      tokenRefresh: true,
+      error: true,
+    },
+    
+    /**
+     * Sensitive fields to redact from logs
+     */
+    sensitiveFields: ["password", "token", "refreshToken"],
+  },
 }
+
+/**
+ * Type definition for the Supabase Auth configuration
+ */
+export type SupabaseAuthConfig = typeof supabaseAuthConfig
+
+/**
+ * Flag to check if Supabase is properly configured
+ */
+export const isSupabaseConfigured = !!(
+  supabaseAuthConfig.url &&
+  supabaseAuthConfig.url !== "https://placeholder-project.supabase.co" &&
+  supabaseAuthConfig.serviceRoleKey &&
+  supabaseAuthConfig.serviceRoleKey !== "placeholder-service-role-key"
+)

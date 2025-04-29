@@ -1,9 +1,11 @@
 import { supabaseAdmin } from '../lib/supabase-admin'
 import { AuthError, AuthErrorCode } from '../types/error.types'
 import { logger } from '../lib/logger'
-import { securityLogService, SecurityEventType } from './security-log.service'
+// import { securityLogService, SecurityEventType } from './security-log.service' // Removed SecurityEventType
 import { UserRole } from '../types/auth.types'
 import { prisma } from '../lib/prisma'
+// Removed crypto import
+// Removed Redis client import
 
 /**
  * Interface for token validation result
@@ -13,12 +15,12 @@ export interface TokenValidationResult {
   userId?: string
   email?: string
   role?: string
-  exp?: number
+  // exp is not reliably available from Supabase getUser
   error?: string
 }
 
 /**
- * Interface for user data
+ * Interface for user data (simplified if needed)
  */
 export interface UserData {
   id: string
@@ -28,31 +30,21 @@ export interface UserData {
   name?: string | null
   organization?: string | null
   department?: string | null
-  [key: string]: any
+  phone?: string | null
+  // Potentially remove other custom fields if User model is simplified
 }
 
 /**
- * Supabase Auth Service
- * Provides authentication and authorization functionality using Supabase Auth
+ * Simplified Supabase Auth Service
+ * Provides core authentication and authorization using Supabase Auth
  */
 export class SupabaseAuthService {
   /**
    * Validate a JWT token from Supabase Auth
    * @param token JWT token to validate
-   * @param options Validation options
    * @returns Token validation result
    */
-  async validateToken(
-    token: string,
-    options: {
-      logFailures?: boolean
-      clientInfo?: {
-        ipAddress?: string
-        userAgent?: string
-        deviceId?: string
-      }
-    } = {}
-  ): Promise<TokenValidationResult> {
+  async validateToken(token: string): Promise<TokenValidationResult> {
     try {
       // Basic validation
       if (!token || token.trim() === '') {
@@ -63,14 +55,11 @@ export class SupabaseAuthService {
       const { data, error } = await supabaseAdmin.auth.getUser(token)
 
       if (error || !data.user) {
-        // Log validation failure if requested
-        if (options.logFailures && options.clientInfo) {
-          await this.logValidationFailure(
-            token,
-            error?.message || 'Invalid token',
-            options.clientInfo
-          )
-        }
+        // Basic logging for failure
+        logger.warn('Token validation failed:', {
+          error: error?.message || 'Invalid token or user not found',
+          // Avoid logging token fragments in simplified version
+        })
 
         return {
           isValid: false,
@@ -81,28 +70,13 @@ export class SupabaseAuthService {
       // Get user role from metadata
       const role = data.user.user_metadata?.role || UserRole.USER
 
-      // Get email verification status
-      const emailVerified = data.user.email_confirmed_at
-        ? new Date(data.user.email_confirmed_at)
-        : null
-
       return {
         isValid: true,
         userId: data.user.id,
         email: data.user.email || '',
         role,
-        // Supabase doesn't expose token expiration directly, so we can't return it
       }
     } catch (error) {
-      // Log validation failure if requested
-      if (options.logFailures && options.clientInfo) {
-        await this.logValidationFailure(
-          token,
-          error instanceof Error ? error.message : 'Unknown error',
-          options.clientInfo
-        )
-      }
-
       logger.error('Token validation error:', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -110,13 +84,13 @@ export class SupabaseAuthService {
 
       return {
         isValid: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error during token validation',
       }
     }
   }
 
   /**
-   * Get user data from Supabase Auth
+   * Get user data from Supabase Auth and potentially Prisma
    * @param userId User ID
    * @returns User data or null if user not found
    */
@@ -126,23 +100,24 @@ export class SupabaseAuthService {
       const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId)
 
       if (error || !data.user) {
-        logger.error('Error getting user data from Supabase:', {
+        logger.warn('Error getting user data from Supabase:', {
           error: error?.message || 'User not found',
           userId,
         })
         return null
       }
 
-      // Get additional user data from database if needed
+      // Get additional user data from Prisma if the User model still exists
       let additionalData = {}
       try {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           select: {
+            // Include only essential fields kept in Prisma User model
             organization: true,
             department: true,
             phone: true,
-            // Add any other fields you need
+            // Remove fields like 'requiresVerification' if they were removed from schema
           },
         })
 
@@ -171,7 +146,7 @@ export class SupabaseAuthService {
         role,
         emailVerified,
         name: data.user.user_metadata?.name || null,
-        ...additionalData,
+        ...additionalData, // Merge essential fields from Prisma
       }
     } catch (error) {
       logger.error('Error getting user data:', {
@@ -184,75 +159,46 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Log token validation failure
-   * @param token Token that failed validation
-   * @param reason Reason for validation failure
-   * @param clientInfo Client information
-   */
-  private async logValidationFailure(
-    token: string,
-    reason: string,
-    clientInfo: {
-      ipAddress?: string
-      userAgent?: string
-      deviceId?: string
-    }
-  ): Promise<void> {
-    try {
-      await securityLogService.logEvent({
-        eventType: SecurityEventType.TOKEN_VALIDATION_FAILURE,
-        ipAddress: clientInfo.ipAddress,
-        userAgent: clientInfo.userAgent,
-        deviceId: clientInfo.deviceId,
-        details: {
-          reason,
-          // Don't log the full token for security reasons
-          tokenFragment: token.length > 10 ? `${token.substring(0, 10)}...` : 'invalid',
-        },
-      })
-    } catch (error) {
-      logger.error('Error logging token validation failure:', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-      // Don't throw, just log the error
-    }
-  }
-
-  /**
-   * Check if a user exists and is active
+   * Check if a user exists in Supabase and optionally if they are active in Prisma
    * @param userId User ID
-   * @returns True if user exists and is active, false otherwise
+   * @returns True if user exists and (optionally) is active, false otherwise
    */
   async validateUser(userId: string): Promise<boolean> {
     try {
+      // Check if user exists in Supabase
       const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId)
 
       if (error || !data.user) {
+        logger.warn(`User validation failed: User ${userId} not found in Supabase.`, { error: error?.message })
         return false
       }
 
-      // Check if user is banned or inactive in your database if needed
+      // Optional: Check if user is active in Prisma, if 'active' field remains
       try {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
           select: { active: true },
         })
 
+        // If we check Prisma and the user is explicitly inactive, fail validation
         if (dbUser && dbUser.active === false) {
+          logger.warn(`User validation failed: User ${userId} is marked as inactive in database.`)
           return false
         }
+        // If user exists in Prisma and is active (or no active field), pass
+        // If user doesn't exist in Prisma, still pass (rely on Supabase existence) unless strict coupling is required
       } catch (dbError) {
-        logger.warn('Error checking user active status in database:', {
+        logger.warn('Could not check user active status in database:', {
           error: dbError instanceof Error ? dbError.message : String(dbError),
           userId,
         })
-        // Continue without checking active status
+        // Continue validation based only on Supabase existence if DB check fails
       }
 
+      // If we reached here, the user exists in Supabase and is not explicitly inactive in Prisma (if checked)
       return true
     } catch (error) {
-      logger.error('Error validating user:', {
+      logger.error('Error validating user existence:', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         userId,
@@ -260,6 +206,58 @@ export class SupabaseAuthService {
       return false
     }
   }
+
+  /**
+   * Revoke a user's token(s)
+   * @param userId User ID
+   * @param refreshToken Refresh token to revoke (optional, if provided, revokes only this token)
+   * @returns True if successful, false otherwise
+   */
+  async revokeToken(userId: string, refreshToken?: string): Promise<boolean> {
+    try {
+      // If a specific refresh token is provided, revoke only that token
+      if (refreshToken) {
+        const { error } = await supabaseAdmin.auth.admin.revokeRefreshToken(refreshToken)
+        if (error) {
+          logger.error('Error revoking specific refresh token:', {
+            error: error.message,
+            userId,
+          })
+          return false
+        }
+        logger.info(`Revoked specific refresh token for user ${userId}.`)
+        return true
+      }
+
+      // If no specific token is provided, sign out the user (revokes all sessions)
+      const { error } = await supabaseAdmin.auth.admin.signOut(userId)
+      if (error) {
+        logger.error('Error signing out user (revoking all sessions):', {
+          error: error.message,
+          userId,
+        })
+        return false
+      }
+      logger.info(`Signed out user ${userId}, revoking all sessions.`)
+      return true
+    } catch (error) {
+      logger.error('Error during token revocation process:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        userId,
+      })
+      return false
+    }
+  }
+
+  // --- Removed Custom Logic Sections ---
+  // Removed logValidationFailure method
+  // Removed trackAuthEvent and related suspicious activity methods
+  // Removed trackToken method
+  // Removed rateLimiter private member and rateLimit method
+  // Removed sessionMonitor private member and related methods
+  // Removed deviceFingerprinting private member and related methods
+  // Removed tokenRotation private member and related methods
 }
 
 // Export a singleton instance

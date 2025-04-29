@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { UserRole } from "./lib/auth/constants"
-import { AUTH_CONFIG } from "./lib/auth/supabase-config"
+import { supabaseAuthConfig } from "./lib/auth/supabase-auth.config"
 import { updateSession } from "./utils/supabase/middleware"
 
 // Helper function to check if a path matches any of the routes
@@ -33,9 +33,9 @@ export async function middleware(request: NextRequest) {
 
     // Check if this is a protected route that requires authentication
     if (
-      matchesRoute(pathname, AUTH_CONFIG.protectedRoutes) ||
-      matchesRoute(pathname, AUTH_CONFIG.adminRoutes) ||
-      matchesRoute(pathname, AUTH_CONFIG.nodeOfficerRoutes)
+      matchesRoute(pathname, supabaseAuthConfig.routes.protected) ||
+      matchesRoute(pathname, supabaseAuthConfig.routes.admin) ||
+      matchesRoute(pathname, supabaseAuthConfig.routes.nodeOfficer)
     ) {
       // No session, redirect to login
       if (!session) {
@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
           `Redirecting unauthenticated user from protected route: ${pathname}`
         )
         return NextResponse.redirect(
-          new URL(AUTH_CONFIG.pages.signIn, request.url)
+          new URL(supabaseAuthConfig.pages.signIn, request.url)
         )
       }
 
@@ -52,24 +52,24 @@ export async function middleware(request: NextRequest) {
 
       // Check role-based access for admin routes
       if (
-        matchesRoute(pathname, AUTH_CONFIG.adminRoutes) &&
+        matchesRoute(pathname, supabaseAuthConfig.routes.admin) &&
         role !== UserRole.ADMIN
       ) {
         console.log(`Redirecting non-admin user from admin route: ${pathname}`)
         return NextResponse.redirect(
-          new URL(AUTH_CONFIG.pages.unauthorized, request.url)
+          new URL(supabaseAuthConfig.pages.unauthorized, request.url)
         )
       }
 
       // Check role-based access for node officer routes
       if (
-        matchesRoute(pathname, AUTH_CONFIG.nodeOfficerRoutes) &&
+        matchesRoute(pathname, supabaseAuthConfig.routes.nodeOfficer) &&
         role !== UserRole.NODE_OFFICER &&
         role !== UserRole.ADMIN
       ) {
         console.log(`Redirecting user from node officer route: ${pathname}`)
         return NextResponse.redirect(
-          new URL(AUTH_CONFIG.pages.unauthorized, request.url)
+          new URL(supabaseAuthConfig.pages.unauthorized, request.url)
         )
       }
     }
@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
     // If user is authenticated and trying to access auth pages, redirect to dashboard
     if (
       session &&
-      (pathname === AUTH_CONFIG.pages.signIn ||
+      (pathname === supabaseAuthConfig.pages.signIn ||
         pathname === "/login" ||
         pathname === "/register")
     ) {
