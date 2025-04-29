@@ -22,6 +22,8 @@ const authGlobals = {
 
 /**
  * Enhanced hook for session management using Supabase Auth
+ * @deprecated Please use useAuthSession from @/hooks/use-auth-session instead.
+ * This hook is maintained for backward compatibility and will be removed in a future version.
  * @returns Authentication state and methods
  */
 export function useSupabaseAuth() {

@@ -35,7 +35,7 @@ Replace uses of deprecated hooks with the unified hook:
 #### useAuth → useAuthSession
 
 ```diff
-- const { 
+- const {
 -   session,
 -   status,
 -   user,
@@ -133,28 +133,28 @@ const {
   isAuthenticated,        // True if user is authenticated
   isError,                // True if there was an error loading the session
   error,                  // Error object if there was an error
-  
-  // Role helpers  
+
+  // Role helpers
   isAdmin,                // True if user has admin role
   isNodeOfficer,          // True if user has node officer role
   hasRole,                // Function to check if user has a role
-  
+
   // Auth actions (async versions)
   login,                  // Login function (returns Promise)
   logout,                 // Logout function (returns Promise)
   register,               // Register function (returns Promise)
   refreshSession,         // Refresh session function (returns Promise)
-  
+
   // Auth actions (sync versions)
   loginSync,              // Login without waiting (no Promise)
   logoutSync,             // Logout without waiting (no Promise)
   registerSync,           // Register without waiting (no Promise)
-  
+
   // Loading states for actions
   isLoggingIn,            // True while login is in progress
   isLoggingOut,           // True while logout is in progress
   isRegistering,          // True while registration is in progress
-  
+
   // Navigation
   navigate,               // Function to navigate to a different route
 } = useAuthSession();
@@ -173,12 +173,12 @@ import { useIsAdmin } from "@/lib/auth-context";
 export default function ProfilePage() {
   const { user, session, signOut } = useAuth();
   const isAdmin = useIsAdmin();
-  
+
   const handleLogout = async () => {
     await signOut();
     // Handle logout
   };
-  
+
   return (
     <div>
       <h1>Welcome {user?.name}</h1>
@@ -196,12 +196,12 @@ import { useAuthSession } from "@/hooks/use-auth-session";
 
 export default function ProfilePage() {
   const { user, session, logout, isAdmin } = useAuthSession();
-  
+
   const handleLogout = async () => {
     await logout();
     // Handle logout
   };
-  
+
   return (
     <div>
       <h1>Welcome {user?.name}</h1>
@@ -212,6 +212,50 @@ export default function ProfilePage() {
 }
 ```
 
+## Cleanup Process
+
+After migrating all components to use the new `useAuthSession` hook, you can clean up the legacy authentication code:
+
+1. Run the cleanup script to mark deprecated files and create removal scripts:
+
+```bash
+# Make the script executable
+chmod +x scripts/cleanup-auth.sh
+
+# Run the script
+./scripts/cleanup-auth.sh
+```
+
+2. Review the list of files to be removed:
+
+```bash
+cat cleanup-files.txt
+```
+
+3. Remove legacy files:
+
+```bash
+./remove-legacy-auth.sh
+```
+
+4. Remove unused dependencies:
+
+```bash
+./remove-legacy-deps.sh
+```
+
+For more detailed instructions, see the [Authentication System Cleanup Guide](./auth-refactoring/cleanup-guide.md).
+
+## Deprecated Hooks
+
+The following hooks have been marked as deprecated but are maintained for backward compatibility:
+
+1. `useSession` in `hooks/use-session.ts` - Wrapper around `useAuthSession`
+2. `useSupabaseAuth` in `hooks/use-supabase-auth.ts` - Older version of the Supabase auth hook
+3. `useAuth` in `lib/supabase-auth-context.tsx` - Auth context that now uses `useAuthSession` internally
+
+These hooks will be removed in a future version, so it's recommended to migrate to `useAuthSession` as soon as possible.
+
 ## Need Help?
 
-If you encounter any issues during migration, please contact the development team. 
+If you encounter any issues during migration, please contact the development team.

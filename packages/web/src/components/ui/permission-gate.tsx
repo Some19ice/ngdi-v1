@@ -1,8 +1,9 @@
 "use client"
 
 import { ReactNode } from "react"
-import { useSession } from "next-auth/react"
-import { hasPermission, hasAllPermissions, hasAnyPermission, canAccessOwnResource } from "@/lib/permissions"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { PermissionEnum } from "@/lib/auth/auth-types"
+import { UserRole } from "@/lib/auth/constants"
 
 interface PermissionGateProps {
   /**
@@ -11,24 +12,19 @@ interface PermissionGateProps {
   children: ReactNode
 
   /**
-   * The action part of the permission (e.g., "create", "read", "update", "delete")
+   * The permission to check
    */
-  action?: string
-
-  /**
-   * The subject part of the permission (e.g., "metadata", "user", "dashboard")
-   */
-  subject?: string
+  permission?: PermissionEnum
 
   /**
    * Multiple permissions to check (all must be granted)
    */
-  permissions?: { action: string; subject: string }[]
+  permissions?: PermissionEnum[]
 
   /**
    * Multiple permissions to check (any can be granted)
    */
-  anyPermission?: { action: string; subject: string }[]
+  anyPermission?: PermissionEnum[]
 
   /**
    * User ID of the resource owner (for ownership checks)
@@ -46,39 +42,42 @@ interface PermissionGateProps {
  */
 export function PermissionGate({
   children,
-  action,
-  subject,
+  permission,
   permissions,
   anyPermission,
   resourceUserId,
-  fallback = null
+  fallback = null,
 }: PermissionGateProps) {
-  const { data: session } = useSession()
+  const { user, hasPermission, getUserPermissions } = useAuthSession()
 
   // Check for a single permission
-  if (action && subject) {
-    if (!hasPermission(session, action, subject)) {
+  if (permission) {
+    if (!hasPermission(permission)) {
       return <>{fallback}</>
     }
   }
 
   // Check for all permissions
   if (permissions && permissions.length > 0) {
-    if (!hasAllPermissions(session, permissions)) {
+    const hasAll = permissions.every((perm) => hasPermission(perm))
+    if (!hasAll) {
       return <>{fallback}</>
     }
   }
 
   // Check for any permission
   if (anyPermission && anyPermission.length > 0) {
-    if (!hasAnyPermission(session, anyPermission)) {
+    const hasAny = anyPermission.some((perm) => hasPermission(perm))
+    if (!hasAny) {
       return <>{fallback}</>
     }
   }
 
   // Check for resource ownership
   if (resourceUserId) {
-    if (!canAccessOwnResource(session, resourceUserId)) {
+    const isOwner = user?.id === resourceUserId
+    const isAdmin = user?.role === UserRole.ADMIN
+    if (!isOwner && !isAdmin) {
       return <>{fallback}</>
     }
   }
@@ -90,10 +89,35 @@ export function PermissionGate({
 /**
  * A component that only renders its children if the user is an admin
  */
-export function AdminOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
-  const { data: session } = useSession()
+export function AdminOnly({
+  children,
+  fallback = null,
+}: {
+  children: ReactNode
+  fallback?: ReactNode
+}) {
+  const { isAdmin } = useAuthSession()
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!isAdmin()) {
+    return <>{fallback}</>
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * A component that only renders its children if the user is a node officer
+ */
+export function NodeOfficerOnly({
+  children,
+  fallback = null,
+}: {
+  children: ReactNode
+  fallback?: ReactNode
+}) {
+  const { isNodeOfficer } = useAuthSession()
+
+  if (!isNodeOfficer()) {
     return <>{fallback}</>
   }
 

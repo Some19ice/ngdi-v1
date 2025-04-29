@@ -1,7 +1,8 @@
 "use client"
 
 import { UserRole } from "@/lib/auth/constants"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthSession } from "@/hooks/use-auth-session"
+import { hasAnyRole } from "@/lib/auth/role-guards"
 
 interface RoleGateProps {
   children: React.ReactNode
@@ -20,14 +21,14 @@ export function RoleGate({
   allowedRoles,
   fallback = null,
 }: RoleGateProps) {
-  const { user, hasRole } = useAuth()
-  
+  const { user } = useAuthSession()
+
   // Convert single role to array
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]
-  
-  // Check if user has any of the allowed roles
-  const hasAllowedRole = user && hasRole(roles)
-  
+
+  // Check if user has any of the allowed roles using the type-safe role guard
+  const hasAllowedRole = hasAnyRole(user, roles)
+
   // Render children if user has allowed role, otherwise render fallback
   return <>{hasAllowedRole ? children : fallback}</>
 }
